@@ -1,0 +1,25 @@
+/* --- Animated Gradient Background --- */
+
+.animated-gradient-bg {
+    /* Define the gradient colors and angle */
+    background: linear-gradient(-45deg, #3b82f6, #8b5cf6, #1f2937, #ffffff);
+    
+    /* Make the gradient much larger than the container */
+    background-size: 400% 400%;
+    
+    /* Apply the animation */
+    animation: gradientShift 15s ease infinite;
+}
+
+/* Define the keyframes for the animation */
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
