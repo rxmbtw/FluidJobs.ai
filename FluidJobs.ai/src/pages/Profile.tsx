@@ -56,8 +56,9 @@ const Profile: React.FC = () => {
           email: personalInfo.email
         };
         
-        // Update localStorage to persist changes
-        localStorage.setItem('fluidErp_user', JSON.stringify(updatedUser));
+  // Update localStorage to persist changes (write both old and new keys for backward compatibility)
+  localStorage.setItem('fluidJobsAi_user', JSON.stringify(updatedUser));
+  localStorage.setItem('fluidErp_user', JSON.stringify(updatedUser));
         
         // Force a page refresh to update the sidebar
         window.location.reload();
@@ -99,12 +100,13 @@ const Profile: React.FC = () => {
         const imageData = e.target?.result as string;
         setProfileImage(imageData);
         
-        // Update user data in localStorage with profile picture
+        // Update user data in localStorage with profile picture (write both keys)
         if (user) {
           const updatedUser = {
             ...user,
             profileImage: imageData
           };
+          localStorage.setItem('fluidJobsAi_user', JSON.stringify(updatedUser));
           localStorage.setItem('fluidErp_user', JSON.stringify(updatedUser));
         }
         
