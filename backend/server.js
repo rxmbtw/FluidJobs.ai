@@ -1,10 +1,11 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const { testConnection, setupDatabase } = require('./utils/dbSetup');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Middleware
 app.use(helmet());
@@ -24,7 +25,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// TODO: Add route imports here
+// Routes
+app.use('/api/database', require('./routes/database'));
+// TODO: Add more route imports here
 // app.use('/api/auth', require('./routes/auth'));
 // app.use('/api/jobs', require('./routes/jobs'));
 // app.use('/api/ai', require('./routes/gemini'));
@@ -43,10 +46,18 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📱 Frontend URL: ${process.env.FRONTEND_URL}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+  
+  // Test database connection
+  const dbConnected = await testConnection();
+  if (dbConnected) {
+    console.log('🗄️ Database connection successful');
+    // Uncomment the next line to setup database schema on first run
+    // await setupDatabase();
+  }
 });
 
 module.exports = app;
