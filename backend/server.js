@@ -5,7 +5,7 @@ const { testConnection, setupDatabase } = require('./utils/dbSetup');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 8000;
 
 // Middleware
 app.use(helmet());
@@ -27,6 +27,7 @@ app.get('/api/health', (req, res) => {
 
 // Routes
 app.use('/api/database', require('./routes/database'));
+app.use('/api/candidates', require('./routes/candidates'));
 // TODO: Add more route imports here
 // app.use('/api/auth', require('./routes/auth'));
 // app.use('/api/jobs', require('./routes/jobs'));
