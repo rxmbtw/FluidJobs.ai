@@ -136,7 +136,7 @@ const EnhancedSidebar: React.FC = () => {
       case 'Candidate':
         return [
           { name: 'Home', path: '/dashboard', icon: Home },
-          { name: 'Job Search', path: '/jobs', icon: Briefcase, badge: 21 },
+          { name: 'Jobs', path: '/jobs', icon: Briefcase, badge: 21 },
           { name: 'Applications', path: '/applications', icon: Users, badge: 3 },
           { name: 'Resumes', path: '/resumes', icon: FileText, badge: resumeCount },
         ];
@@ -200,12 +200,6 @@ const EnhancedSidebar: React.FC = () => {
                 <User className="w-8 h-8" />
               )}
             </div>
-            <button 
-              onClick={handleQuickEditClick}
-              className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-gray-50 transition-colors z-10"
-            >
-              <Edit className="w-3 h-3 text-gray-600" />
-            </button>
             <input
               ref={fileInputRef}
               type="file"

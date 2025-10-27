@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, UserRole } from '../contexts/AuthProvider';
+import { authService } from '../services/authService';
 import CandidateRegistrationForm from './CandidateRegistrationForm';
 
 const PremiumAuthPage = () => {
@@ -10,6 +11,7 @@ const PremiumAuthPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [showRoleError, setShowRoleError] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -32,7 +34,8 @@ const PremiumAuthPage = () => {
       return;
     }
     if (!formData.role) {
-      setError('Please select a role');
+      setShowRoleError(true);
+      setTimeout(() => setShowRoleError(false), 3000);
       return;
     }
     
@@ -44,22 +47,28 @@ const PremiumAuthPage = () => {
         await login(formData.email, formData.password, formData.role as UserRole);
       }
       
-      // Check if there's a return URL from job application flow
-      const urlParams = new URLSearchParams(window.location.search);
-      const returnTo = urlParams.get('returnTo');
-      const jobId = urlParams.get('jobId');
-      
-      if (returnTo) {
-        navigate(returnTo);
-      } else if (jobId) {
-        navigate(`/careers/${jobId}`);
+      // Check role first. Admin should always go to the unified admin dashboard.
+      // Use the saved user role when possible (authService stores session on login)
+      const savedUser = authService.getCurrentUser();
+      const finalRole = savedUser?.role || formData.role;
+
+      console.log('PremiumAuthPage - Redirect debug', { formRole: formData.role, savedUser, finalRole });
+
+      if (finalRole === 'Admin') {
+        console.log('Redirecting Admin to main-unified-dashboard (finalRole)', finalRole);
+        navigate('/main-unified-dashboard');
       } else {
-        // Redirect based on role
-        if (formData.role === 'Admin') {
-          console.log('Redirecting Admin to admin-dashboard');
-          navigate('/admin-dashboard');
+        // Non-admins may have a returnTo or jobId from previous flow; honor those
+        const urlParams = new URLSearchParams(window.location.search);
+        const returnTo = urlParams.get('returnTo');
+        const jobId = urlParams.get('jobId');
+
+        if (returnTo) {
+          navigate(returnTo);
+        } else if (jobId) {
+          navigate(`/careers/${jobId}`);
         } else {
-          console.log('Redirecting to dashboard with role:', formData.role);
+          console.log('Redirecting to dashboard with role:', finalRole);
           navigate('/dashboard');
         }
       }
@@ -69,28 +78,28 @@ const PremiumAuthPage = () => {
   };
 
   const handleSocialLogin = async (provider: string) => {
-    try {
-      // Simulate Google OAuth with prompt=select_account
-      const result = await googleLogin('mock-google-token');
-      // Check if there's a return URL from job application flow
-      const urlParams = new URLSearchParams(window.location.search);
-      const returnTo = urlParams.get('returnTo');
-      const jobId = urlParams.get('jobId');
+    if (!formData.role) {
+      setShowRoleError(true);
+      setTimeout(() => setShowRoleError(false), 3000);
+      return;
+    }
+    
+    if (provider === 'google') {
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
       
-      if (returnTo) {
-        navigate(returnTo);
-      } else if (jobId) {
-        navigate(`/careers/${jobId}`);
+      console.log('🔄 Starting Google login with role:', formData.role);
+      
+      if (formData.role === 'Admin') {
+        const adminUrl = `${backendUrl}/api/auth/google?role=Admin&redirect=admin`;
+        console.log('🔗 Admin login URL:', adminUrl);
+        window.location.href = adminUrl;
       } else {
-        // Redirect based on role
-        if (formData.role === 'Admin') {
-          navigate('/admin-dashboard');
-        } else {
-          navigate('/dashboard');
-        }
+        const candidateUrl = `${backendUrl}/api/auth/google?role=Candidate&redirect=candidate`;
+        console.log('🔗 Candidate login URL:', candidateUrl);
+        window.location.href = candidateUrl;
       }
-    } catch (error: any) {
-      setError(error.message);
+    } else {
+      setError('LinkedIn login not implemented yet');
     }
   };
 
@@ -279,6 +288,11 @@ const PremiumAuthPage = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
+                {showRoleError && (
+                  <div className="absolute -top-12 left-0 right-0 bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-medium z-30 animate-pulse">
+                    Please select a role
+                  </div>
+                )}
                 {showRoleDropdown && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-3">
                     <div className="text-gray-700 font-medium mb-3 text-sm">Choose your role:</div>
@@ -315,6 +329,28 @@ const PremiumAuthPage = () => {
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </motion.button>
             </form>
+
+
+
+            {/* Admin Quick Login */}
+            <div className="mt-4">
+              <button
+                onClick={() => {
+                  const adminUser = {
+                    id: 'admin123',
+                    email: 'admin@fluidjobs.ai',
+                    name: 'Admin User',
+                    role: 'Admin'
+                  };
+                  sessionStorage.setItem('fluidjobs_token', 'mock-admin-token');
+                  sessionStorage.setItem('fluidjobs_user', JSON.stringify(adminUser));
+                  navigate('/main-unified-dashboard');
+                }}
+                className="w-full bg-red-500 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-red-600"
+              >
+                🔧 Admin Dashboard
+              </button>
+            </div>
 
             {/* Footer Links */}
             <div className="mt-6 text-center space-y-2">

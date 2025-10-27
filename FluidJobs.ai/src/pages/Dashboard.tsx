@@ -3,10 +3,10 @@ import DashboardLayout from '../components/DashboardLayout';
 import CandidateDashboard from '../components/CandidateDashboard';
 import ClientDashboard from '../components/ClientDashboard';
 import UnifiedJobDashboard from '../components/UnifiedJobDashboard';
-import { useAuth } from '../contexts/AuthProvider';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  // Get user from sessionStorage directly
+  const user = JSON.parse(sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('fluidjobs_user') || 'null');
 
   console.log('Dashboard - Current user:', user);
   console.log('Dashboard - User role:', user?.role);
@@ -22,10 +22,8 @@ const Dashboard = () => {
     );
   }
 
-  // Use UnifiedJobDashboard for HR and Admin
-  if (user.role === 'HR' || user.role === 'Admin') {
-    return <UnifiedJobDashboard />;
-  }
+  // Admin users should be redirected by DashboardRouter, not handled here
+  // This component only handles Candidate dashboard
 
   // Use DashboardLayout for other roles
   const renderDashboard = () => {

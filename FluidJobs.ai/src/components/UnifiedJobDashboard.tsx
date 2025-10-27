@@ -3,12 +3,14 @@ import {
   Plus, 
   Eye, 
   Users, 
-  MessageCircle
+  MessageCircle,
+  Upload
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import JobPublishingAssistant from './JobPublishingAssistant';
 import JobOpenings from '../pages/JobOpenings';
 import JobSpecificDashboard from './JobSpecificDashboard';
+import BulkImportSection from './BulkImportSection';
 
 interface JobOpeningsContentProps {
   onJobSelect: (jobTitle: string) => void;
@@ -21,6 +23,7 @@ const JobOpeningsContent: React.FC<JobOpeningsContentProps> = ({ onJobSelect }) 
 
 
 const UnifiedJobDashboard: React.FC = () => {
+  console.log('UnifiedJobDashboard component loaded - Admin dashboard is showing');
   const [activeNav, setActiveNav] = useState('view_opening');
   const [showCreateJob, setShowCreateJob] = useState(() => {
     return localStorage.getItem('showCreateJob') === 'true';
@@ -33,6 +36,7 @@ const UnifiedJobDashboard: React.FC = () => {
   const navigationItems = [
     { id: 'create_job', label: 'Create Job', icon: Plus },
     { id: 'view_opening', label: 'View Openings', icon: Eye },
+    { id: 'bulk_import', label: 'Bulk Import', icon: Upload },
     { id: 'contact_us', label: 'Contact Us', icon: MessageCircle, path: '/contact' }
   ];
 
@@ -147,6 +151,8 @@ const UnifiedJobDashboard: React.FC = () => {
               }}
             />
           </div>
+        ) : activeNav === 'bulk_import' ? (
+          <BulkImportSection />
         ) : (
           <div className="max-w-4xl mx-auto text-center">
             <div className="bg-white rounded-2xl shadow-xl p-12">

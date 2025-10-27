@@ -4,13 +4,17 @@ import { GraduationCap, Building2, Edit, Lock, Camera } from 'lucide-react';
 import { useAuth } from '../contexts/AuthProvider';
 import { useProfile } from '../contexts/ProfileContext';
 import DashboardLayout from '../components/DashboardLayout';
-import ImageCropperModal from '../components/ImageCropperModal';
 import CoverImageCropperModal from '../components/CoverImageCropperModal';
-import { generateImageSizes } from '../utils/imageUtils';
+import { profileService } from '../services/profileService';
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuth();
   const { profileData, updateProfile } = useProfile();
+  
+  // Debug logging
+  console.log('📋 ProfilePage - user:', user);
+  console.log('📋 ProfilePage - profileData:', profileData);
+  console.log('📋 ProfilePage - sessionStorage profile:', sessionStorage.getItem('fluidjobs_profile'));
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('career');
   const [coverCropperImage, setCoverCropperImage] = useState<string | null>(null);
@@ -28,10 +32,23 @@ const ProfilePage: React.FC = () => {
   };
 
   const handleCoverCropComplete = async (croppedBlob: Blob) => {
-    const imageUrl = URL.createObjectURL(croppedBlob);
-    updateProfile({ ...profileData, coverImage: imageUrl });
+    try {
+      const file = new File([croppedBlob], 'cover-image.jpg', { type: 'image/jpeg' });
+      const result = await profileService.uploadCoverImage(file);
+      
+      if (result.success) {
+        const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+        const fullImageUrl = `${backendUrl}${result.fileUrl}`;
+        updateProfile({ ...profileData, coverImage: fullImageUrl });
+      }
+    } catch (error) {
+      console.error('Failed to upload cover image:', error);
+      alert('Failed to upload cover image. Please try again.');
+    }
     setCoverCropperImage(null);
   };
+
+
 
   return (
     <DashboardLayout>
@@ -64,8 +81,16 @@ const ProfilePage: React.FC = () => {
           {/* Profile Details */}
           <div className="flex items-end px-6 -mt-12 relative z-[2]">
             <div className="w-24 h-24 rounded-full border-4 border-white bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center overflow-hidden relative z-[4]">
-              {(profileData.profileImageMedium || profileData.profileImageLarge || profileData.profileImage) ? (
-                <img src={(profileData.profileImageMedium || profileData.profileImageLarge || profileData.profileImage) as string} alt="Profile" className="w-full h-full object-cover" style={{ imageRendering: '-webkit-optimize-contrast' }} />
+              {profileData.profileImage ? (
+                <img 
+                  src={profileData.profileImage} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    console.log('Profile image failed to load:', profileData.profileImage);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
               ) : (
                 <span className="text-white text-3xl font-bold">{profileData.fullName?.charAt(0) || user?.name?.charAt(0) || 'U'}</span>
               )}
@@ -121,9 +146,87 @@ const ProfilePage: React.FC = () => {
 
         {/* Career Journey Section */}
         {activeTab === 'career' && (
-          <div className="bg-white rounded-xl shadow-sm p-6 mt-5">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Career Journey</h2>
-            <p className="text-xs text-gray-400 text-center py-6">No career information added yet.</p>
+          <div className="space-y-5 mt-5">
+            {/* Work Experience */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-base font-semibold text-gray-900 mb-4">Work Experience</h2>
+              <div className="space-y-4">
+                {profileData.workStatus === 'Yes' && profileData.currentCompany ? (
+                  <div className="border-l-4 border-indigo-500 pl-4">
+                    <h3 className="font-medium text-gray-900">{profileData.currentCompany}</h3>
+                    <p className="text-sm text-gray-600">Current Position</p>
+                    <p className="text-xs text-gray-500">Notice Period: {profileData.noticePeriod || 'Not specified'}</p>
+                    {profileData.currentCTC && (
+                      <p className="text-xs text-gray-500">CTC: ₹{profileData.currentCTC}</p>
+                    )}
+                  </div>
+                ) : profileData.workStatus === 'No' && profileData.lastCompany ? (
+                  <div className="border-l-4 border-gray-400 pl-4">
+                    <h3 className="font-medium text-gray-900">{profileData.lastCompany}</h3>
+                    <p className="text-sm text-gray-600">Previous Position</p>
+                    {profileData.previousCTC && (
+                      <p className="text-xs text-gray-500">Previous CTC: ₹{profileData.previousCTC}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 text-center py-6">No work experience added yet.</p>
+                )}
+              </div>
+            </div>
+            
+            {/* Resume Section */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-base font-semibold text-gray-900 mb-4">Resume & Documents</h2>
+              <div className="space-y-3">
+                {profileData.resumes && profileData.resumes.length > 0 ? (
+                  profileData.resumes.map((resume: any, index: number) => (
+                    <div key={resume.id || index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
+                          <span className="text-red-600 text-xs font-bold">PDF</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{resume.name}</p>
+                          <p className="text-xs text-gray-500">
+                            Uploaded: {resume.uploadedAt ? new Date(resume.uploadedAt).toLocaleDateString() : 'Unknown'}
+                          </p>
+                        </div>
+                      </div>
+                      <a
+                        href={resume.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                      >
+                        View
+                      </a>
+                    </div>
+                  ))
+                ) : profileData.cvUrl ? (
+                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
+                        <span className="text-red-600 text-xs font-bold">PDF</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Resume</p>
+                        <p className="text-xs text-gray-500">Uploaded resume</p>
+                      </div>
+                    </div>
+                    <a
+                      href={profileData.cvUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                    >
+                      View
+                    </a>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 text-center py-6">No resume uploaded yet.</p>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -181,6 +284,7 @@ const ProfilePage: React.FC = () => {
         </div>
       </div>
     </div>
+
 
     {coverCropperImage && (
       <CoverImageCropperModal

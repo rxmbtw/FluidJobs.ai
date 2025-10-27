@@ -45,7 +45,12 @@ const RoleSelection: React.FC = () => {
       if (user) {
         await updateUserRole(selectedRole);
       }
-      navigate('/dashboard');
+      // Redirect based on selected role
+      if (selectedRole === 'Admin') {
+        navigate('/main-unified-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
       console.error('Failed to update role:', error);
       // Navigate anyway to avoid blocking user

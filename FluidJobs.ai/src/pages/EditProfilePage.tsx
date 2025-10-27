@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, User, Phone, Mail, Building, FileText, Camera, Save } from 'lucide-react';
+import { Upload, User, Phone, Mail, Building, FileText, Camera, Save, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthProvider';
 import { useProfile } from '../contexts/ProfileContext';
 import DashboardLayout from '../components/DashboardLayout';
 import ImageCropperModal from '../components/ImageCropperModal';
 import { generateImageSizes } from '../utils/imageUtils';
+import { profileService } from '../services/profileService';
 
 const EditProfilePage: React.FC = () => {
   const { user } = useAuth();
@@ -35,6 +36,8 @@ const EditProfilePage: React.FC = () => {
   const [showWorkModeDropdown, setShowWorkModeDropdown] = useState(false);
   const [cropperImage, setCropperImage] = useState<string | null>(null);
   const [profileImageSizes, setProfileImageSizes] = useState<{ full: string; medium: string; thumbnail: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const handleProfilePictureSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -59,51 +62,178 @@ const EditProfilePage: React.FC = () => {
   };
 
   useEffect(() => {
-    setFormData({
-      fullName: profileData.fullName,
-      phone: profileData.phone,
-      email: profileData.email,
-      gender: profileData.gender,
-      maritalStatus: profileData.maritalStatus,
-      workStatus: profileData.workStatus,
-      currentCompany: profileData.currentCompany,
-      noticePeriod: profileData.noticePeriod,
-      currentCTC: profileData.currentCTC,
-      lastCompany: profileData.lastCompany,
-      previousCTC: profileData.previousCTC,
-      city: profileData.city,
-      workMode: profileData.workMode,
-      cv: null,
-      profilePicture: null
-    });
+    const loadProfileData = async () => {
+      try {
+        // Load fresh data from database
+        const profile = await profileService.getProfile();
+        if (profile) {
+          setFormData({
+            fullName: profile.full_name || '',
+            phone: profile.phone || profile.phone_number || '',
+            email: profile.email || '',
+            gender: profile.gender || '',
+            maritalStatus: profile.marital_status || '',
+            workStatus: profile.work_status || '',
+            currentCompany: profile.current_company || '',
+            noticePeriod: profile.notice_period || '',
+            currentCTC: profile.current_ctc || '',
+            lastCompany: profile.last_company || '',
+            previousCTC: profile.previous_ctc || '',
+            city: profile.city || profile.location || '',
+            workMode: profile.work_mode || '',
+            cv: null,
+            profilePicture: null
+          });
+        } else {
+          // Fallback to context data
+          setFormData({
+            fullName: profileData.fullName,
+            phone: profileData.phone,
+            email: profileData.email,
+            gender: profileData.gender,
+            maritalStatus: profileData.maritalStatus,
+            workStatus: profileData.workStatus,
+            currentCompany: profileData.currentCompany,
+            noticePeriod: profileData.noticePeriod,
+            currentCTC: profileData.currentCTC,
+            lastCompany: profileData.lastCompany,
+            previousCTC: profileData.previousCTC,
+            city: profileData.city,
+            workMode: profileData.workMode,
+            cv: null,
+            profilePicture: null
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load profile data:', error);
+        // Fallback to context data on error
+        setFormData({
+          fullName: profileData.fullName,
+          phone: profileData.phone,
+          email: profileData.email,
+          gender: profileData.gender,
+          maritalStatus: profileData.maritalStatus,
+          workStatus: profileData.workStatus,
+          currentCompany: profileData.currentCompany,
+          noticePeriod: profileData.noticePeriod,
+          currentCTC: profileData.currentCTC,
+          lastCompany: profileData.lastCompany,
+          previousCTC: profileData.previousCTC,
+          city: profileData.city,
+          workMode: profileData.workMode,
+          cv: null,
+          profilePicture: null
+        });
+      }
+    };
+
+    loadProfileData();
   }, [profileData]);
 
-  const handleSave = () => {
-    updateProfile({
-      fullName: formData.fullName,
-      phone: formData.phone,
-      email: formData.email,
-      gender: formData.gender,
-      maritalStatus: formData.maritalStatus,
-      workStatus: formData.workStatus,
-      currentCompany: formData.currentCompany,
-      noticePeriod: formData.noticePeriod,
-      currentCTC: formData.currentCTC,
-      lastCompany: formData.lastCompany,
-      previousCTC: formData.previousCTC,
-      city: formData.city,
-      workMode: formData.workMode,
-      candidateId: profileData.candidateId,
-      profileImage: profileImageSizes?.full || profileData.profileImage,
-      profileImageLarge: profileImageSizes?.full || profileData.profileImageLarge,
-      profileImageMedium: profileImageSizes?.medium || profileData.profileImageMedium,
-      profileImageThumb: profileImageSizes?.thumbnail || profileData.profileImageThumb,
-      coverImage: profileData.coverImage,
-      cvUrl: formData.cv ? URL.createObjectURL(formData.cv) : profileData.cvUrl,
-      cvName: formData.cv ? formData.cv.name : profileData.cvName,
-      resumes: profileData.resumes
-    });
-    navigate('/profile');
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Upload files if changed
+      if (formData.profilePicture) {
+        try {
+          await profileService.uploadProfileImage(formData.profilePicture);
+          console.log('Profile image uploaded successfully');
+        } catch (uploadError) {
+          console.warn('Profile image upload failed:', uploadError);
+        }
+      }
+      
+      if (formData.cv) {
+        try {
+          await profileService.uploadResume(formData.cv);
+          console.log('Resume uploaded successfully');
+        } catch (uploadError) {
+          console.warn('Resume upload failed:', uploadError);
+        }
+      }
+      
+      // Save profile data to database
+      const result = await profileService.saveProfile({
+        fullName: formData.fullName,
+        phone: formData.phone,
+        email: formData.email,
+        gender: formData.gender,
+        maritalStatus: formData.maritalStatus,
+        workStatus: formData.workStatus,
+        currentCompany: formData.currentCompany,
+        noticePeriod: formData.noticePeriod,
+        currentCTC: formData.currentCTC,
+        lastCompany: formData.lastCompany,
+        previousCTC: formData.previousCTC,
+        city: formData.city,
+        workMode: formData.workMode
+      });
+
+      if (result.success) {
+        // Fetch fresh profile data from database to get updated file URLs
+        const freshProfile = await profileService.getProfile();
+        
+        if (freshProfile) {
+          // Update profile context with fresh data from database
+          updateProfile({
+            ...profileData,
+            fullName: freshProfile.full_name || formData.fullName,
+            phone: freshProfile.phone || freshProfile.phone_number || formData.phone,
+            email: freshProfile.email || formData.email,
+            gender: freshProfile.gender || formData.gender,
+            maritalStatus: freshProfile.marital_status || formData.maritalStatus,
+            workStatus: freshProfile.work_status || formData.workStatus,
+            currentCompany: freshProfile.current_company || formData.currentCompany,
+            noticePeriod: freshProfile.notice_period || formData.noticePeriod,
+            currentCTC: freshProfile.current_ctc || formData.currentCTC,
+            lastCompany: freshProfile.last_company || formData.lastCompany,
+            previousCTC: freshProfile.previous_ctc || formData.previousCTC,
+            city: freshProfile.city || freshProfile.location || formData.city,
+            workMode: freshProfile.work_mode || formData.workMode,
+            profileImage: freshProfile.profile_image_url || profileData.profileImage,
+            cvUrl: freshProfile.resume_files?.[freshProfile.resume_files.length - 1]?.url || profileData.cvUrl,
+            resumes: freshProfile.resume_files || profileData.resumes
+          });
+        } else {
+          // Fallback to form data if fresh profile fetch fails
+          updateProfile({
+            ...profileData,
+            fullName: formData.fullName,
+            phone: formData.phone,
+            email: formData.email,
+            gender: formData.gender,
+            maritalStatus: formData.maritalStatus,
+            workStatus: formData.workStatus,
+            currentCompany: formData.currentCompany,
+            noticePeriod: formData.noticePeriod,
+            currentCTC: formData.currentCTC,
+            lastCompany: formData.lastCompany,
+            previousCTC: formData.previousCTC,
+            city: formData.city,
+            workMode: formData.workMode
+          });
+        }
+
+        // Show success message
+        setShowSuccess(true);
+        setTimeout(() => {
+          setShowSuccess(false);
+          navigate('/profile');
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+      
+      // Try to get more specific error message
+      let errorMessage = 'Failed to save profile. Please try again.';
+      if (error instanceof Error && error.message) {
+        errorMessage = `Failed to save profile: ${error.message}`;
+      }
+      
+      alert(errorMessage);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -468,10 +598,20 @@ const EditProfilePage: React.FC = () => {
           <button
             type="button"
             onClick={handleSave}
-            className="px-6 py-2 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 flex items-center gap-2"
+            disabled={isSaving}
+            className="px-6 py-2 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 flex items-center gap-2"
           >
-            <Save className="w-4 h-4" />
-            Save Changes
+            {isSaving ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Save Changes
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -482,6 +622,14 @@ const EditProfilePage: React.FC = () => {
           onCropComplete={handleCropComplete}
           onCancel={() => setCropperImage(null)}
         />
+      )}
+
+      {/* Success Notification */}
+      {showSuccess && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50">
+          <CheckCircle className="w-5 h-5" />
+          Profile saved successfully!
+        </div>
       )}
     </DashboardLayout>
   );

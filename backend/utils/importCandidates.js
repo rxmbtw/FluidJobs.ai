@@ -31,8 +31,9 @@ async function importCandidatesFromCSV() {
           continue;
         }
         
-        // Clean and validate fields
+        // Clean and validate fields - CSV format: ID,Name,Phone,Email,Gender,Marital,Company,Notice,CTC,Location,Resume,Employed,PrevCompany,ExpectedCTC,Location,Experience
         const candidateData = {
+          candidate_id: fields[0]?.trim() || null, // FLC ID from CSV
           full_name: fields[1]?.trim() || null,
           phone_number: fields[2]?.trim() || null,
           email: fields[3]?.trim() || null,
@@ -46,7 +47,7 @@ async function importCandidatesFromCSV() {
           currently_employed: fields[11]?.trim() || null,
           previous_company: fields[12]?.trim() || null,
           expected_ctc: fields[13] && !isNaN(parseFloat(fields[13])) ? parseFloat(fields[13]) : null,
-          experience_years: fields[15] && !isNaN(parseFloat(fields[15])) ? parseFloat(fields[15]) : null
+          experience_years: fields[14] && !isNaN(parseFloat(fields[14])) ? parseFloat(fields[14]) : null
         };
         
         // Skip if no email (required field)
@@ -55,18 +56,19 @@ async function importCandidatesFromCSV() {
           continue;
         }
         
-        // Insert into database
+        // Insert into database with custom candidate_id
         const query = `
           INSERT INTO candidates (
-            full_name, phone_number, email, gender, marital_status,
+            candidate_id, full_name, phone_number, email, gender, marital_status,
             current_company, notice_period, current_ctc, location,
             resume_link, currently_employed, previous_company,
             expected_ctc, experience_years
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
           ON CONFLICT (email) DO NOTHING
         `;
         
         const values = [
+          candidateData.candidate_id,
           candidateData.full_name,
           candidateData.phone_number,
           candidateData.email,

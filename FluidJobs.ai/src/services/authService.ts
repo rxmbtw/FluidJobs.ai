@@ -47,6 +47,8 @@ class AuthService {
       console.log('AuthService - Updated user:', user);
     }
 
+    console.log('AuthService - Returning user with role:', user.role);
+
     const token = this.generateToken(user);
     this.setSession(user, token);
     

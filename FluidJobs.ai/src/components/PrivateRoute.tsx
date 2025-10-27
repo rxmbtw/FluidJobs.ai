@@ -1,14 +1,16 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthProvider';
-import LoadingSpinner from './LoadingSpinner';
 
 const PrivateRoute = () => {
-  const { user, loading } = useAuth();
+  // Check for user in sessionStorage (Google auth) or localStorage
+  const user = JSON.parse(sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('fluidjobs_user') || 'null');
+  const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('fluidjobs_token');
   
-  if (loading) return <LoadingSpinner />;
+  if (!user || !token) {
+    return <Navigate to="/login" />;
+  }
   
-  return user ? <Outlet /> : <Navigate to="/login" />;
+  return <Outlet />;
 };
 
 export default PrivateRoute;
