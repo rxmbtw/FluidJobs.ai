@@ -1,0 +1,7 @@
+{
+  "name": "fluidjobs-ai",
+  "displayName": "FluidJobs.ai",
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.13"
+  }
+}
