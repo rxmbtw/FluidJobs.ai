@@ -62,3 +62,22 @@ jspm_packages/
 backend/node_modules/
 backend/.env
 backend/dist/
+backend/uploads/
+
+# Test and demo files
+test-*.js
+test-*.md
+check-*.js
+fix-*.js
+deploy-*.js
+*.xlsx
+*.csv
+uninstaller.exe
+install_mode
+cloud_env.bat
+
+# Documentation files (keep only main README)
+*.md
+!README.md
+!CONTRIBUTING.md
+!LICENSE.md
