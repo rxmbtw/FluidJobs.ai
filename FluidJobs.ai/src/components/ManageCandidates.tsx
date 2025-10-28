@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Users, FileText, Eye, MoreVertical, Download, Mail, Phone, MapPin, Calendar, Building, DollarSign, Linkedin, User, Clock, Briefcase } from 'lucide-react';
+import { Search, Filter, Users, FileText, Eye, MoreVertical, Download, Mail, Phone, MapPin, Calendar, Building, DollarSign, Linkedin, User, Clock, Briefcase, Plus } from 'lucide-react';
 
 interface Candidate {
   id: number;
@@ -24,64 +24,184 @@ interface Candidate {
 
 const candidatesData: Candidate[] = [
   {
-    id: 40,
-    applicationDate: '15/05/2024 12:02:21',
-    name: 'Paritosh Jadhav',
-    phone: '+91 90040 82675',
-    email: 'paritosh.jadhav@outlook.com',
+    id: 1,
+    applicationDate: '27 Sep 25',
+    name: 'Sachin Sharma',
+    phone: '9999187459',
+    email: 'sachin.sharma51051@gmail.com',
     gender: 'Male',
-    position: 'Python Developer',
-    experience: 4,
-    currentlyEmployed: false,
-    currentCompany: 'VTOL Aviation India',
-    noticePeriod: '',
-    lastWorkingDay: '20/05/2024',
-    currentSalary: '₹26,000.00',
-    expectedSalary: '₹70,000.00',
-    location: 'Pune (Mah), India',
-    source: 'Direct',
-    resumeUrl: 'https://s3.amazonaws.com/pf-user-files-01/u-92896/uploads/2024-05-15/l222q6u/Paritosh-Jadhav-resume-v5.pdf',
-    maritalStatus: 'Unmarried'
-  },
-  {
-    id: 41,
-    applicationDate: '18/05/2024 10:26:37',
-    name: 'Jaibhan Singh Gaur',
-    phone: '+91 79744 58718',
-    email: 'jaybhan8718@gmail.com',
-    gender: 'Male',
-    position: 'Python-Developer',
-    experience: 4,
+    position: 'Senior Software Engineer',
+    experience: 6.4,
     currentlyEmployed: true,
-    currentCompany: 'Jio Platforms Limited',
+    currentCompany: 'Collegedunia Web Private Limited',
     noticePeriod: '60 Days',
     lastWorkingDay: '',
-    currentSalary: '₹42,000.00',
-    expectedSalary: '₹80,000.00',
-    location: 'Navi mumbai',
-    source: 'Naukri',
-    resumeUrl: 'https://s3.amazonaws.com/pf-user-files-01/u-92896/uploads/2024-05-18/w12300z/Jaibhan_Singh_Gaur%27s_Resume.pdf',
+    currentSalary: '₹8,50,000',
+    expectedSalary: '₹12,00,000',
+    location: 'Delhi, India',
+    source: 'Bulk Upload',
+    resumeUrl: 'https://example.com/resume1.pdf',
     maritalStatus: 'Unmarried'
   },
   {
-    id: 42,
-    applicationDate: '20/05/2024 11:47:51',
-    name: 'Mayur Suradkar',
-    phone: '+91 77560 33455',
-    email: 'msuradkar6.ms@gmail.com',
+    id: 2,
+    applicationDate: '25 Sep 25',
+    name: 'Tawseef Ahmad Bhat',
+    phone: '+91 98765 43211',
+    email: 'tawseef.bhat@email.com',
     gender: 'Male',
-    position: 'Python-Developer',
-    experience: 4,
+    position: 'Backend Developer',
+    experience: 9.7,
     currentlyEmployed: true,
-    currentCompany: 'Mavenir systems',
+    currentCompany: 'Genesys Bengaluru',
     noticePeriod: '90 Days',
     lastWorkingDay: '',
-    currentSalary: '₹120,000.00',
-    expectedSalary: '₹200,000.00',
-    location: 'Nagpur',
+    currentSalary: '₹15,00,000',
+    expectedSalary: '₹18,00,000',
+    location: 'Kashmir, India',
     source: 'Naukri',
-    resumeUrl: 'https://s3.amazonaws.com/pf-user-files-01/u-92896/uploads/2024-05-20/8704o2b/Mayur_Suradkar_CV_1_2024.pdf',
+    resumeUrl: 'https://example.com/resume2.pdf',
+    maritalStatus: 'Married'
+  },
+  {
+    id: 3,
+    applicationDate: '23 Sep 25',
+    name: 'SIDDHARTH MARAT',
+    phone: '+91 98765 43212',
+    email: 'siddharth.marat@email.com',
+    gender: 'Male',
+    position: 'Full Stack Developer',
+    experience: 10.8,
+    currentlyEmployed: true,
+    currentCompany: 'AgroStar',
+    noticePeriod: '30 Days',
+    lastWorkingDay: '',
+    currentSalary: '₹18,00,000',
+    expectedSalary: '₹22,00,000',
+    location: 'Mumbai, India',
+    source: 'LinkedIn',
+    resumeUrl: 'https://example.com/resume3.pdf',
+    maritalStatus: 'Married'
+  },
+  {
+    id: 4,
+    applicationDate: '20 Sep 25',
+    name: 'Supriya Pasupuleti',
+    phone: '+91 98765 43213',
+    email: 'supriya.pasupuleti@email.com',
+    gender: 'Female',
+    position: 'Data Scientist',
+    experience: 5.9,
+    currentlyEmployed: true,
+    currentCompany: 'Saama Technologies',
+    noticePeriod: '60 Days',
+    lastWorkingDay: '',
+    currentSalary: '₹12,00,000',
+    expectedSalary: '₹15,00,000',
+    location: 'Hyderabad, India',
+    source: 'Direct',
+    resumeUrl: 'https://example.com/resume4.pdf',
     maritalStatus: 'Unmarried'
+  },
+  {
+    id: 5,
+    applicationDate: '18 Sep 25',
+    name: 'VEDHAS PATIL',
+    phone: '+91 98765 43214',
+    email: 'vedhas.patil@email.com',
+    gender: 'Male',
+    position: 'UX Designer',
+    experience: 2.6,
+    currentlyEmployed: true,
+    currentCompany: 'Go Digital',
+    noticePeriod: '30 Days',
+    lastWorkingDay: '',
+    currentSalary: '₹6,00,000',
+    expectedSalary: '₹8,00,000',
+    location: 'Pune, India',
+    source: 'Referral',
+    resumeUrl: 'https://example.com/resume5.pdf',
+    maritalStatus: 'Unmarried'
+  },
+  {
+    id: 6,
+    applicationDate: '15 Sep 25',
+    name: 'Priyanshu Agrawal',
+    phone: '+91 98765 43215',
+    email: 'priyanshu.agrawal@email.com',
+    gender: 'Male',
+    position: 'DevOps Engineer',
+    experience: 7.1,
+    currentlyEmployed: true,
+    currentCompany: 'Delivery',
+    noticePeriod: '90 Days',
+    lastWorkingDay: '',
+    currentSalary: '₹14,00,000',
+    expectedSalary: '₹17,00,000',
+    location: 'Bangalore, India',
+    source: 'Naukri',
+    resumeUrl: 'https://example.com/resume6.pdf',
+    maritalStatus: 'Married'
+  },
+  {
+    id: 7,
+    applicationDate: '12 Sep 25',
+    name: 'Jaibhan Singh Gaur',
+    phone: '+91 98765 43216',
+    email: 'jaibhan.gaur@email.com',
+    gender: 'Male',
+    position: 'Frontend Developer',
+    experience: 6.3,
+    currentlyEmployed: true,
+    currentCompany: 'Jio Platforms',
+    noticePeriod: '60 Days',
+    lastWorkingDay: '',
+    currentSalary: '₹11,00,000',
+    expectedSalary: '₹14,00,000',
+    location: 'Mumbai, India',
+    source: 'LinkedIn',
+    resumeUrl: 'https://example.com/resume7.pdf',
+    maritalStatus: 'Unmarried'
+  },
+  {
+    id: 8,
+    applicationDate: '10 Sep 25',
+    name: 'Shubham Tomar',
+    phone: '+91 98765 43217',
+    email: 'shubham.tomar@email.com',
+    gender: 'Male',
+    position: 'Backend Developer',
+    experience: 2.7,
+    currentlyEmployed: true,
+    currentCompany: 'Bajaj Finserv',
+    noticePeriod: '30 Days',
+    lastWorkingDay: '',
+    currentSalary: '₹7,50,000',
+    expectedSalary: '₹10,00,000',
+    location: 'Pune, India',
+    source: 'Direct',
+    resumeUrl: 'https://example.com/resume8.pdf',
+    maritalStatus: 'Unmarried'
+  },
+  {
+    id: 9,
+    applicationDate: '8 Sep 25',
+    name: 'Kalpnath Singh Kumar',
+    phone: '+91 98765 43218',
+    email: 'kalpnath.kumar@email.com',
+    gender: 'Male',
+    position: 'Senior Full Stack Developer',
+    experience: 20.1,
+    currentlyEmployed: true,
+    currentCompany: 'Wells Fargo',
+    noticePeriod: '90 Days',
+    lastWorkingDay: '',
+    currentSalary: '₹25,00,000',
+    expectedSalary: '₹30,00,000',
+    location: 'Hyderabad, India',
+    source: 'Referral',
+    resumeUrl: 'https://example.com/resume9.pdf',
+    maritalStatus: 'Married'
   }
 ];
 
@@ -90,6 +210,7 @@ const ManageCandidates: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('Application');
   const [selectedStage, setSelectedStage] = useState('Resume Review');
+  const [showFilters, setShowFilters] = useState(false);
 
   const filteredCandidates = useMemo(() => {
     return candidatesData.filter(candidate =>
@@ -98,6 +219,13 @@ const ManageCandidates: React.FC = () => {
       candidate.phone.includes(searchTerm)
     );
   }, [searchTerm]);
+
+  // Initialize with first candidate if none selected
+  React.useEffect(() => {
+    if (!selectedCandidate && filteredCandidates.length > 0) {
+      setSelectedCandidate(filteredCandidates[0]);
+    }
+  }, [filteredCandidates, selectedCandidate]);
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -110,62 +238,188 @@ const ManageCandidates: React.FC = () => {
   };
 
   return (
-    <div className="flex h-full bg-gray-50 font-sans">
-      {/* Left Sidebar - Candidates List */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col shadow-sm">
+    <div className="flex h-screen bg-gray-50 font-sans">
+      {/* Left Sidebar - Filters and Candidates List */}
+      <div className="w-[42.5%] bg-white border-r border-gray-200 flex flex-col">
         {/* Header */}
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 tracking-tight">Candidates (116)</h2>
-            <div className="flex space-x-2">
-              <button className="p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                <Filter className="w-4 h-4 text-gray-500" />
-              </button>
-              <button className="p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                <MoreVertical className="w-4 h-4 text-gray-500" />
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <button className="p-2 hover:bg-gray-100 rounded border border-gray-300">
+                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
               </button>
             </div>
+            <button className="p-2 hover:bg-gray-100 rounded">
+              <User className="w-4 h-4 text-gray-600" />
+            </button>
           </div>
           
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search candidates..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 text-sm transition-all"
-            />
+          <h2 className="text-sm font-medium text-gray-900 mb-4">Candidates ({filteredCandidates.length})</h2>
+          
+          {/* Filter Button and Search Bar */}
+          <div className="flex items-center space-x-2 mb-4">
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className="p-2 hover:bg-gray-100 rounded border border-gray-300 flex-shrink-0"
+            >
+              <Filter className="w-4 h-4 text-gray-600" />
+            </button>
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search candidates..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              />
+            </div>
           </div>
         </div>
+        
 
-        {/* Candidates List */}
-        <div className="flex-1 overflow-y-auto">
-          {filteredCandidates.map((candidate) => (
-            <div
-              key={candidate.id}
-              onClick={() => setSelectedCandidate(candidate)}
-              className={`p-5 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${
-                selectedCandidate?.id === candidate.id ? 'bg-blue-50 border-r-3 border-r-blue-500' : ''
-              }`}
-            >
-              <div className="flex items-center space-x-4">
-                <div className={`w-11 h-11 rounded-full ${getAvatarColor(candidate.name)} flex items-center justify-center text-white font-medium text-sm shadow-sm`}>
-                  {getInitials(candidate.name)}
+
+        {/* Filter and Candidates Container */}
+        <div className="flex-1 flex">
+          {/* Filter Panel */}
+          <div className={`bg-white border-r border-gray-200 transition-all duration-300 overflow-hidden ${showFilters ? 'w-64' : 'w-0'}`}>
+            {showFilters && (
+              <div className="p-4 w-64">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
+                  <button 
+                    onClick={() => setShowFilters(false)}
+                    className="p-1 hover:bg-gray-100 rounded"
+                  >
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-semibold text-gray-900 truncate mb-1">{candidate.name}</h3>
-                  <p className="text-xs text-gray-500 font-medium">{candidate.experience} Yrs | {candidate.currentCompany || 'Not specified'}</p>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 block mb-1">Position</label>
+                    <select className="w-full px-2 py-1 border border-gray-300 rounded text-xs">
+                      <option>All Jobs</option>
+                      <option>Python Developer</option>
+                      <option>Frontend Developer</option>
+                      <option>Backend Developer</option>
+                      <option>Full Stack Developer</option>
+                      <option>DevOps Engineer</option>
+                      <option>Data Scientist</option>
+                      <option>UX Designer</option>
+                      <option>Java Developer</option>
+                      <option>React Developer</option>
+                      <option>Node.js Developer</option>
+                      <option>Software Engineer</option>
+                      <option>Senior Software Engineer</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 block mb-1">Location</label>
+                    <select className="w-full px-2 py-1 border border-gray-300 rounded text-xs">
+                      <option>All Locations</option>
+                      <option>Delhi</option>
+                      <option>Mumbai</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 block mb-1">Experience</label>
+                    <select className="w-full px-2 py-1 border border-gray-300 rounded text-xs">
+                      <option>All Experience</option>
+                      <option>0-2 years</option>
+                      <option>3-5 years</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 block mb-1">Skills</label>
+                    <select className="w-full px-2 py-1 border border-gray-300 rounded text-xs">
+                      <option>All Skills</option>
+                      <option>React</option>
+                      <option>Node.js</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="flex items-center">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-                    48%
-                  </span>
+                
+                <div className="flex space-x-2 mt-4">
+                  <button 
+                    onClick={() => setShowFilters(false)}
+                    className="flex-1 px-3 py-1 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700"
+                  >
+                    Apply
+                  </button>
+                  <button 
+                    onClick={() => setSearchTerm('')}
+                    className="flex-1 px-3 py-1 border border-gray-300 text-gray-700 rounded text-xs font-medium hover:bg-gray-50"
+                  >
+                    Clear
+                  </button>
                 </div>
               </div>
-            </div>
-          ))}
+            )}
+          </div>
+          
+          {/* Candidates List */}
+          <div className="flex-1 overflow-y-auto px-4">
+          {filteredCandidates.map((candidate, index) => {
+            const matchPercentages = [46, 42, 41, 35, 35, 35, 35, 35, 35];
+            const matchPercentage = matchPercentages[index] || 35;
+            const getMatchColor = (percentage: number) => {
+              if (percentage >= 40) return 'bg-red-100 text-red-700';
+              return 'bg-red-100 text-red-700';
+            };
+            
+            return (
+              <div
+                key={candidate.id}
+                onClick={() => setSelectedCandidate(candidate)}
+                className={`mb-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
+                  selectedCandidate?.id === candidate.id ? 'border-l-4 border-l-blue-500 bg-blue-50' : ''
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-10 h-10 rounded-full ${getAvatarColor(candidate.name)} flex items-center justify-center text-white font-medium text-sm`}>
+                      {getInitials(candidate.name)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-medium text-gray-900 truncate">{candidate.name}</h3>
+                      <p className="text-xs text-gray-500">{candidate.experience} Yrs | {candidate.currentCompany}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 relative">
+                      <svg className="w-12 h-12 transform -rotate-90" viewBox="0 0 36 36">
+                        <path
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="#e5e7eb"
+                          strokeWidth="2"
+                        />
+                        <path
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="#ef4444"
+                          strokeWidth="2"
+                          strokeDasharray={`${matchPercentage}, 100`}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-xs font-semibold text-red-600">{matchPercentage}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          </div>
         </div>
       </div>
 
@@ -174,59 +428,76 @@ const ManageCandidates: React.FC = () => {
         {selectedCandidate && (
           <>
             {/* Top Header - Candidate Profile Card */}
-            <div className="bg-white border-b border-gray-100 p-8 shadow-sm">
-              <div className="flex items-start justify-between mb-8">
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex-1 mr-6">
-                  <div className="flex items-center space-x-5">
-                    <div className={`w-16 h-16 rounded-full ${getAvatarColor(selectedCandidate.name)} flex items-center justify-center text-white font-semibold text-lg shadow-md`}>
-                      {getInitials(selectedCandidate.name)}
+            <div className="bg-white border-b border-gray-100 p-6">
+              {/* Stage Progress */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-8">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-purple-600" />
                     </div>
-                    <div className="flex-1">
-                      <h1 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">{selectedCandidate.name}</h1>
-                      <div className="flex items-center space-x-6 text-sm text-gray-600">
-                        <a href={`mailto:${selectedCandidate.email}`} className="flex items-center hover:text-blue-600 transition-colors">
-                          <Mail className="w-4 h-4 mr-2 text-gray-400" />
-                          {selectedCandidate.email}
-                        </a>
-                        <a href={`tel:${selectedCandidate.phone}`} className="flex items-center hover:text-blue-600 transition-colors">
-                          <Phone className="w-4 h-4 mr-2 text-gray-400" />
-                          {selectedCandidate.phone}
-                        </a>
-                        <button className="flex items-center hover:text-blue-600 transition-colors">
-                          <Linkedin className="w-4 h-4 mr-2 text-gray-400" />
-                          LinkedIn
-                        </button>
-                      </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">STAGE 1</p>
+                      <p className="text-sm font-semibold text-gray-900">Resume Review</p>
+                    </div>
+                  </div>
+                  <div className="w-12 h-0.5 bg-gray-200"></div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-400 uppercase">STAGE 2</p>
+                      <p className="text-sm font-medium text-gray-400">Manual Review</p>
                     </div>
                   </div>
                 </div>
-                <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2 font-medium shadow-sm transition-all hover:shadow-md">
-                  <Users className="w-4 h-4" />
-                  <span>Invite Candidates</span>
+                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2 text-sm font-medium">
+                  <Plus className="w-4 h-4" />
+                  <span>Invite</span>
                 </button>
               </div>
 
-              {/* Stage Progress */}
-              <div className="flex items-center space-x-12">
-                <div className="flex items-center space-x-4">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center shadow-sm">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">STAGE 1</p>
-                    <p className="text-sm font-semibold text-gray-900">Resume Review</p>
+              {/* Candidate Header */}
+              <div className="flex items-center space-x-4 mb-4">
+                <div className={`w-12 h-12 rounded-full ${getAvatarColor(selectedCandidate.name)} flex items-center justify-center text-white font-semibold`}>
+                  {getInitials(selectedCandidate.name)}
+                </div>
+                <div className="flex-1">
+                  <h1 className="text-xl font-bold text-gray-900">{selectedCandidate.name}</h1>
+                  <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                    <span className="flex items-center">
+                      <Mail className="w-4 h-4 mr-1" />
+                      {selectedCandidate.email}
+                    </span>
+                    <span className="flex items-center">
+                      <Phone className="w-4 h-4 mr-1" />
+                      {selectedCandidate.phone}
+                    </span>
                   </div>
                 </div>
-                <div className="w-16 h-0.5 bg-gray-200 relative">
-                  <div className="absolute left-0 top-0 w-8 h-0.5 bg-blue-500"></div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-500 mb-1">Social Links:</div>
+                  <button className="text-blue-600 hover:text-blue-700">
+                    <Linkedin className="w-5 h-5" />
+                  </button>
                 </div>
-                <div className="flex items-center space-x-4">
-                  <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                    <User className="w-5 h-5 text-gray-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">STAGE 2</p>
-                    <p className="text-sm font-medium text-gray-400">Manual Review</p>
+                <div className="text-right">
+                  <div className="text-xs text-gray-500 uppercase mb-1">STAGE 1</div>
+                  <div className="text-sm font-semibold text-gray-900">Resume Review</div>
+                  <div className={`text-2xl font-bold mt-1 ${
+                    (() => {
+                      const matchPercentages = [46, 42, 31, 35, 35, 35, 33, 29, 31];
+                      const index = candidatesData.findIndex(c => c.id === selectedCandidate.id);
+                      const percentage = matchPercentages[index] || 30;
+                      return percentage >= 40 ? 'text-red-600' : percentage >= 30 ? 'text-orange-600' : 'text-gray-600';
+                    })()
+                  }`}>
+                    {(() => {
+                      const matchPercentages = [46, 42, 31, 35, 35, 35, 33, 29, 31];
+                      const index = candidatesData.findIndex(c => c.id === selectedCandidate.id);
+                      return matchPercentages[index] || 30;
+                    })()}%
                   </div>
                 </div>
               </div>
@@ -234,15 +505,15 @@ const ManageCandidates: React.FC = () => {
 
             {/* Content Tabs */}
             <div className="bg-white border-b border-gray-100">
-              <div className="flex space-x-8 px-8">
+              <div className="flex space-x-6 px-6">
                 {['Application', 'Resume Review'].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`py-4 px-1 border-b-2 font-semibold text-sm transition-all ${
+                    className={`py-3 px-1 border-b-2 font-medium text-sm transition-all ${
                       activeTab === tab
                         ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     {tab}
@@ -252,136 +523,248 @@ const ManageCandidates: React.FC = () => {
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex bg-gray-50">
-              {/* Left Panel - Candidate Details */}
-              <div className="w-1/2 p-8 overflow-y-auto bg-white">
-                {/* Work Experience */}
-                <div className="mb-10">
-                  <h3 className="text-lg font-bold text-gray-900 mb-6 tracking-tight">Work Experience</h3>
-                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-100">
-                    <div className="flex items-start space-x-4">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mt-1">
-                        <Briefcase className="w-5 h-5 text-blue-600" />
+            <div className="flex-1 bg-white">
+              <div className="h-full overflow-y-auto">
+                {activeTab === 'Application' ? (
+                  <div className="flex h-full">
+                    {/* Left Column */}
+                    <div className="w-1/2 p-8 border-r border-gray-100">
+                      <div className="max-w-2xl">
+                        {/* Work Experience */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Work Experience</h3>
+                          <div className="space-y-4">
+                            <div className="flex items-start space-x-3">
+                              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mt-1">
+                                <Briefcase className="w-4 h-4 text-blue-600" />
+                              </div>
+                              <div className="flex-1">
+                                <h4 className="font-medium text-gray-900 mb-1">{selectedCandidate.position}</h4>
+                                <p className="text-sm text-gray-600 mb-1">{selectedCandidate.currentCompany}</p>
+                                <div className="flex items-center text-xs text-gray-500">
+                                  <Calendar className="w-3 h-3 mr-1" />
+                                  1 Nov '22 - Present
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-start space-x-3">
+                              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mt-1">
+                                <Briefcase className="w-4 h-4 text-gray-600" />
+                              </div>
+                              <div className="flex-1">
+                                <h4 className="font-medium text-gray-900 mb-1">Software Engineer</h4>
+                                <p className="text-sm text-gray-600 mb-1">Collegedunia Web Private Limited</p>
+                                <div className="flex items-center text-xs text-gray-500">
+                                  <Calendar className="w-3 h-3 mr-1" />
+                                  1 Jun '19 - 30 Nov '22
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Candidate Information */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Candidate Information</h3>
+                          <div className="grid grid-cols-1 gap-4">
+                            <div className="flex justify-between">
+                              <span className="text-sm font-medium text-gray-600">Gender</span>
+                              <span className="text-sm text-gray-900">{selectedCandidate.gender.toUpperCase()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm font-medium text-gray-600">Candidate Source</span>
+                              <span className="text-sm text-gray-900">{selectedCandidate.source}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm font-medium text-gray-600">Application Date</span>
+                              <span className="text-sm text-gray-900">{selectedCandidate.applicationDate}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Experience */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Experience</h3>
+                          <div className="grid grid-cols-1 gap-4">
+                            <div className="flex justify-between">
+                              <span className="text-sm font-medium text-gray-600">Full-Time Experience</span>
+                              <span className="text-sm text-gray-900">{selectedCandidate.experience} years</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm font-medium text-gray-600">Internship Experience</span>
+                              <span className="text-sm text-gray-900">N/A</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm font-medium text-gray-600">Relevant Experience</span>
+                              <span className="text-sm text-gray-900">{selectedCandidate.experience} years</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900 text-base mb-1">{selectedCandidate.position}</h4>
-                        <p className="text-sm text-gray-600 font-medium mb-2">{selectedCandidate.currentCompany}</p>
-                        <div className="flex items-center text-xs text-gray-500">
-                          <Calendar className="w-3 h-3 mr-1" />
-                          1 Mar '22 - {selectedCandidate.currentlyEmployed ? 'Present' : selectedCandidate.lastWorkingDay}
+                    </div>
+
+                    {/* Right Column */}
+                    <div className="w-1/2 p-8">
+                      <div className="max-w-2xl">
+                        {/* Education */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Education</h3>
+                          <div className="flex items-start space-x-3">
+                            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mt-1">
+                              <Building className="w-4 h-4 text-green-600" />
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-900 mb-1">Computer Science Engineering</h4>
+                              <p className="text-sm text-gray-600 mb-1">Btech Bachelor Of Technology</p>
+                              <p className="text-sm text-gray-600 mb-1">Jaypee Institute of Information Technology</p>
+                              <div className="flex items-center text-xs text-gray-500">
+                                <Calendar className="w-3 h-3 mr-1" />
+                                1 May '15 - 31 Dec '19 • CGPA: 7.0
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex h-full">
+                    {/* Left Column - Resume Review */}
+                    <div className="w-1/2 p-8 border-r border-gray-100">
+                      <div className="max-w-3xl">
+                        {/* Full-time Experience Section */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">Full-time Experience</h3>
+                            <span className="text-sm text-gray-500">62/100</span>
+                          </div>
+                          
+                          <div className="flex space-x-2 mb-6">
+                            <button className="px-4 py-2 bg-black text-white rounded-full text-sm">Section 1</button>
+                            <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm">Section 2</button>
+                          </div>
 
-                {/* Education */}
-                <div className="mb-10">
-                  <h3 className="text-lg font-bold text-gray-900 mb-6 tracking-tight">Education</h3>
-                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-100">
-                    <div className="flex items-start space-x-4">
-                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mt-1">
-                        <Building className="w-5 h-5 text-green-600" />
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead>
+                                <tr className="border-b border-gray-200">
+                                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">SUB-BUCKET</th>
+                                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">CRITERIA</th>
+                                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">RATING</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr className="border-b border-gray-100">
+                                  <td className="py-3 px-4 text-sm text-gray-700">UI UX</td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">Design Libraries</td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">0/100</td>
+                                </tr>
+                                <tr className="border-b border-gray-100">
+                                  <td className="py-3 px-4 text-sm text-gray-700"></td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">CSS Mastery</td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">0/100</td>
+                                </tr>
+                                <tr className="border-b border-gray-100">
+                                  <td className="py-3 px-4 text-sm text-gray-700"></td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">Cross-Browser Compatibility</td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">0/100</td>
+                                </tr>
+                                <tr className="border-b border-gray-100">
+                                  <td className="py-3 px-4 text-sm text-gray-700">Web Standards</td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">Accessibility</td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">0/100</td>
+                                </tr>
+                                <tr className="border-b border-gray-100">
+                                  <td className="py-3 px-4 text-sm text-gray-700"></td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">Testing and Unit tests</td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">0/100</td>
+                                </tr>
+                                <tr className="border-b border-gray-100">
+                                  <td className="py-3 px-4 text-sm text-gray-700">Past Company Calibres</td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">Past company calibre, culture and pace of work</td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">96/100</td>
+                                </tr>
+                                <tr className="border-b border-gray-100">
+                                  <td className="py-3 px-4 text-sm text-gray-700">Generic Competency</td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">Programming & CS Fundamentals</td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">97/100</td>
+                                </tr>
+                                <tr>
+                                  <td className="py-3 px-4 text-sm text-gray-700"></td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">Software Engineering Practices</td>
+                                  <td className="py-3 px-4 text-sm text-gray-700">55/100</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900 text-base mb-1">Data Science</h4>
-                        <p className="text-sm text-gray-600 font-medium mb-1">Btech Bachelor Of Technology</p>
-                        <p className="text-sm text-gray-600 mb-2">Apeejay Dy Patil University, Pune</p>
-                        <div className="flex items-center text-xs text-gray-500">
-                          <Calendar className="w-3 h-3 mr-1" />
-                          1 Jan '18 - 31 Dec '22 • CGPA: 8.33
+                    </div>
+
+                    {/* Right Column - Profile Match */}
+                    <div className="w-1/2 p-8">
+                      <div className="max-w-2xl">
+                        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+                          <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                <User className="w-5 h-5 text-purple-600" />
+                              </div>
+                              <h3 className="text-lg font-semibold text-purple-600">Profile Match</h3>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-4xl font-bold text-gray-900">46<span className="text-2xl text-gray-500">/100</span></div>
+                            </div>
+                          </div>
+
+                          {/* Score Summary */}
+                          <div className="mb-6">
+                            <h4 className="text-lg font-semibold text-gray-900 mb-4">Score Summary</h4>
+                            <div className="grid grid-cols-2 gap-4 text-sm mb-6">
+                              <div className="font-medium text-gray-600">OVERALL</div>
+                              <div></div>
+                              <div className="font-medium text-gray-600">SKILL BASED</div>
+                              <div></div>
+                              <div className="font-medium text-gray-600">JD BASED</div>
+                              <div></div>
+                            </div>
+                            
+                            {/* Radar Chart Placeholder */}
+                            <div className="flex justify-center">
+                              <div className="w-48 h-48 bg-gray-50 rounded-lg flex items-center justify-center border">
+                                <div className="text-center text-gray-500">
+                                  <div className="w-24 h-24 mx-auto mb-2 bg-pink-100 rounded-full flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-pink-200 rounded-full"></div>
+                                  </div>
+                                  <p className="text-sm">Radar Chart</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Potential Mismatches */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                          <h4 className="text-lg font-semibold text-gray-900 mb-4">Potential Mismatches</h4>
+                          <div className="space-y-4">
+                            <div>
+                              <div className="flex justify-between items-start">
+                                <span className="text-sm font-medium text-gray-700">Resume Pages</span>
+                                <span className="text-sm text-gray-600 text-right max-w-xs">The number of pages is 1, so no issue detected.</span>
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex justify-between items-start">
+                                <span className="text-sm font-medium text-gray-700">Switches</span>
+                                <span className="text-sm text-gray-600 text-right max-w-xs">No frequent switch of roles detected.</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Candidate Information */}
-                <div className="mb-10">
-                  <h3 className="text-lg font-bold text-gray-900 mb-6 tracking-tight">Candidate Information</h3>
-                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-100">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700 mb-2">Gender</p>
-                        <p className="text-sm text-gray-900 font-medium">{selectedCandidate.gender}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700 mb-2">Application Date</p>
-                        <p className="text-sm text-gray-900 font-medium">{selectedCandidate.applicationDate.split(' ')[0]}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Experience Details */}
-                <div className="mb-10">
-                  <h3 className="text-lg font-bold text-gray-900 mb-6 tracking-tight">Experience</h3>
-                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-100">
-                    <div className="grid grid-cols-1 gap-6">
-                      <div className="flex items-center space-x-3">
-                        <Clock className="w-4 h-4 text-gray-400" />
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">Full-Time Experience:</p>
-                          <p className="text-sm text-gray-900 font-medium">{selectedCandidate.experience} years</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">Notice Period:</p>
-                          <p className="text-sm text-gray-900 font-medium">{selectedCandidate.noticePeriod || 'Immediate'}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <DollarSign className="w-4 h-4 text-gray-400" />
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">Current Salary:</p>
-                          <p className="text-sm text-gray-900 font-medium">{selectedCandidate.currentSalary}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Technical Skills */}
-                <div className="mb-8">
-                  <h3 className="text-lg font-bold text-gray-900 mb-6 tracking-tight">Technical Skills</h3>
-                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-100">
-                    <div className="flex flex-wrap gap-2">
-                      {['Python', 'Django', 'React', 'PostgreSQL', 'AWS', 'Docker'].map((skill) => (
-                        <span key={skill} className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Panel - Resume Viewer */}
-              <div className="w-1/2 border-l border-gray-100 p-8 bg-white">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 tracking-tight">Resume</h3>
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm text-gray-600 font-medium">88%</span>
-                    <button className="p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                      <Download className="w-4 h-4 text-gray-500" />
-                    </button>
-                    <button className="p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                      <Eye className="w-4 h-4 text-gray-500" />
-                    </button>
-                  </div>
-                </div>
-                
-                {/* Embedded PDF Viewer */}
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full min-h-[700px] overflow-hidden">
-                  <iframe
-                    src={`${selectedCandidate.resumeUrl}#toolbar=1&navpanes=0&scrollbar=1`}
-                    className="w-full h-full"
-                    title={`${selectedCandidate.name} Resume`}
-                    style={{ minHeight: '700px' }}
-                  />
-                </div>
+                )}
               </div>
             </div>
           </>

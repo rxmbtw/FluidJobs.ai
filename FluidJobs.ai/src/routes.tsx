@@ -26,7 +26,7 @@ import CandidateRegistration from './pages/CandidateRegistration';
 import UnifiedJobDashboard from './components/UnifiedJobDashboard';
 import ChangePassword from './pages/ChangePassword';
 import AuthCallback from './pages/AuthCallback';
-import ManageCandidates from './pages/ManageCandidates';
+import ManageCandidates from './components/ManageCandidates';
 
 import DashboardRouter from './components/DashboardRouter';
 
