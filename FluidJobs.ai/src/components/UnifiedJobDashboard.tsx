@@ -11,6 +11,7 @@ import JobPublishingAssistant from './JobPublishingAssistant';
 import JobOpenings from '../pages/JobOpenings';
 import JobSpecificDashboard from './JobSpecificDashboard';
 import BulkImportSection from './BulkImportSection';
+import ManageCandidates from '../pages/ManageCandidates';
 
 interface JobOpeningsContentProps {
   onJobSelect: (jobTitle: string) => void;
@@ -36,6 +37,7 @@ const UnifiedJobDashboard: React.FC = () => {
   const navigationItems = [
     { id: 'create_job', label: 'Create Job', icon: Plus },
     { id: 'view_opening', label: 'View Openings', icon: Eye },
+    { id: 'manage_candidates', label: 'Manage Candidates', icon: Users },
     { id: 'bulk_import', label: 'Bulk Import', icon: Upload },
     { id: 'contact_us', label: 'Contact Us', icon: MessageCircle, path: '/contact' }
   ];
@@ -47,7 +49,7 @@ const UnifiedJobDashboard: React.FC = () => {
       setShowCreateJob(true);
       setActiveNav(navId);
       localStorage.setItem('showCreateJob', 'true');
-    } else if (navId === 'view_opening') {
+    } else if (navId === 'view_opening' || navId === 'manage_candidates' || navId === 'bulk_import') {
       setActiveNav(navId);
     } else if (path) {
       navigate(path);
@@ -150,6 +152,10 @@ const UnifiedJobDashboard: React.FC = () => {
                 setShowJobSpecificDashboard(true);
               }}
             />
+          </div>
+        ) : activeNav === 'manage_candidates' ? (
+          <div className="-m-8">
+            <ManageCandidates />
           </div>
         ) : activeNav === 'bulk_import' ? (
           <BulkImportSection />

@@ -26,6 +26,7 @@ import CandidateRegistration from './pages/CandidateRegistration';
 import UnifiedJobDashboard from './components/UnifiedJobDashboard';
 import ChangePassword from './pages/ChangePassword';
 import AuthCallback from './pages/AuthCallback';
+import ManageCandidates from './pages/ManageCandidates';
 
 import DashboardRouter from './components/DashboardRouter';
 
@@ -50,6 +51,7 @@ const AppRoutes = () => (
 				{/* Alias for backwards compatibility / canonical admin entry */}
 				<Route path="/main-unified-dashboard" element={<UnifiedJobDashboard />} />
 				<Route path="/candidates" element={<Candidates />} />
+				<Route path="/manage-candidates" element={<ManageCandidates />} />
 				<Route path="/companies" element={<Companies />} />
 				<Route path="/applications" element={<Applications />} />
 				<Route path="/profile" element={<ProfilePage />} />
