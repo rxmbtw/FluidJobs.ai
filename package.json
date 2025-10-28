@@ -1,7 +1,36 @@
 {
   "name": "fluidjobs-ai",
+  "version": "1.0.0",
+  "description": "A modern, AI-powered job platform built with React and Node.js",
   "displayName": "FluidJobs.ai",
+  "main": "index.js",
+  "scripts": {
+    "start": "npm run start:frontend",
+    "start:frontend": "cd FluidJobs.ai && npm start",
+    "start:backend": "cd backend && npm run dev",
+    "install:all": "npm install && cd FluidJobs.ai && npm install && cd ../backend && npm install",
+    "build": "cd FluidJobs.ai && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rxmbtw/FluidJobs.ai.git"
+  },
+  "keywords": [
+    "job-platform",
+    "react",
+    "nodejs",
+    "ai",
+    "recruitment",
+    "typescript",
+    "postgresql"
+  ],
+  "author": "FluidJobs.ai Team",
+  "license": "MIT",
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.13"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
   }
 }
