@@ -17,6 +17,7 @@ dist/
 
 # Google Cloud
 google-cloud-sdk/
+**/google-cloud-sdk/
 service-account-key.json
 *.json.key
 
