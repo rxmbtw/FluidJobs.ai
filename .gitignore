@@ -79,5 +79,6 @@ cloud_env.bat
 # Documentation files (keep only main README)
 *.md
 !README.md
+!SETUP.md
 !CONTRIBUTING.md
 !LICENSE.md
