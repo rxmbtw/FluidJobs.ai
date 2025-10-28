@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
-const { importCandidatesFromCSV } = require('../utils/importCandidates');
+const { authenticateToken } = require('./auth');
 
 // Get all candidates
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
     const offset = (page - 1) * limit;
@@ -86,7 +86,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get candidate by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -116,27 +116,10 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Import candidates from CSV
-router.post('/import', async (req, res) => {
-  try {
-    await importCandidatesFromCSV();
-    
-    res.json({
-      status: 'success',
-      message: 'Candidates imported successfully'
-    });
-    
-  } catch (error) {
-    console.error('Error importing candidates:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to import candidates'
-    });
-  }
-});
+
 
 // Get candidate statistics
-router.get('/stats/overview', async (req, res) => {
+router.get('/stats/overview', authenticateToken, async (req, res) => {
   try {
     const stats = await Promise.all([
       pool.query('SELECT COUNT(*) as total FROM candidates'),
