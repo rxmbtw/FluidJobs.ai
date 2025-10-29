@@ -73,11 +73,12 @@ CREATE TABLE IF NOT EXISTS applications (
 -- Create AI Data table
 CREATE TABLE IF NOT EXISTS ai_data (
     parsed_data_id SERIAL PRIMARY KEY,
-    candidate_id INTEGER NOT NULL REFERENCES candidates(candidate_id) ON DELETE CASCADE,
+    candidate_id INTEGER UNIQUE NOT NULL REFERENCES candidates(candidate_id) ON DELETE CASCADE,
     skills JSONB,
     experience_years INTEGER,
     education_level VARCHAR(100),
     extracted_text TEXT,
+    resume_score INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

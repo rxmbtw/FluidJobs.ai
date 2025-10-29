@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, Filter, Users, FileText, Eye, MoreVertical, Download, Mail, Phone, MapPin, Calendar, Building, DollarSign, Linkedin, User, Clock, Briefcase, Plus } from 'lucide-react';
 
 interface Candidate {
-  id: number;
+  id: string;
   applicationDate: string;
   name: string;
   phone: string;
@@ -10,7 +10,7 @@ interface Candidate {
   gender: string;
   position: string;
   experience: number;
-  currentlyEmployed: boolean;
+  currentlyEmployed: string;
   currentCompany: string;
   noticePeriod: string;
   lastWorkingDay: string;
@@ -20,212 +20,181 @@ interface Candidate {
   source: string;
   resumeUrl: string;
   maritalStatus: string;
+  resumeScore: number;
 }
 
-const candidatesData: Candidate[] = [
-  {
-    id: 1,
-    applicationDate: '27 Sep 25',
-    name: 'Sachin Sharma',
-    phone: '9999187459',
-    email: 'sachin.sharma51051@gmail.com',
-    gender: 'Male',
-    position: 'Senior Software Engineer',
-    experience: 6.4,
-    currentlyEmployed: true,
-    currentCompany: 'Collegedunia Web Private Limited',
-    noticePeriod: '60 Days',
-    lastWorkingDay: '',
-    currentSalary: '₹8,50,000',
-    expectedSalary: '₹12,00,000',
-    location: 'Delhi, India',
-    source: 'Bulk Upload',
-    resumeUrl: 'https://example.com/resume1.pdf',
-    maritalStatus: 'Unmarried'
-  },
-  {
-    id: 2,
-    applicationDate: '25 Sep 25',
-    name: 'Tawseef Ahmad Bhat',
-    phone: '+91 98765 43211',
-    email: 'tawseef.bhat@email.com',
-    gender: 'Male',
-    position: 'Backend Developer',
-    experience: 9.7,
-    currentlyEmployed: true,
-    currentCompany: 'Genesys Bengaluru',
-    noticePeriod: '90 Days',
-    lastWorkingDay: '',
-    currentSalary: '₹15,00,000',
-    expectedSalary: '₹18,00,000',
-    location: 'Kashmir, India',
-    source: 'Naukri',
-    resumeUrl: 'https://example.com/resume2.pdf',
-    maritalStatus: 'Married'
-  },
-  {
-    id: 3,
-    applicationDate: '23 Sep 25',
-    name: 'SIDDHARTH MARAT',
-    phone: '+91 98765 43212',
-    email: 'siddharth.marat@email.com',
-    gender: 'Male',
-    position: 'Full Stack Developer',
-    experience: 10.8,
-    currentlyEmployed: true,
-    currentCompany: 'AgroStar',
-    noticePeriod: '30 Days',
-    lastWorkingDay: '',
-    currentSalary: '₹18,00,000',
-    expectedSalary: '₹22,00,000',
-    location: 'Mumbai, India',
-    source: 'LinkedIn',
-    resumeUrl: 'https://example.com/resume3.pdf',
-    maritalStatus: 'Married'
-  },
-  {
-    id: 4,
-    applicationDate: '20 Sep 25',
-    name: 'Supriya Pasupuleti',
-    phone: '+91 98765 43213',
-    email: 'supriya.pasupuleti@email.com',
-    gender: 'Female',
-    position: 'Data Scientist',
-    experience: 5.9,
-    currentlyEmployed: true,
-    currentCompany: 'Saama Technologies',
-    noticePeriod: '60 Days',
-    lastWorkingDay: '',
-    currentSalary: '₹12,00,000',
-    expectedSalary: '₹15,00,000',
-    location: 'Hyderabad, India',
-    source: 'Direct',
-    resumeUrl: 'https://example.com/resume4.pdf',
-    maritalStatus: 'Unmarried'
-  },
-  {
-    id: 5,
-    applicationDate: '18 Sep 25',
-    name: 'VEDHAS PATIL',
-    phone: '+91 98765 43214',
-    email: 'vedhas.patil@email.com',
-    gender: 'Male',
-    position: 'UX Designer',
-    experience: 2.6,
-    currentlyEmployed: true,
-    currentCompany: 'Go Digital',
-    noticePeriod: '30 Days',
-    lastWorkingDay: '',
-    currentSalary: '₹6,00,000',
-    expectedSalary: '₹8,00,000',
-    location: 'Pune, India',
-    source: 'Referral',
-    resumeUrl: 'https://example.com/resume5.pdf',
-    maritalStatus: 'Unmarried'
-  },
-  {
-    id: 6,
-    applicationDate: '15 Sep 25',
-    name: 'Priyanshu Agrawal',
-    phone: '+91 98765 43215',
-    email: 'priyanshu.agrawal@email.com',
-    gender: 'Male',
-    position: 'DevOps Engineer',
-    experience: 7.1,
-    currentlyEmployed: true,
-    currentCompany: 'Delivery',
-    noticePeriod: '90 Days',
-    lastWorkingDay: '',
-    currentSalary: '₹14,00,000',
-    expectedSalary: '₹17,00,000',
-    location: 'Bangalore, India',
-    source: 'Naukri',
-    resumeUrl: 'https://example.com/resume6.pdf',
-    maritalStatus: 'Married'
-  },
-  {
-    id: 7,
-    applicationDate: '12 Sep 25',
-    name: 'Jaibhan Singh Gaur',
-    phone: '+91 98765 43216',
-    email: 'jaibhan.gaur@email.com',
-    gender: 'Male',
-    position: 'Frontend Developer',
-    experience: 6.3,
-    currentlyEmployed: true,
-    currentCompany: 'Jio Platforms',
-    noticePeriod: '60 Days',
-    lastWorkingDay: '',
-    currentSalary: '₹11,00,000',
-    expectedSalary: '₹14,00,000',
-    location: 'Mumbai, India',
-    source: 'LinkedIn',
-    resumeUrl: 'https://example.com/resume7.pdf',
-    maritalStatus: 'Unmarried'
-  },
-  {
-    id: 8,
-    applicationDate: '10 Sep 25',
-    name: 'Shubham Tomar',
-    phone: '+91 98765 43217',
-    email: 'shubham.tomar@email.com',
-    gender: 'Male',
-    position: 'Backend Developer',
-    experience: 2.7,
-    currentlyEmployed: true,
-    currentCompany: 'Bajaj Finserv',
-    noticePeriod: '30 Days',
-    lastWorkingDay: '',
-    currentSalary: '₹7,50,000',
-    expectedSalary: '₹10,00,000',
-    location: 'Pune, India',
-    source: 'Direct',
-    resumeUrl: 'https://example.com/resume8.pdf',
-    maritalStatus: 'Unmarried'
-  },
-  {
-    id: 9,
-    applicationDate: '8 Sep 25',
-    name: 'Kalpnath Singh Kumar',
-    phone: '+91 98765 43218',
-    email: 'kalpnath.kumar@email.com',
-    gender: 'Male',
-    position: 'Senior Full Stack Developer',
-    experience: 20.1,
-    currentlyEmployed: true,
-    currentCompany: 'Wells Fargo',
-    noticePeriod: '90 Days',
-    lastWorkingDay: '',
-    currentSalary: '₹25,00,000',
-    expectedSalary: '₹30,00,000',
-    location: 'Hyderabad, India',
-    source: 'Referral',
-    resumeUrl: 'https://example.com/resume9.pdf',
-    maritalStatus: 'Married'
-  }
-];
+
 
 const ManageCandidates: React.FC = () => {
-  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(candidatesData[0]);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('Application');
   const [selectedStage, setSelectedStage] = useState('Resume Review');
   const [showFilters, setShowFilters] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [parsing, setParsing] = useState(false);
+
+  // AI Resume Review function
+  const reviewResume = async (candidateId: string) => {
+    try {
+      setParsing(true);
+      const jobDescription = `We are looking for a skilled Frontend Developer with expertise in React, TypeScript, and modern web technologies. The ideal candidate should have 3+ years of experience in building responsive web applications, knowledge of state management, and experience with REST APIs.`;
+      
+      const response = await fetch(`http://localhost:5001/api/gemini/review/${candidateId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ jobDescription })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Update candidate score in state
+        setCandidates(prev => prev.map(c => 
+          c.id === candidateId ? { ...c, resumeScore: data.score } : c
+        ));
+        alert(`AI Review Complete! Score: ${data.score}/100`);
+      }
+    } catch (error) {
+      console.error('Error reviewing resume:', error);
+      alert('Failed to review resume');
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  // Fetch candidates from database
+  const fetchCandidates = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:5001/api/test-candidates', {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.data && data.data.candidates && data.data.candidates.length > 0) {
+          const formattedCandidates = data.data.candidates.map((candidate: any) => ({
+            id: candidate.candidate_id,
+            applicationDate: new Date().toLocaleDateString('en-GB'),
+            name: candidate.full_name,
+            phone: candidate.phone_number || '',
+            email: candidate.email,
+            gender: candidate.gender || 'Male',
+            position: getPositionFromEmail(candidate.email),
+            experience: parseFloat(candidate.experience_years) || 0,
+            currentlyEmployed: candidate.currently_employed || 'No',
+            currentCompany: candidate.current_company || 'Not specified',
+            noticePeriod: candidate.notice_period || 'Not specified',
+            lastWorkingDay: '',
+            currentSalary: candidate.current_ctc ? `₹${parseFloat(candidate.current_ctc).toLocaleString()}` : 'Not specified',
+            expectedSalary: candidate.expected_ctc ? `₹${parseFloat(candidate.expected_ctc).toLocaleString()}` : 'Not specified',
+            location: candidate.location || 'Not specified',
+            source: 'Database',
+            resumeUrl: candidate.resume_link || '',
+            maritalStatus: candidate.marital_status || 'Not specified',
+            resumeScore: candidate.resume_score || 0
+          }));
+          setCandidates(formattedCandidates);
+          if (formattedCandidates.length > 0) {
+            setSelectedCandidate(formattedCandidates[0]);
+          }
+        } else {
+          // Fallback to sample data if no database data
+          loadSampleData();
+        }
+      } else {
+        // Fallback to sample data if API fails
+        loadSampleData();
+      }
+    } catch (error) {
+      console.error('Error fetching candidates:', error);
+      // Fallback to sample data if error
+      loadSampleData();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper functions
+  const getPositionFromEmail = (email: string) => {
+    const positions = ['Software Engineer', 'Senior Software Engineer', 'Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'Data Scientist', 'DevOps Engineer'];
+    return positions[email.length % positions.length];
+  };
+
+  const getRandomCompany = () => {
+    const companies = ['Collegedunia Web Private Limited', 'Genesys Bengaluru', 'AgroStar', 'Saama Technologies', 'Go Digital', 'Jio Platforms', 'Wells Fargo'];
+    return companies[Math.floor(Math.random() * companies.length)];
+  };
+
+  const getRandomNoticePeriod = () => {
+    const periods = ['30 Days', '60 Days', '90 Days', 'Immediate'];
+    return periods[Math.floor(Math.random() * periods.length)];
+  };
+
+  const getRandomSalary = () => {
+    const salaries = ['₹6,00,000', '₹8,50,000', '₹12,00,000', '₹15,00,000', '₹18,00,000'];
+    return salaries[Math.floor(Math.random() * salaries.length)];
+  };
+
+  const getRandomExpectedSalary = () => {
+    const salaries = ['₹8,00,000', '₹12,00,000', '₹15,00,000', '₹18,00,000', '₹22,00,000'];
+    return salaries[Math.floor(Math.random() * salaries.length)];
+  };
+
+  const getRandomLocation = () => {
+    const locations = ['Delhi, India', 'Mumbai, India', 'Bangalore, India', 'Pune, India', 'Hyderabad, India', 'Chennai, India'];
+    return locations[Math.floor(Math.random() * locations.length)];
+  };
+
+  // Sample data fallback
+  const loadSampleData = () => {
+    const sampleCandidates = [
+      {
+        id: '1', applicationDate: '27 Sep 25', name: 'Sachin Sharma', phone: '9999187459',
+        email: 'sachin.sharma51051@gmail.com', gender: 'Male', position: 'Senior Software Engineer',
+        experience: 6.4, currentlyEmployed: 'Yes', currentCompany: 'Collegedunia Web Private Limited',
+        noticePeriod: '60 Days', lastWorkingDay: '', currentSalary: '₹8,50,000',
+        expectedSalary: '₹12,00,000', location: 'Delhi, India', source: 'Sample Data',
+        resumeUrl: '', maritalStatus: 'Unmarried', resumeScore: 75
+      },
+      {
+        id: '2', applicationDate: '25 Sep 25', name: 'Tawseef Ahmad Bhat', phone: '+91 98765 43211',
+        email: 'tawseef.bhat@email.com', gender: 'Male', position: 'Backend Developer',
+        experience: 9.7, currentlyEmployed: 'Yes', currentCompany: 'Genesys Bengaluru',
+        noticePeriod: '90 Days', lastWorkingDay: '', currentSalary: '₹15,00,000',
+        expectedSalary: '₹18,00,000', location: 'Kashmir, India', source: 'Sample Data',
+        resumeUrl: '', maritalStatus: 'Married', resumeScore: 82
+      }
+    ];
+    setCandidates(sampleCandidates);
+    setSelectedCandidate(sampleCandidates[0]);
+  };
+
+  React.useEffect(() => {
+    fetchCandidates();
+  }, []);
 
   const filteredCandidates = useMemo(() => {
-    return candidatesData.filter(candidate =>
+    return candidates.filter(candidate =>
       candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.phone.includes(searchTerm)
     );
-  }, [searchTerm]);
+  }, [candidates, searchTerm]);
 
-  // Initialize with first candidate if none selected
-  React.useEffect(() => {
-    if (!selectedCandidate && filteredCandidates.length > 0) {
-      setSelectedCandidate(filteredCandidates[0]);
-    }
-  }, [filteredCandidates, selectedCandidate]);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -256,7 +225,9 @@ const ManageCandidates: React.FC = () => {
             </button>
           </div>
           
-          <h2 className="text-sm font-medium text-gray-900 mb-4">Candidates ({filteredCandidates.length})</h2>
+          <h2 className="text-sm font-medium text-gray-900 mb-4">
+            {candidates.length > 0 && candidates[0].source === 'Database' ? 'Database Candidates' : 'Sample Candidates'} ({filteredCandidates.length})
+          </h2>
           
           {/* Filter Button and Search Bar */}
           <div className="flex items-center space-x-2 mb-4">
@@ -368,8 +339,7 @@ const ManageCandidates: React.FC = () => {
           {/* Candidates List */}
           <div className="flex-1 overflow-y-auto px-4">
           {filteredCandidates.map((candidate, index) => {
-            const matchPercentages = [46, 42, 41, 35, 35, 35, 35, 35, 35];
-            const matchPercentage = matchPercentages[index] || 35;
+            const matchPercentage = candidate.resumeScore || 35;
             const getMatchColor = (percentage: number) => {
               if (percentage >= 40) return 'bg-red-100 text-red-700';
               return 'bg-red-100 text-red-700';
@@ -390,7 +360,7 @@ const ManageCandidates: React.FC = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-medium text-gray-900 truncate">{candidate.name}</h3>
-                      <p className="text-xs text-gray-500">{candidate.experience} Yrs | {candidate.currentCompany}</p>
+                      <p className="text-xs text-gray-500">{candidate.experience} Yrs | {candidate.currentCompany || 'Not specified'}</p>
                     </div>
                   </div>
                   <div className="flex items-center">
@@ -452,10 +422,20 @@ const ManageCandidates: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2 text-sm font-medium">
-                  <Plus className="w-4 h-4" />
-                  <span>Invite</span>
-                </button>
+                <div className="flex space-x-2">
+                  <button 
+                    onClick={() => reviewResume(selectedCandidate.id)}
+                    disabled={parsing}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2 text-sm font-medium disabled:opacity-50"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>{parsing ? 'Reviewing...' : 'AI Review'}</span>
+                  </button>
+                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2 text-sm font-medium">
+                    <Plus className="w-4 h-4" />
+                    <span>Invite</span>
+                  </button>
+                </div>
               </div>
 
               {/* Candidate Header */}
@@ -483,21 +463,13 @@ const ManageCandidates: React.FC = () => {
                   </button>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-gray-500 uppercase mb-1">STAGE 1</div>
-                  <div className="text-sm font-semibold text-gray-900">Resume Review</div>
+                  <div className="text-xs text-gray-500 uppercase mb-1">RESUME SCORE</div>
+                  <div className="text-sm font-semibold text-gray-900">AI Analysis</div>
                   <div className={`text-2xl font-bold mt-1 ${
-                    (() => {
-                      const matchPercentages = [46, 42, 31, 35, 35, 35, 33, 29, 31];
-                      const index = candidatesData.findIndex(c => c.id === selectedCandidate.id);
-                      const percentage = matchPercentages[index] || 30;
-                      return percentage >= 40 ? 'text-red-600' : percentage >= 30 ? 'text-orange-600' : 'text-gray-600';
-                    })()
+                    selectedCandidate.resumeScore >= 70 ? 'text-green-600' : 
+                    selectedCandidate.resumeScore >= 50 ? 'text-orange-600' : 'text-red-600'
                   }`}>
-                    {(() => {
-                      const matchPercentages = [46, 42, 31, 35, 35, 35, 33, 29, 31];
-                      const index = candidatesData.findIndex(c => c.id === selectedCandidate.id);
-                      return matchPercentages[index] || 30;
-                    })()}%
+                    {selectedCandidate.resumeScore}/100
                   </div>
                 </div>
               </div>
@@ -572,12 +544,28 @@ const ManageCandidates: React.FC = () => {
                               <span className="text-sm text-gray-900">{selectedCandidate.gender.toUpperCase()}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-sm font-medium text-gray-600">Candidate Source</span>
-                              <span className="text-sm text-gray-900">{selectedCandidate.source}</span>
+                              <span className="text-sm font-medium text-gray-600">Currently Employed</span>
+                              <span className="text-sm text-gray-900">{selectedCandidate.currentlyEmployed}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-sm font-medium text-gray-600">Application Date</span>
-                              <span className="text-sm text-gray-900">{selectedCandidate.applicationDate}</span>
+                              <span className="text-sm font-medium text-gray-600">Marital Status</span>
+                              <span className="text-sm text-gray-900">{selectedCandidate.maritalStatus}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm font-medium text-gray-600">Location</span>
+                              <span className="text-sm text-gray-900">{selectedCandidate.location}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm font-medium text-gray-600">Notice Period</span>
+                              <span className="text-sm text-gray-900">{selectedCandidate.noticePeriod}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm font-medium text-gray-600">Current Salary</span>
+                              <span className="text-sm text-gray-900">{selectedCandidate.currentSalary}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm font-medium text-gray-600">Expected Salary</span>
+                              <span className="text-sm text-gray-900">{selectedCandidate.expectedSalary}</span>
                             </div>
                           </div>
                         </div>

@@ -7,7 +7,7 @@ const { testConnection, setupDatabase } = require('./utils/dbSetup');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 5001;
 
 // Middleware
 app.use(helmet());
@@ -64,6 +64,9 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/user', require('./routes/user'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/bulk-import', require('./routes/bulkImport'));
+app.use('/api/resume', require('./routes/resumeParser'));
+app.use('/api/gemini', require('./routes/geminiReviewer'));
+app.use('/api/test-candidates', require('./routes/testCandidates'));
 
 // Serve uploaded files with proper headers
 app.use('/uploads', express.static('uploads', {

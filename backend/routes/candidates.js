@@ -1,35 +1,37 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
-const { authenticateToken } = require('./auth');
+// const { authenticateToken } = require('./auth');
 
 // Get all candidates
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
     const offset = (page - 1) * limit;
     
     let query = `
       SELECT 
-        candidate_id,
-        full_name,
-        phone_number,
-        email,
-        gender,
-        marital_status,
-        current_company,
-        notice_period,
-        current_ctc,
-        location,
-        currently_employed,
-        previous_company,
-        expected_ctc,
-        experience_years,
-        created_at
-      FROM candidates
+        c.candidate_id,
+        c.full_name,
+        c.phone_number,
+        c.email,
+        c.gender,
+        c.marital_status,
+        c.current_company,
+        c.notice_period,
+        c.current_ctc,
+        c.location,
+        c.currently_employed,
+        c.previous_company,
+        c.expected_ctc,
+        c.experience_years,
+        c.created_at,
+        COALESCE(a.resume_score, 0) as resume_score
+      FROM candidate.profile c
+      LEFT JOIN ai_data a ON c.candidate_id = a.candidate_id
     `;
     
-    let countQuery = 'SELECT COUNT(*) FROM candidates';
+    let countQuery = 'SELECT COUNT(*) FROM candidate.profile';
     let queryParams = [];
     let countParams = [];
     
@@ -86,12 +88,12 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get candidate by ID
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
     const result = await pool.query(
-      'SELECT * FROM candidates WHERE candidate_id = $1',
+      'SELECT * FROM candidate.profile WHERE candidate_id = $1',
       [id]
     );
     
@@ -119,16 +121,16 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 
 // Get candidate statistics
-router.get('/stats/overview', authenticateToken, async (req, res) => {
+router.get('/stats/overview', async (req, res) => {
   try {
     const stats = await Promise.all([
-      pool.query('SELECT COUNT(*) as total FROM candidates'),
-      pool.query('SELECT COUNT(*) as employed FROM candidates WHERE currently_employed = \'Yes\''),
-      pool.query('SELECT COUNT(*) as fresher FROM candidates WHERE currently_employed = \'Fresher\''),
-      pool.query('SELECT AVG(experience_years) as avg_experience FROM candidates WHERE experience_years > 0'),
+      pool.query('SELECT COUNT(*) as total FROM candidate.profile'),
+      pool.query('SELECT COUNT(*) as employed FROM candidate.profile WHERE currently_employed = \'Yes\''),
+      pool.query('SELECT COUNT(*) as fresher FROM candidate.profile WHERE currently_employed = \'Fresher\''),
+      pool.query('SELECT AVG(experience_years) as avg_experience FROM candidate.profile WHERE experience_years > 0'),
       pool.query(`
         SELECT location, COUNT(*) as count 
-        FROM candidates 
+        FROM candidate.profile 
         WHERE location IS NOT NULL 
         GROUP BY location 
         ORDER BY count DESC 
