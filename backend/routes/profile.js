@@ -18,44 +18,44 @@ router.post('/test-upload', (req, res) => {
 
 // Upload profile image to Google Cloud Storage
 router.post('/upload-profile-image', authenticateToken, upload.single('profileImage'), async (req, res) => {
+  console.log('\n=== PROFILE IMAGE UPLOAD START ===');
+  console.log('File received:', req.file ? { name: req.file.originalname, size: req.file.size, type: req.file.mimetype } : 'No file');
+  console.log('User:', req.user);
+  
   try {
     if (!req.file) {
+      console.log('ERROR: No file uploaded');
       return res.status(400).json({ error: 'No file uploaded' });
     }
     
     const candidateId = req.user.candidateId;
     if (!candidateId) {
+      console.log('ERROR: No candidateId in token');
       return res.status(400).json({ error: 'Invalid user token' });
     }
     
-    // Use Google Cloud Storage
-    const { Storage } = require('@google-cloud/storage');
-    const storage = new Storage({
-      keyFilename: './service-account-key.json'
-    });
-    
-    const fileName = `profile images/${Date.now()}-${req.file.originalname}`;
-    const bucket = storage.bucket(process.env.GOOGLE_CLOUD_STORAGE_BUCKET || 'fluidjobs-storage');
-    const file = bucket.file(fileName);
-    
-    await file.save(req.file.buffer, {
-      metadata: {
-        contentType: req.file.mimetype,
-      },
-    });
-    
-    await file.makePublic();
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+    console.log('Saving file locally...');
+    // Save file locally
+    const publicUrl = await uploadToLocal(req.file, 'profile-images');
+    console.log('File saved successfully, URL:', publicUrl);
     
     // Save URL to database
-    await pool.query(
-      'UPDATE candidates SET profile_image_url = $1, updated_at = CURRENT_TIMESTAMP WHERE candidate_id = $2',
+    console.log('Updating database with profile image URL...');
+    const result = await pool.query(
+      'UPDATE candidates SET profile_image_url = $1, updated_at = CURRENT_TIMESTAMP WHERE candidate_id = $2 RETURNING profile_image_url',
       [publicUrl, candidateId]
     );
     
+    console.log('Database update result:', result.rows);
+    console.log('SUCCESS: Profile image uploaded and saved');
+    console.log('=== PROFILE IMAGE UPLOAD END ===\n');
+    
     res.json({ success: true, fileUrl: publicUrl });
   } catch (error) {
-    console.error('Profile image upload error:', error);
+    console.log('FATAL ERROR in profile image upload:');
+    console.log('Error message:', error.message);
+    console.log('Error stack:', error.stack);
+    console.log('=== PROFILE IMAGE UPLOAD END (ERROR) ===\n');
     res.status(500).json({ error: 'Upload failed', details: error.message });
   }
 });
@@ -84,38 +84,32 @@ router.post('/upload-cover-image', authenticateToken, upload.single('coverImage'
 
 // Upload resume to Google Cloud Storage
 router.post('/upload-resume', authenticateToken, upload.single('resume'), async (req, res) => {
+  console.log('\n=== RESUME UPLOAD START ===');
+  console.log('File received:', req.file ? { name: req.file.originalname, size: req.file.size, type: req.file.mimetype } : 'No file');
+  console.log('User:', req.user);
+  
   try {
     if (!req.file) {
+      console.log('ERROR: No file uploaded');
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
     const candidateId = req.user.candidateId;
     if (!candidateId) {
+      console.log('ERROR: No candidateId in token');
       return res.status(400).json({ error: 'Invalid user token' });
     }
 
-    // Use Google Cloud Storage
-    const { Storage } = require('@google-cloud/storage');
-    const storage = new Storage({
-      keyFilename: './service-account-key.json'
-    });
-    
-    const fileName = `resume/${Date.now()}-${req.file.originalname}`;
-    const bucket = storage.bucket(process.env.GOOGLE_CLOUD_STORAGE_BUCKET || 'fluidjobs-storage');
-    const file = bucket.file(fileName);
-    
-    await file.save(req.file.buffer, {
-      metadata: {
-        contentType: req.file.mimetype,
-      },
-    });
-    
-    await file.makePublic();
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+    console.log('Saving file locally...');
+    // Save file locally
+    const publicUrl = await uploadToLocal(req.file, 'resumes');
+    console.log('File saved successfully, URL:', publicUrl);
 
-    // Get current resumes and add new one
+    // Get current resumes
+    console.log('Getting current resumes from database...');
     const result = await pool.query('SELECT resume_files FROM candidates WHERE candidate_id = $1', [candidateId]);
     const currentResumes = result.rows[0]?.resume_files || [];
+    console.log('Current resumes:', currentResumes);
     
     const newResume = {
       id: Date.now().toString(),
@@ -125,15 +119,23 @@ router.post('/upload-resume', authenticateToken, upload.single('resume'), async 
     };
     
     const updatedResumes = [...currentResumes, newResume];
+    console.log('Updated resumes array:', updatedResumes);
 
+    console.log('Updating database with new resume...');
     await pool.query(
       'UPDATE candidates SET resume_files = $1, updated_at = CURRENT_TIMESTAMP WHERE candidate_id = $2',
       [JSON.stringify(updatedResumes), candidateId]
     );
     
+    console.log('SUCCESS: Resume uploaded and saved');
+    console.log('=== RESUME UPLOAD END ===\n');
+    
     res.json({ success: true, fileUrl: publicUrl, resume: newResume });
   } catch (error) {
-    console.error('Resume upload error:', error);
+    console.log('FATAL ERROR in resume upload:');
+    console.log('Error message:', error.message);
+    console.log('Error stack:', error.stack);
+    console.log('=== RESUME UPLOAD END (ERROR) ===\n');
     res.status(500).json({ error: 'Failed to upload resume', details: error.message });
   }
 });
