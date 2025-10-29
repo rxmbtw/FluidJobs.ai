@@ -66,6 +66,9 @@ app.use('/api/profile', require('./routes/profile'));
 app.use('/api/bulk-import', require('./routes/bulkImport'));
 app.use('/api/jobs-enhanced', require('./routes/jobsEnhanced'));
 app.use('/api/upload', require('./routes/fileUpload'));
+app.use('/api/resume', require('./routes/resumeParser'));
+app.use('/api/gemini', require('./routes/geminiReviewer'));
+app.use('/api/test-candidates', require('./routes/testCandidates'));
 
 // Serve uploaded files with proper headers
 app.use('/uploads', express.static('uploads', {
