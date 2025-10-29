@@ -146,7 +146,6 @@ const EnhancedSidebar: React.FC = () => {
         return [
           { name: 'Home', path: '/dashboard', icon: Home },
           { name: 'Job Management', path: '/job-management', icon: Briefcase },
-          { name: 'Candidates', path: '/candidates', icon: Users },
         ];
       
       case 'Client':
@@ -265,14 +264,12 @@ const EnhancedSidebar: React.FC = () => {
             </div>
           </button>
           <div className="flex justify-center">
-            <div className="w-8 h-8 rounded flex items-center justify-center overflow-hidden">
-              <img 
-                src="/images/2024-04-04.webp" 
-                alt="FluidJobs.ai Logo" 
-                className="w-full h-full object-cover"
-                style={{ transform: 'scale(1.5)' }}
-              />
-            </div>
+            <img 
+              src="/images/FuildJobs.ai logo.png" 
+              alt="FluidJobs.ai Logo" 
+              className="w-8 h-8 object-contain"
+              style={{ background: 'transparent', mixBlendMode: 'multiply' }}
+            />
           </div>
           <p className="text-xs text-gray-400 text-center">© FluidJobs.ai</p>
         </div>

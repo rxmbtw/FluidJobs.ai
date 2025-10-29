@@ -126,14 +126,11 @@ const PremiumAuthPage = () => {
           className="relative z-10"
         >
           <div className="flex items-center space-x-3 mb-8">
-            <div className="w-8 h-8 rounded flex items-center justify-center overflow-hidden">
-              <img 
-                src="/images/2024-04-04.webp" 
-                alt="FluidJobs.ai Logo" 
-                className="w-full h-full object-cover"
-                style={{ transform: 'scale(1.5)' }}
-              />
-            </div>
+            <img 
+              src="/images/FuildJobs.ai logo.png" 
+              alt="FluidJobs.ai Logo" 
+              className="w-8 h-8 object-contain"
+            />
             <span className="font-heading font-bold text-2xl">FluidJobs.ai</span>
           </div>
         </motion.div>

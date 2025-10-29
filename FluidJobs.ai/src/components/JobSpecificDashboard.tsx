@@ -66,14 +66,11 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, o
         {/* Brand Header */}
         <div className="p-6 border-b border-slate-700">
           <div className={`flex items-center w-full ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
-            <div className="w-8 h-8 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img 
-                src="/images/2024-04-04.webp" 
-                alt="FluidJobs.ai Logo" 
-                className="w-full h-full object-cover"
-                style={{ transform: 'scale(1.5)' }}
-              />
-            </div>
+            <img 
+              src="/images/FuildJobs.ai logo.png" 
+              alt="FluidJobs.ai Logo" 
+              className="w-8 h-8 object-contain flex-shrink-0"
+            />
             {!isCollapsed && <span className="text-xl font-bold text-white">FluidJobs.ai</span>}
           </div>
           {!isCollapsed && (

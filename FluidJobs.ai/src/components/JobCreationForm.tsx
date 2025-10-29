@@ -220,14 +220,11 @@ What We Offer:
       <div className="w-64 bg-slate-800 text-white flex flex-col">
         <div className="p-6 border-b border-slate-700">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded flex items-center justify-center overflow-hidden">
-              <img 
-                src="/images/2024-04-04.webp" 
-                alt="FluidJobs.ai Logo" 
-                className="w-full h-full object-cover"
-                style={{ transform: 'scale(1.5)' }}
-              />
-            </div>
+            <img 
+              src="/images/FuildJobs.ai logo.png" 
+              alt="FluidJobs.ai Logo" 
+              className="w-8 h-8 object-contain"
+            />
             <span className="text-xl font-bold text-white">FluidJobs.ai</span>
           </div>
         </div>
@@ -258,14 +255,11 @@ What We Offer:
             {/* Header */}
             <div className="mb-6 pb-6 border-b border-gray-200">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded flex items-center justify-center overflow-hidden">
-                  <img 
-                    src="/images/2024-04-04.webp" 
-                    alt="FluidJobs.ai Logo" 
-                    className="w-full h-full object-cover"
-                    style={{ transform: 'scale(1.5)' }}
-                  />
-                </div>
+                <img 
+                  src="/images/FuildJobs.ai logo.png" 
+                  alt="FluidJobs.ai Logo" 
+                  className="w-8 h-8 object-contain"
+                />
                 <span className="text-2xl font-bold text-indigo-600">Fluid Live</span>
               </div>
               <h1 className="text-xl font-bold mb-2">Job Creation Form</h1>

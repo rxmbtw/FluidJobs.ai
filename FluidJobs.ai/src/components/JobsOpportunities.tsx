@@ -106,9 +106,9 @@ const JobsOpportunities: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex gap-6 -m-8 p-6 min-h-full">
+      <div className="-m-8 p-6 min-h-full">
         {/* Main Content Column */}
-        <div className="flex-1">
+        <div>
           {/* Navigation Tabs */}
           <div className="border-b-2 border-gray-200 mb-6">
             <div className="flex space-x-8">
@@ -236,78 +236,7 @@ const JobsOpportunities: React.FC = () => {
           )}
         </div>
 
-        {/* Right Sidebar */}
-        <div className="w-80 space-y-6">
-          {/* Popular Tags */}
-          <div className="bg-white rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">
-              Popular Tags
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {popularTags.map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => toggleTag(tag)}
-                  className={`px-3 py-1 rounded-full text-sm ${
-                    activeTags.includes(tag)
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {/* Opportunities Card */}
-          <div className="bg-purple-50 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">
-              Opportunities
-            </h3>
-            <div className="flex items-center gap-3">
-              <FileText className="w-6 h-6 text-purple-600" />
-              <div>
-                <div className="text-2xl font-bold text-purple-600">{jobStats.eligible}</div>
-                <div className="text-sm text-purple-600">
-                  Opportunities you are / were eligible
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Application Card */}
-          <div className="bg-cyan-50 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">
-              Application
-            </h3>
-            <div className="flex items-center gap-3">
-              <Users className="w-6 h-6 text-cyan-600" />
-              <div>
-                <div className="text-2xl font-bold text-cyan-600">{jobStats.applied}</div>
-                <div className="text-sm text-cyan-600">
-                  Opportunities you have applied for
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Offer in Hand Card */}
-          <div className="bg-yellow-50 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">
-              Offer in Hand
-            </h3>
-            <div className="flex items-center gap-3">
-              <Award className="w-6 h-6 text-yellow-600" />
-              <div>
-                <div className="text-2xl font-bold text-yellow-600">{jobStats.offers}</div>
-                <div className="text-sm text-yellow-600">
-                  Opportunities you have received an offer for
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </DashboardLayout>
   );

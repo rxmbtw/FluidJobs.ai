@@ -36,14 +36,11 @@ const JobOpeningsView: React.FC = () => {
   return (
     <div className="p-8">
       <div className="flex items-center space-x-3 mb-8">
-          <div className="w-8 h-8 rounded flex items-center justify-center overflow-hidden">
           <img 
-            src="/images/2024-04-04.webp" 
+            src="/images/FuildJobs.ai logo.png" 
             alt="FluidJobs.ai Logo" 
-            className="w-full h-full object-cover"
-            style={{ transform: 'scale(1.5)' }}
+            className="w-8 h-8 object-contain"
           />
-        </div>
         <h1 className="text-2xl font-bold text-indigo-600">Fluid Live</h1>
       </div>
 

@@ -66,13 +66,11 @@ const RoleSelection: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center space-x-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <img 
-                src="/images/2024-04-04.webp" 
-                alt="FluidJobs.ai Logo" 
-                className="w-8 h-8 object-cover rounded-lg"
-              />
-            </div>
+            <img 
+              src="/images/FuildJobs.ai logo.png" 
+              alt="FluidJobs.ai Logo" 
+              className="w-12 h-12 object-contain"
+            />
             <span className="font-bold text-indigo-600 text-2xl">FluidJobs.ai</span>
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">

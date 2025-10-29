@@ -30,14 +30,12 @@ const TopNavBar: React.FC = () => {
     <div className="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6">
       {/* Left - Logo Section */}
       <div className="flex items-center space-x-3 w-[260px]">
-        <div className="w-8 h-8 rounded flex items-center justify-center overflow-hidden">
-          <img 
-            src="/images/2024-04-04.webp" 
-            alt="FluidJobs.ai Logo" 
-            className="w-full h-full object-cover"
-            style={{ transform: 'scale(1.5)' }}
-          />
-        </div>
+        <img 
+          src="/images/FuildJobs.ai logo.png" 
+          alt="FluidJobs.ai Logo" 
+          className="w-8 h-8 object-contain"
+          style={{ background: 'transparent', mixBlendMode: 'multiply' }}
+        />
         <span className="font-semibold text-[#283593] text-xl">FluidJobs.ai</span>
       </div>
 

@@ -65,14 +65,11 @@ const Signup: React.FC = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex items-center justify-center space-x-3 mb-6">
-          <div className="w-8 h-8 rounded flex items-center justify-center overflow-hidden">
-            <img 
-              src="/images/2024-04-04.webp" 
-              alt="FluidJobs.ai Logo" 
-              className="w-full h-full object-cover"
-              style={{ transform: 'scale(1.5)' }}
-            />
-          </div>
+          <img 
+            src="/images/FuildJobs.ai logo.png" 
+            alt="FluidJobs.ai Logo" 
+            className="w-8 h-8 object-contain"
+          />
           <span className="font-bold text-indigo-600 text-xl">FluidJobs.ai</span>
         </div>
         <h2 className="text-center text-3xl font-bold text-gray-900">Create your account</h2>

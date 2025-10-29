@@ -788,14 +788,12 @@ const PremiumLandingPage = () => {
               className="navbar-logo flex items-center space-x-3"
               whileHover={{ scale: 1.05 }}
             >
-              <div className="w-8 h-8 rounded flex items-center justify-center overflow-hidden">
-                <img 
-                  src="/images/2024-04-04.webp" 
-                  alt="FluidJobs.ai Logo" 
-                  className="w-full h-full object-cover"
-                  style={{ transform: 'scale(1.5)' }}
-                />
-              </div>
+              <img 
+                src="/images/FuildJobs.ai logo.png" 
+                alt="FluidJobs.ai Logo" 
+                className="w-8 h-8 object-contain"
+                style={{ background: 'transparent', mixBlendMode: 'multiply' }}
+              />
               <span className="font-bold text-xl">
                 FluidJobs.ai
               </span>
@@ -1201,14 +1199,12 @@ const PremiumLandingPage = () => {
           <div className="grid md:grid-cols-5 gap-12">
             <div className="md:col-span-2">
               <div className="flex items-center space-x-3 mb-8">
-                <div className="w-8 h-8 rounded flex items-center justify-center overflow-hidden">
-                  <img 
-                    src="/images/2024-04-04.webp" 
-                    alt="FluidJobs.ai Logo" 
-                    className="w-full h-full object-cover"
-                    style={{ transform: 'scale(1.5)' }}
-                  />
-                </div>
+                <img 
+                  src="/images/FuildJobs.ai logo.png" 
+                  alt="FluidJobs.ai Logo" 
+                  className="w-8 h-8 object-contain"
+                  style={{ background: 'transparent', mixBlendMode: 'multiply' }}
+                />
                 <span className="font-heading font-bold text-2xl text-gray-900">FluidJobs.ai</span>
               </div>
               <p className="text-gray-600 mb-8 leading-relaxed text-lg">
