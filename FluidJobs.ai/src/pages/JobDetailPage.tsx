@@ -338,8 +338,8 @@ const JobDetailPage: React.FC = () => {
   }
 
   const handleApplyNow = () => {
-    // Redirect to login/signup with job context
-    navigate(`/login?jobId=${job.jobId}&returnTo=${encodeURIComponent(`/careers/${job.jobId}`)}`);
+    // Navigate to job application page
+    navigate(`/careers/${job.jobId}/apply`);
   };
 
   return (

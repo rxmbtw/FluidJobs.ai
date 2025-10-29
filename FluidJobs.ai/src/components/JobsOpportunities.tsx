@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Users, Award, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { jobService, Job } from '../services/jobService';
+import { useJobs } from '../contexts/JobsProvider';
 import DashboardLayout from './DashboardLayout';
 
 const JobsOpportunities: React.FC = () => {
@@ -9,6 +10,7 @@ const JobsOpportunities: React.FC = () => {
   const [activeTab, setActiveTab] = useState('opportunities');
   const [eligibleFilter, setEligibleFilter] = useState(true);
   const [nonEligibleFilter, setNonEligibleFilter] = useState(false);
+  const { jobs: contextJobs, loading: contextLoading, refreshJobs } = useJobs();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [jobStats, setJobStats] = useState({ total: 0, eligible: 0, applied: 0, offers: 0 });
@@ -24,7 +26,39 @@ const JobsOpportunities: React.FC = () => {
 
   useEffect(() => {
     fetchJobs();
-  }, []);
+    
+    // Listen for new job creation events
+    const handleJobCreated = () => {
+      refreshJobs();
+      fetchJobs();
+    };
+    
+    window.addEventListener('jobCreated', handleJobCreated);
+    return () => window.removeEventListener('jobCreated', handleJobCreated);
+  }, [refreshJobs]);
+
+  useEffect(() => {
+    // Convert context jobs to Job format and merge with existing jobs
+    if (contextJobs.length > 0) {
+      const convertedJobs = contextJobs.map(job => ({
+        id: job.jobId,
+        title: job.title,
+        company: 'FluidJobs.ai',
+        type: job.employmentType,
+        industry: job.domain,
+        salary: job.salaryRange,
+        location: job.location,
+        postedDate: job.publishedDate,
+        isEligible: true,
+        registrationDeadline: job.closingDate
+      }));
+      setJobs(prev => {
+        const existingIds = prev.map(j => j.id);
+        const newJobs = convertedJobs.filter(j => !existingIds.includes(j.id));
+        return [...newJobs, ...prev];
+      });
+    }
+  }, [contextJobs]);
 
   const fetchJobs = async () => {
     try {
@@ -33,7 +67,11 @@ const JobsOpportunities: React.FC = () => {
         jobService.getAllJobs(),
         jobService.getJobStats()
       ]);
-      setJobs(jobData);
+      setJobs(prev => {
+        const contextJobIds = contextJobs.map(j => j.jobId);
+        const filteredJobData = jobData.filter(j => !contextJobIds.includes(j.id));
+        return [...prev.filter(j => contextJobIds.includes(j.id)), ...filteredJobData];
+      });
       setJobStats(stats);
     } catch (error) {
       console.error('Error fetching jobs:', error);
@@ -57,8 +95,8 @@ const JobsOpportunities: React.FC = () => {
   };
 
   const handleApplyNow = (jobId: string) => {
-    // Navigate to application process
-    console.log('Apply to job:', jobId);
+    // Navigate to job application page
+    navigate(`/careers/${jobId}/apply`);
   };
 
   const handleViewDetails = (jobId: string) => {
@@ -131,8 +169,8 @@ const JobsOpportunities: React.FC = () => {
                     {/* Card Header */}
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
-                          <Building2 className="w-6 h-6 text-gray-500" />
+                        <div className="w-10 h-10 bg-white rounded flex items-center justify-center border border-gray-200">
+                          <img src="/images/FluidHire_logo.png" alt="FluidJobs.ai" className="w-full h-full object-cover rounded" />
                         </div>
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
@@ -183,12 +221,6 @@ const JobsOpportunities: React.FC = () => {
                         )}
                       </div>
                       <div className="flex gap-3">
-                        <button
-                          onClick={() => handleViewDetails(job.id)}
-                          className="text-purple-600 text-sm underline hover:text-purple-700 font-medium"
-                        >
-                          View details
-                        </button>
                         <button
                           onClick={() => handleApplyNow(job.id)}
                           className="bg-purple-600 text-white px-4 py-2 rounded text-sm hover:bg-purple-700 transition-colors font-medium"

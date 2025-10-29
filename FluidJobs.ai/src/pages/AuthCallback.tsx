@@ -6,9 +6,12 @@ const AuthCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    const error = searchParams.get('error');
-    const roleParam = searchParams.get('role');
+    const handleAuth = async () => {
+    // Handle both encoded and non-encoded URLs
+    const urlParams = new URLSearchParams(window.location.search.replace(/&amp;/g, '&'));
+    const token = urlParams.get('token') || searchParams.get('token');
+    const error = urlParams.get('error') || searchParams.get('error');
+    const roleParam = urlParams.get('role') || searchParams.get('role');
 
     console.log('=== AUTH CALLBACK DEBUG ===');
     console.log('Token:', token ? 'Present' : 'Missing');
@@ -19,36 +22,53 @@ const AuthCallback: React.FC = () => {
 
     if (token) {
       try {
-        // Decode JWT to get user info
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        const payload = JSON.parse(jsonPayload);
+        // Store token and get user info from backend
+        sessionStorage.setItem('fluidjobs_token', token);
+        
+        // Get user info from backend API
+        const response = await fetch('http://localhost:8000/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        const userData = await response.json();
+        const payload = {
+          candidateId: userData.candidate_id,
+          email: userData.email,
+          name: userData.full_name,
+          role: roleParam || 'Candidate'
+        };
         
         console.log('JWT Payload:', payload);
         
         // Determine user role with clear priority
         let userRole = 'Candidate'; // Default
         const urlSearch = window.location.search;
-        
         console.log('=== ROLE DETECTION ===');
         console.log('Available sources:');
         console.log('- URL role param:', roleParam);
         console.log('- JWT role:', payload.role);
         console.log('- URL search:', urlSearch);
         
-        // Check all possible sources for Admin role
-        if (roleParam === 'Admin' || 
-            payload.role === 'Admin' || 
-            urlSearch.includes('role=Admin') || 
-            urlSearch.includes('redirect=admin')) {
+        // Check all possible sources for Admin role with comprehensive detection
+        const isAdminFromParam = roleParam === 'Admin';
+        const isAdminFromJWT = payload.role === 'Admin';
+        const isAdminFromURL = urlSearch.includes('role=Admin');
+        const isAdminFromRedirect = urlSearch.includes('redirect=admin');
+        const isAdminFromAnySource = isAdminFromParam || isAdminFromJWT || isAdminFromURL || isAdminFromRedirect;
+        
+        if (isAdminFromAnySource) {
           userRole = 'Admin';
-          console.log('✅ ADMIN ROLE DETECTED');
+          console.log('✅ ADMIN ROLE DETECTED from:', {
+            param: isAdminFromParam,
+            jwt: isAdminFromJWT, 
+            url: isAdminFromURL,
+            redirect: isAdminFromRedirect
+          });
         } else {
           userRole = 'Candidate';
-          console.log('✅ CANDIDATE ROLE ASSIGNED');
+          console.log('✅ CANDIDATE ROLE ASSIGNED - no admin indicators found');
         }
         
         console.log('=== FINAL ROLE ASSIGNMENT ===');
@@ -69,10 +89,14 @@ const AuthCallback: React.FC = () => {
           role: userRole
         };
         
+        console.log('=== USER OBJECT CREATION ===');
+        console.log('Creating user with role:', userRole);
+        console.log('User object:', user);
+        console.log('Comparing with red button format - role match:', user.role === 'Admin');
+        
         console.log('User object created:', user);
         
         // Store authentication data
-        sessionStorage.setItem('fluidjobs_token', token);
         sessionStorage.setItem('fluidjobs_user', JSON.stringify(user));
         
         // Store profile data
@@ -128,6 +152,8 @@ const AuthCallback: React.FC = () => {
       console.warn('⚠️ No token or error, redirecting to login');
       navigate('/login', { replace: true });
     }
+    };
+    handleAuth();
   }, [searchParams, navigate]);
 
   return (

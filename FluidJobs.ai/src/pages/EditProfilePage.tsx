@@ -133,11 +133,15 @@ const EditProfilePage: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      let uploadedProfileImageUrl = null;
+      let uploadedResumeData = null;
+
       // Upload files if changed
       if (formData.profilePicture) {
         try {
-          await profileService.uploadProfileImage(formData.profilePicture);
-          console.log('Profile image uploaded successfully');
+          const result = await profileService.uploadProfileImage(formData.profilePicture);
+          uploadedProfileImageUrl = result.fileUrl;
+          console.log('Profile image uploaded successfully:', uploadedProfileImageUrl);
         } catch (uploadError) {
           console.warn('Profile image upload failed:', uploadError);
         }
@@ -145,8 +149,9 @@ const EditProfilePage: React.FC = () => {
       
       if (formData.cv) {
         try {
-          await profileService.uploadResume(formData.cv);
-          console.log('Resume uploaded successfully');
+          const result = await profileService.uploadResume(formData.cv);
+          uploadedResumeData = result.resume;
+          console.log('Resume uploaded successfully:', uploadedResumeData);
         } catch (uploadError) {
           console.warn('Resume upload failed:', uploadError);
         }
@@ -170,49 +175,29 @@ const EditProfilePage: React.FC = () => {
       });
 
       if (result.success) {
-        // Fetch fresh profile data from database to get updated file URLs
+        // Fetch fresh profile data from database to get all updated file URLs
         const freshProfile = await profileService.getProfile();
         
-        if (freshProfile) {
-          // Update profile context with fresh data from database
-          updateProfile({
-            ...profileData,
-            fullName: freshProfile.full_name || formData.fullName,
-            phone: freshProfile.phone || freshProfile.phone_number || formData.phone,
-            email: freshProfile.email || formData.email,
-            gender: freshProfile.gender || formData.gender,
-            maritalStatus: freshProfile.marital_status || formData.maritalStatus,
-            workStatus: freshProfile.work_status || formData.workStatus,
-            currentCompany: freshProfile.current_company || formData.currentCompany,
-            noticePeriod: freshProfile.notice_period || formData.noticePeriod,
-            currentCTC: freshProfile.current_ctc || formData.currentCTC,
-            lastCompany: freshProfile.last_company || formData.lastCompany,
-            previousCTC: freshProfile.previous_ctc || formData.previousCTC,
-            city: freshProfile.city || freshProfile.location || formData.city,
-            workMode: freshProfile.work_mode || formData.workMode,
-            profileImage: freshProfile.profile_image_url || profileData.profileImage,
-            cvUrl: freshProfile.resume_files?.[freshProfile.resume_files.length - 1]?.url || profileData.cvUrl,
-            resumes: freshProfile.resume_files || profileData.resumes
-          });
-        } else {
-          // Fallback to form data if fresh profile fetch fails
-          updateProfile({
-            ...profileData,
-            fullName: formData.fullName,
-            phone: formData.phone,
-            email: formData.email,
-            gender: formData.gender,
-            maritalStatus: formData.maritalStatus,
-            workStatus: formData.workStatus,
-            currentCompany: formData.currentCompany,
-            noticePeriod: formData.noticePeriod,
-            currentCTC: formData.currentCTC,
-            lastCompany: formData.lastCompany,
-            previousCTC: formData.previousCTC,
-            city: formData.city,
-            workMode: formData.workMode
-          });
-        }
+        // Update profile context with fresh data from database
+        updateProfile({
+          ...profileData,
+          fullName: freshProfile?.full_name || formData.fullName,
+          phone: freshProfile?.phone || freshProfile?.phone_number || formData.phone,
+          email: freshProfile?.email || formData.email,
+          gender: freshProfile?.gender || formData.gender,
+          maritalStatus: freshProfile?.marital_status || formData.maritalStatus,
+          workStatus: freshProfile?.work_status || formData.workStatus,
+          currentCompany: freshProfile?.current_company || formData.currentCompany,
+          noticePeriod: freshProfile?.notice_period || formData.noticePeriod,
+          currentCTC: freshProfile?.current_ctc || formData.currentCTC,
+          lastCompany: freshProfile?.last_company || formData.lastCompany,
+          previousCTC: freshProfile?.previous_ctc || formData.previousCTC,
+          city: freshProfile?.city || freshProfile?.location || formData.city,
+          workMode: freshProfile?.work_mode || formData.workMode,
+          profileImage: freshProfile?.profile_image_url || uploadedProfileImageUrl || profileData.profileImage,
+          cvUrl: freshProfile?.resume_files?.[freshProfile.resume_files.length - 1]?.url || profileData.cvUrl,
+          resumes: freshProfile?.resume_files || profileData.resumes
+        });
 
         // Show success message
         setShowSuccess(true);
@@ -223,14 +208,7 @@ const EditProfilePage: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to save profile:', error);
-      
-      // Try to get more specific error message
-      let errorMessage = 'Failed to save profile. Please try again.';
-      if (error instanceof Error && error.message) {
-        errorMessage = `Failed to save profile: ${error.message}`;
-      }
-      
-      alert(errorMessage);
+      alert('Failed to save profile. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -551,6 +529,14 @@ const EditProfilePage: React.FC = () => {
                 Choose File
               </label>
               {formData.cv && <p className="mt-2 text-sm text-green-600">✓ {formData.cv.name}</p>}
+              {profileData.resumes && profileData.resumes.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-gray-500 mb-1">Current resumes:</p>
+                  {profileData.resumes.map((resume: any, index: number) => (
+                    <p key={index} className="text-xs text-blue-600">• {resume.name}</p>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

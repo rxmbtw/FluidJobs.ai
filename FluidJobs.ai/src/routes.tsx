@@ -18,6 +18,7 @@ import Interviews from './pages/Interviews';
 import SavedJobs from './pages/SavedJobs';
 import JobOpenings from './pages/JobOpenings';
 import JobDetailPage from './pages/JobDetailPage';
+import JobApplicationPage from './pages/JobApplicationPage';
 import Contact from './pages/Contact';
 import Signup from './pages/Signup';
 import PremiumAuthPage from './components/PremiumAuthPage';
@@ -36,6 +37,7 @@ const AppRoutes = () => (
 			<Route path="/" element={<PremiumLandingPage />} />
 			<Route path="/careers" element={<JobOpenings />} />
 			<Route path="/careers/:jobId" element={<JobDetailPage />} />
+			<Route path="/careers/:jobId/apply" element={<JobApplicationPage />} />
 			<Route path="/login" element={<PremiumAuthPage />} />
 			<Route path="/auth/callback" element={<AuthCallback />} />
 

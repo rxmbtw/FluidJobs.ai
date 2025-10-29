@@ -320,8 +320,8 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
     }
   }));
   
-  // Combine static jobs with context jobs
-  const allJobs = [...jobsData, ...contextJobs];
+  // Combine static jobs with context jobs (context jobs first to show newest)
+  const allJobs = [...contextJobs, ...jobsData];
   
   const [filteredJobs, setFilteredJobs] = useState<JobData[]>(allJobs);
   const [selectedLocation, setSelectedLocation] = useState('All');
@@ -353,6 +353,17 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
     
     setFilteredJobs(filtered);
   }, [selectedLocation, selectedDepartment, jobs]);
+
+  // Listen for new job creation events
+  useEffect(() => {
+    const handleJobCreated = () => {
+      // Jobs will be automatically updated through the useJobs context
+      console.log('New job created - jobs will be refreshed');
+    };
+    
+    window.addEventListener('jobCreated', handleJobCreated);
+    return () => window.removeEventListener('jobCreated', handleJobCreated);
+  }, []);
 
   const getDepartmentFromTags = (tags: string[]) => {
     if (tags.some(tag => ['QA', 'React', 'Python', 'Selenium', 'JavaScript'].includes(tag))) return 'Technology';

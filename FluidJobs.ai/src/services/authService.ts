@@ -13,98 +13,59 @@ interface AuthResponse {
 class AuthService {
   private readonly TOKEN_KEY = 'fluidjobs_token';
   private readonly USER_KEY = 'fluidjobs_user';
-
-  // Mock user database
-  private users: User[] = [
-    { id: '1', email: 'admin@fluidjobs.ai', name: 'Admin User', role: 'Admin' },
-    { id: '2', email: 'hr@fluidjobs.ai', name: 'HR Manager', role: 'HR' },
-    { id: '3', email: 'candidate@fluidjobs.ai', name: 'Job Seeker', role: 'Candidate' },
-    { id: '4', email: 'client@fluidjobs.ai', name: 'Client User', role: 'Client' }
-  ];
+  private readonly API_BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 
   async login(email: string, password: string, role?: User['role']): Promise<AuthResponse> {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Validate password
-    if (!password || password.length < 6) {
-      throw new Error('Password must be at least 6 characters long.');
+    try {
+      const response = await fetch(`${this.API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+      
+      const user = data.user;
+      const token = data.token;
+      
+      this.setSession(user, token);
+      return { user, token };
+    } catch (error: any) {
+      throw new Error(error.message || 'Login failed');
     }
-    
-    let user = this.users.find(u => u.email === email);
-    if (!user) {
-      throw new Error('That email doesn\'t look right. Please check and try again.');
-    }
-
-    console.log('AuthService - Original user:', user);
-    console.log('AuthService - Provided role:', role);
-
-    // If role is provided, update user role
-    if (role && user) {
-      user = { ...user, role };
-      const userIndex = this.users.findIndex(u => u.id === user!.id);
-      this.users[userIndex] = user;
-      console.log('AuthService - Updated user:', user);
-    }
-
-    console.log('AuthService - Returning user with role:', user.role);
-
-    const token = this.generateToken(user);
-    this.setSession(user, token);
-    
-    return { user, token };
   }
 
   async signup(name: string, email: string, password: string, role: User['role'] = 'Candidate'): Promise<AuthResponse> {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    if (this.users.find(u => u.email === email)) {
-      throw new Error('User already exists');
+    try {
+      const response = await fetch(`${this.API_BASE}/api/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Signup failed');
+      }
+      
+      const user = data.user;
+      const token = data.token;
+      
+      this.setSession(user, token);
+      return { user, token };
+    } catch (error: any) {
+      throw new Error(error.message || 'Signup failed');
     }
-
-    const user: User = {
-      id: crypto.randomUUID(),
-      email,
-      name,
-      role
-    };
-
-    this.users.push(user);
-    const token = this.generateToken(user);
-    this.setSession(user, token);
-    
-    return { user, token };
   }
 
   async googleLogin(googleToken: string): Promise<AuthResponse & { isNewUser: boolean }> {
-    // Simulate Google OAuth with prompt=select_account
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Mock Google user data (in real implementation, decode googleToken)
-    const googleUser = {
-      email: `user${Date.now()}@gmail.com`,
-      name: 'Google User'
-    };
-
-    let user = this.users.find(u => u.email === googleUser.email);
-    const isNewUser = !user;
-    
-    if (!user) {
-      // Create new user without role (to be selected later)
-      user = {
-        id: crypto.randomUUID(),
-        email: googleUser.email,
-        name: googleUser.name,
-        role: 'Candidate' // Temporary, will be updated in role selection
-      };
-      this.users.push(user);
-    }
-
-    const token = this.generateToken(user);
-    this.setSession(user, token);
-    
-    return { user, token, isNewUser };
+    // This is handled by the Google OAuth flow, not directly called
+    throw new Error('Use Google OAuth flow instead');
   }
 
   logout(): void {
@@ -141,21 +102,30 @@ class AuthService {
   }
 
   async updateUserRole(userId: string, role: User['role']): Promise<User> {
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    const userIndex = this.users.findIndex(u => u.id === userId);
-    if (userIndex === -1) {
-      throw new Error('User not found');
+    try {
+      const response = await fetch(`${this.API_BASE}/api/auth/update-role`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.getToken()}`
+        },
+        body: JSON.stringify({ userId, role })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Update failed');
+      }
+      
+      const updatedUser = data.user;
+      const token = data.token;
+      
+      this.setSession(updatedUser, token);
+      return updatedUser;
+    } catch (error: any) {
+      throw new Error(error.message || 'Update failed');
     }
-
-    this.users[userIndex] = { ...this.users[userIndex], role };
-    const updatedUser = this.users[userIndex];
-    
-    // Update session
-    const token = this.getToken() || this.generateToken(updatedUser);
-    this.setSession(updatedUser, token);
-    
-    return updatedUser;
   }
 
   private setSession(user: User, token: string): void {

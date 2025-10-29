@@ -11,17 +11,30 @@ import {
   DollarSign,
   Eye,
   EyeOff,
-  X
+  X,
+  FileText,
+  Upload
 } from 'lucide-react';
 import { useJobs } from '../contexts/JobsProvider';
 import MultiSelectDropdown from './MultiSelectDropdown';
+import jobsEnhancedService from '../services/jobsEnhancedService';
 
 const defaultImages = [
   'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=250&fit=crop',
   'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=250&fit=crop',
   'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=250&fit=crop',
-  'https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=250&fit=crop'
+  'https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=250&fit=crop',
+  'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=250&fit=crop',
+  'https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?w=400&h=250&fit=crop',
+  'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=400&h=250&fit=crop',
+  'https://images.unsplash.com/photo-1551434678-e076c223a692?w=400&h=250&fit=crop',
+  'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=400&h=250&fit=crop',
+  'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=400&h=250&fit=crop',
+  'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=400&h=250&fit=crop',
+  'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=400&h=250&fit=crop',
+  'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=250&fit=crop',
+  'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=250&fit=crop'
 ];
 
 interface JobPublishingAssistantProps {
@@ -43,14 +56,23 @@ interface FormData {
   job_close_days: number;
   job_description: string;
   selected_image: string;
+  jd_attachment: File | null;
+  eligible_courses: string[];
+  eligibility_criteria: string;
+  selection_process: string;
+  other_details: string;
+  registration_schedule: string;
+  about_organisation: string;
+  website: string;
+  industry: string;
+  organisation_size: string;
+  contact_person: string;
 }
 
 const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack }) => {
   const { addJob } = useJobs();
-  const [currentStep, setCurrentStep] = useState(() => {
-    const saved = localStorage.getItem('jobFormStep');
-    return saved ? parseInt(saved) : 1;
-  });
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>(() => {
     const saved = localStorage.getItem('jobFormData');
     return saved ? JSON.parse(saved) : {
@@ -67,7 +89,18 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
       show_salary_to_candidate: true,
       job_close_days: 30,
       job_description: '',
-      selected_image: defaultImages[0]
+      selected_image: defaultImages[0],
+      jd_attachment: null,
+      eligible_courses: [],
+      eligibility_criteria: '',
+      selection_process: '',
+      other_details: '',
+      registration_schedule: '',
+      about_organisation: '',
+      website: '',
+      industry: '',
+      organisation_size: '',
+      contact_person: ''
     };
   });
 
@@ -81,12 +114,67 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
     return saved ? JSON.parse(saved).job_title || '' : '';
   });
   const [showJobTitleSuggestions, setShowJobTitleSuggestions] = useState(false);
+  const [coursesInput, setCoursesInput] = useState('');
+  const [showCoursesSuggestions, setShowCoursesSuggestions] = useState(false);
   const [aiGenerated, setAiGenerated] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const [isEditorFocused, setIsEditorFocused] = useState(false);
 
   useEffect(() => {
-    if (editorRef.current && currentStep === 3) {
+    const loadDraft = async () => {
+      setIsLoading(true);
+      const result = await jobsEnhancedService.getDraft();
+      if (result.success && result.draft) {
+        const draft = result.draft;
+        setCurrentStep(draft.current_step || 1);
+        setFormData({
+          job_title: draft.job_title || '',
+          job_domain: draft.job_domain || '',
+          job_type: draft.job_type || '',
+          locations: draft.locations || [],
+          mode_of_job: draft.mode_of_job || '',
+          min_experience: draft.min_experience || 0,
+          max_experience: draft.max_experience || 10,
+          skills: draft.skills || [],
+          min_salary: draft.min_salary || '',
+          max_salary: draft.max_salary || '',
+          show_salary_to_candidate: draft.show_salary_to_candidate ?? true,
+          job_close_days: draft.job_close_days || 30,
+          job_description: draft.job_description || '',
+          selected_image: draft.selected_image || defaultImages[0],
+          jd_attachment: null,
+          eligible_courses: draft.eligible_courses || [],
+          eligibility_criteria: draft.eligibility_criteria || '',
+          selection_process: draft.selection_process || '',
+          other_details: draft.other_details || '',
+          registration_schedule: draft.registration_schedule || '',
+          about_organisation: draft.about_organisation || '',
+          website: draft.website || '',
+          industry: draft.industry || '',
+          organisation_size: draft.organisation_size || '',
+          contact_person: draft.contact_person || ''
+        });
+        setJobTitleInput(draft.job_title || '');
+      }
+      setIsLoading(false);
+    };
+    
+    loadDraft();
+  }, []);
+
+  useEffect(() => {
+    const autoSave = async () => {
+      if (Object.keys(formData).some(key => formData[key as keyof FormData])) {
+        await jobsEnhancedService.saveDraft(formData, currentStep);
+      }
+    };
+
+    const timeoutId = setTimeout(autoSave, 2000);
+    return () => clearTimeout(timeoutId);
+  }, [formData, currentStep]);
+
+  useEffect(() => {
+    if (editorRef.current && currentStep === 4) {
       if (formData.job_description) {
         editorRef.current.innerHTML = formData.job_description;
       } else {
@@ -100,6 +188,37 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
   const skillsSuggestions = [
     'Python', 'JavaScript', 'Java', 'React.js', 'Node.js', 'AWS', 'Docker', 'Kubernetes',
     'Machine Learning', 'Data Science', 'SQL', 'MongoDB', 'Git', 'Agile', 'Scrum'
+  ];
+
+  const coursesSuggestions = [
+    'B.Tech. - CSE - Blockchain Technology',
+    'B.Tech. - CSE - Big Data and Cloud Engineering',
+    'B.Tech. - CSE - Artificial Intelligence & Edge Computing',
+    'B.Tech. - CSE - Cloud Computing',
+    'B.Tech. - Computer Science & Engineering',
+    'B.Tech. - Information Technology',
+    'B.Tech. - CSE - Artificial Intelligence & Analytics',
+    'B.Tech. - CSE - Cyber Security and Forensic',
+    'Master of Business Administration (MBA) in IT / Systems',
+    'Master of Computer Applications (MCA)',
+    'Master of Technology (M.Tech) in Computer Science',
+    'Master of Technology (M.Tech) in Information Technology',
+    'Master of Science (M.Sc.) in Computer Science',
+    'Master of Science (M.Sc.) in Information Technology',
+    'Master of Science (M.Sc.) in Data Science',
+    'Bachelor of Business Administration (BBA) in IT / Business Analytics',
+    'Bachelor of Computer Applications (BCA)',
+    'Bachelor of Technology (B.Tech) in Computer Science',
+    'Bachelor of Technology (B.Tech) in Information Technology',
+    'Bachelor of Engineering (B.E.) in Computer Science',
+    'Bachelor of Engineering (B.E.) in Information Technology',
+    'Bachelor of Science (B.Sc.) in Computer Science',
+    'Bachelor of Science (B.Sc.) in Information Technology',
+    'Diploma in Information Technology',
+    'Diploma in Computer Science',
+    'Diploma in Computer Engineering',
+    'Diploma in Web Development',
+    'Diploma in Cybersecurity'
   ];
 
   const jobTitleSuggestions = {
@@ -138,7 +257,8 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
   const steps = [
     { id: 1, title: 'Role Fundamentals', icon: Briefcase },
     { id: 2, title: 'Candidate Profile', icon: Users },
-    { id: 3, title: 'The Pitch', icon: Sparkles }
+    { id: 3, title: 'Additional Requirements', icon: FileText },
+    { id: 4, title: 'The Pitch', icon: Sparkles }
   ];
 
   const getAISuggestions = (jobTitle: string) => {
@@ -251,49 +371,63 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
     localStorage.setItem('jobFormData', JSON.stringify(newFormData));
   };
 
-  const nextStep = () => {
-    if (currentStep < 3) {
+  const nextStep = async () => {
+    if (currentStep < 4) {
       const newStep = currentStep + 1;
       setCurrentStep(newStep);
-      localStorage.setItem('jobFormStep', newStep.toString());
+      await jobsEnhancedService.saveDraft(formData, newStep);
     }
   };
 
-  const prevStep = () => {
+  const prevStep = async () => {
     if (currentStep > 1) {
       const newStep = currentStep - 1;
       setCurrentStep(newStep);
-      localStorage.setItem('jobFormStep', newStep.toString());
+      await jobsEnhancedService.saveDraft(formData, newStep);
     }
   };
 
-  const handleSubmit = () => {
-    const jobData = {
-      jobId: `JOB_${Date.now()}`,
-      title: formData.job_title,
-      description: formData.job_description,
-      location: formData.locations.join(', '),
-      employmentType: formData.job_type,
-      experience: `${formData.min_experience}-${formData.max_experience} years`,
-      salaryRange: `₹${parseInt(formData.min_salary)/100000}-${parseInt(formData.max_salary)/100000} LPA`,
-      domain: formData.job_domain,
-      skills: formData.skills,
-      mode: formData.mode_of_job,
-      workplace: formData.mode_of_job,
-      tags: [formData.job_domain, ...formData.skills.slice(0, 3)],
-      image: formData.selected_image,
-      status: 'Published',
-      publishedDate: new Date().toISOString().split('T')[0],
-      stageCount: 3,
-      candidatesCount: 0,
-      closingDate: new Date(Date.now() + formData.job_close_days * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    };
-    
-    addJob(jobData);
-    localStorage.removeItem('jobFormData');
-    localStorage.removeItem('jobFormStep');
-    alert('🎉 Job opening created successfully!');
-    onBack();
+  const handleSubmit = async () => {
+    setIsLoading(true);
+    try {
+      const result = await jobsEnhancedService.createJob(formData);
+      
+      if (result.success) {
+        const jobData = {
+          jobId: result.jobId?.toString() || `JOB_${Date.now()}`,
+          title: formData.job_title,
+          description: formData.job_description,
+          location: formData.locations.join(', '),
+          employmentType: formData.job_type,
+          experience: `${formData.min_experience}-${formData.max_experience} years`,
+          salaryRange: `₹${parseInt(formData.min_salary)/100000}-${parseInt(formData.max_salary)/100000} LPA`,
+          domain: formData.job_domain,
+          skills: formData.skills,
+          mode: formData.mode_of_job,
+          workplace: formData.mode_of_job,
+          tags: [formData.job_domain, ...formData.skills.slice(0, 3)],
+          image: formData.selected_image,
+          status: 'Published',
+          publishedDate: new Date().toISOString().split('T')[0],
+          stageCount: 3,
+          candidatesCount: 0,
+          closingDate: new Date(Date.now() + formData.job_close_days * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        };
+        
+        addJob(jobData);
+        // Refresh jobs across all components
+        window.dispatchEvent(new CustomEvent('jobCreated'));
+        alert('🎉 Job opening created successfully!');
+        onBack();
+      } else {
+        alert('Failed to create job opening. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error creating job:', error);
+      alert('An error occurred while creating the job. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const ProgressBar = () => (
@@ -687,6 +821,233 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
         );
 
       case 3:
+        return (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">JD Attachment (PDF)</label>
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-indigo-400 transition-colors">
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    const newFormData = { ...formData, jd_attachment: file };
+                    setFormData(newFormData);
+                    localStorage.setItem('jobFormData', JSON.stringify({...newFormData, jd_attachment: file?.name || null}));
+                  }}
+                  className="hidden"
+                  id="jd-upload"
+                />
+                <label htmlFor="jd-upload" className="cursor-pointer">
+                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">
+                    {formData.jd_attachment ? formData.jd_attachment.name : 'Click to upload JD PDF or drag and drop'}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">PDF files only, max 10MB</p>
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Eligible Courses</label>
+              <div className="space-y-3">
+                {formData.eligible_courses.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.eligible_courses.map(course => (
+                      <span key={course} className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-800 text-sm rounded-full">
+                        {course}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newCourses = formData.eligible_courses.filter(c => c !== course);
+                            const newFormData = { ...formData, eligible_courses: newCourses };
+                            setFormData(newFormData);
+                            localStorage.setItem('jobFormData', JSON.stringify(newFormData));
+                          }}
+                          className="ml-2 text-indigo-600 hover:text-indigo-800"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={coursesInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setCoursesInput(value);
+                      setShowCoursesSuggestions(value.length > 0);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && coursesInput.trim()) {
+                        e.preventDefault();
+                        const course = coursesInput.trim();
+                        if (!formData.eligible_courses.includes(course)) {
+                          const newFormData = { ...formData, eligible_courses: [...formData.eligible_courses, course] };
+                          setFormData(newFormData);
+                          localStorage.setItem('jobFormData', JSON.stringify(newFormData));
+                        }
+                        setCoursesInput('');
+                        setShowCoursesSuggestions(false);
+                      }
+                    }}
+                    placeholder="Type course name and press Enter (e.g., B.Tech, MBA, BCA)"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  />
+                  
+                  {showCoursesSuggestions && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                      {coursesSuggestions
+                        .filter(course => course.toLowerCase().includes(coursesInput.toLowerCase()) && !formData.eligible_courses.includes(course))
+                        .map(course => (
+                          <button
+                            key={course}
+                            onClick={() => {
+                              if (!formData.eligible_courses.includes(course)) {
+                                const newFormData = { ...formData, eligible_courses: [...formData.eligible_courses, course] };
+                                setFormData(newFormData);
+                                localStorage.setItem('jobFormData', JSON.stringify(newFormData));
+                              }
+                              setCoursesInput('');
+                              setShowCoursesSuggestions(false);
+                            }}
+                            className="w-full px-4 py-2 text-left hover:bg-indigo-50 transition-colors text-sm"
+                          >
+                            {course}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Eligibility Criteria</label>
+              <textarea
+                value={formData.eligibility_criteria}
+                onChange={(e) => {
+                  const newFormData = { ...formData, eligibility_criteria: e.target.value };
+                  setFormData(newFormData);
+                  localStorage.setItem('jobFormData', JSON.stringify(newFormData));
+                }}
+                placeholder="Specify minimum qualifications, certifications, or other eligibility requirements..."
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Selection Process Details</label>
+              <textarea
+                value={formData.selection_process}
+                onChange={(e) => {
+                  const newFormData = { ...formData, selection_process: e.target.value };
+                  setFormData(newFormData);
+                  localStorage.setItem('jobFormData', JSON.stringify(newFormData));
+                }}
+                placeholder="Describe the interview process, rounds, assessments, timeline, etc..."
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Other Details</label>
+              <textarea
+                value={formData.other_details}
+                onChange={(e) => {
+                  const newFormData = { ...formData, other_details: e.target.value };
+                  setFormData(newFormData);
+                  localStorage.setItem('jobFormData', JSON.stringify(newFormData));
+                }}
+                placeholder="Any additional information, benefits, company culture, or special requirements..."
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Registration Schedule</label>
+                <input
+                  type="text"
+                  value={formData.registration_schedule}
+                  onChange={(e) => setFormData(prev => ({ ...prev, registration_schedule: e.target.value }))}
+                  placeholder="e.g., Open till 15th Dec 2024"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
+                <input
+                  type="url"
+                  value={formData.website}
+                  onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                  placeholder="https://company.com"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Industry</label>
+                <input
+                  type="text"
+                  value={formData.industry}
+                  onChange={(e) => setFormData(prev => ({ ...prev, industry: e.target.value }))}
+                  placeholder="e.g., Technology, Healthcare, Finance"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Organisation Size</label>
+                <select
+                  value={formData.organisation_size}
+                  onChange={(e) => setFormData(prev => ({ ...prev, organisation_size: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                >
+                  <option value="">Select Size</option>
+                  <option value="1-10">1-10 employees</option>
+                  <option value="11-50">11-50 employees</option>
+                  <option value="51-200">51-200 employees</option>
+                  <option value="201-500">201-500 employees</option>
+                  <option value="501-1000">501-1000 employees</option>
+                  <option value="1000+">1000+ employees</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">About the Organisation</label>
+                <textarea
+                  value={formData.about_organisation}
+                  onChange={(e) => setFormData(prev => ({ ...prev, about_organisation: e.target.value }))}
+                  placeholder="Brief description about the company..."
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Contact Person</label>
+                <input
+                  type="text"
+                  value={formData.contact_person}
+                  onChange={(e) => setFormData(prev => ({ ...prev, contact_person: e.target.value }))}
+                  placeholder="HR Manager / Recruiter Name"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      case 4:
         const execCommand = (command: string, value?: string) => {
           if (editorRef.current) {
             editorRef.current.focus();
@@ -728,7 +1089,7 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">Job Image</label>
-              <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="grid grid-cols-5 gap-3 mb-6 max-h-64 overflow-y-auto">
                 {defaultImages.map((image, index) => (
                   <div
                     key={index}
@@ -746,7 +1107,7 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
                     <img 
                       src={image} 
                       alt={`Option ${index + 1}`}
-                      className="w-full h-20 object-cover"
+                      className="w-full h-16 object-cover"
                     />
                     {formData.selected_image === image && (
                       <div className="absolute inset-0 bg-indigo-500/20 flex items-center justify-center">
@@ -906,11 +1267,18 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
             </button>
 
             <button
-              onClick={currentStep === 3 ? handleSubmit : nextStep}
-              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl hover:shadow-lg transition-all"
+              onClick={currentStep === 4 ? handleSubmit : nextStep}
+              disabled={isLoading}
+              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50"
             >
-              <span>{currentStep === 3 ? 'Create Opening' : 'Next'}</span>
-              {currentStep === 3 ? <Check className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+              {isLoading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <>
+                  <span>{currentStep === 4 ? 'Create Opening' : 'Next'}</span>
+                  {currentStep === 4 ? <Check className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                </>
+              )}
             </button>
           </div>
         </div>

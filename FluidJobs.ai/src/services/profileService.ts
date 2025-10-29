@@ -7,6 +7,8 @@ export const profileService = {
 
     const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('fluidjobs_token');
     
+    console.log('Uploading profile image to:', `${API_BASE_URL}/api/upload/profile-image`);
+    
     const response = await fetch(`${API_BASE_URL}/api/profile/upload-profile-image`, {
       method: 'POST',
       headers: {
@@ -16,10 +18,14 @@ export const profileService = {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Profile image upload failed:', errorText);
       throw new Error('Failed to upload profile image');
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log('Profile image upload result:', result);
+    return result;
   },
 
   async uploadCoverImage(file: File): Promise<{ success: boolean; fileUrl: string }> {
@@ -49,6 +55,8 @@ export const profileService = {
 
     const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('fluidjobs_token');
     
+    console.log('Uploading resume to:', `${API_BASE_URL}/api/upload/resume`);
+    
     const response = await fetch(`${API_BASE_URL}/api/profile/upload-resume`, {
       method: 'POST',
       headers: {
@@ -58,10 +66,14 @@ export const profileService = {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Resume upload failed:', errorText);
       throw new Error('Failed to upload resume');
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log('Resume upload result:', result);
+    return result;
   },
 
   async getProfile(): Promise<any> {

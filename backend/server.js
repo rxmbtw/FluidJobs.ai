@@ -64,6 +64,8 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/user', require('./routes/user'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/bulk-import', require('./routes/bulkImport'));
+app.use('/api/jobs-enhanced', require('./routes/jobsEnhanced'));
+app.use('/api/upload', require('./routes/fileUpload'));
 
 // Serve uploaded files with proper headers
 app.use('/uploads', express.static('uploads', {
@@ -83,6 +85,7 @@ app.get('/api/test-file-serving', (req, res) => {
     backendUrl: process.env.BACKEND_URL || 'http://localhost:8000'
   });
 });
+// File upload route added
 // TODO: Add more route imports here
 // app.use('/api/jobs', require('./routes/jobs'));
 // app.use('/api/ai', require('./routes/gemini'));

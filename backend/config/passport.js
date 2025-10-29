@@ -2,6 +2,7 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const pool = require('./database');
 
+// Google OAuth Strategy
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -47,6 +48,8 @@ passport.use(new GoogleStrategy({
     return done(error, null);
   }
 }));
+
+
 
 passport.serializeUser((user, done) => {
   done(null, user.candidate_id);
