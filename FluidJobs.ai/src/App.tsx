@@ -3,7 +3,7 @@ import AppRoutes from './routes';
 import { JobsProvider } from './contexts/JobsProvider';
 import { ProfileProvider } from './contexts/ProfileContext';
 import { AuthProvider } from './contexts/AuthProvider';
-import './App.css';
+
 
 function App() {
   return (

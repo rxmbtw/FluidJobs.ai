@@ -16,14 +16,24 @@ export interface Job {
 	description: string;
 }
 
-// Candidate entity
+// Candidate entity (Database schema)
 export interface Candidate {
-	id: number;
-	name: string;
+	candidate_id: string;
+	full_name: string;
+	phone_number: string;
 	email: string;
-	status: string;
-	role: string;
-	bio: string;
+	gender: string;
+	marital_status: string;
+	current_company: string;
+	notice_period: string;
+	current_ctc: string;
+	location: string;
+	currently_employed: string;
+	previous_company: string;
+	expected_ctc: string;
+	experience_years: number;
+	created_at: string;
+	resume_score: number;
 }
 
 // Company entity

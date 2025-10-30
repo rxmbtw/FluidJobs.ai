@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Users, Zap, Settings, MessageCircle, TestTube } from 'lucide-react';
-import ManageCandidates from './ManageCandidates';
+
 
 interface JobSpecificDashboardProps {
   jobTitle: string;
@@ -22,7 +22,15 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, o
   const renderContent = () => {
     switch (activeSection) {
       case 'manage-candidates':
-        return <ManageCandidates />;
+        return (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Manage Candidates</h3>
+              <p className="text-gray-600">Candidate management feature coming soon</p>
+            </div>
+          </div>
+        );
       case 'hiring-automation':
         return (
           <div className="p-8">

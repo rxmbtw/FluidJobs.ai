@@ -11,7 +11,8 @@ import JobPublishingAssistant from './JobPublishingAssistant';
 import JobOpenings from '../pages/JobOpenings';
 import JobSpecificDashboard from './JobSpecificDashboard';
 import BulkImportSection from './BulkImportSection';
-import ManageCandidatesWrapper from './ManageCandidatesWrapper';
+import Candidates from '../pages/Candidates';
+
 
 interface JobOpeningsContentProps {
   onJobSelect: (jobTitle: string) => void;
@@ -152,7 +153,7 @@ const UnifiedJobDashboard: React.FC = () => {
           </div>
         ) : activeNav === 'manage_candidates' ? (
           <div className="-m-8 h-full">
-            <ManageCandidatesWrapper />
+            <Candidates />
           </div>
         ) : activeNav === 'bulk_import' ? (
           <BulkImportSection />
