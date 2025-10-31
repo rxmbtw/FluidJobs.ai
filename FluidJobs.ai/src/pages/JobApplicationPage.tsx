@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Clock, Building, Calendar, ExternalLink, FileText } 
 import { motion } from 'framer-motion';
 import { useJobs } from '../contexts/JobsProvider';
 import { jobService, Job } from '../services/jobService';
+import { attachmentService, JobAttachment } from '../services/attachmentService';
 
 interface JobApplicationData {
   jobId: string;
@@ -32,10 +33,7 @@ interface JobApplicationData {
   eligibilityCriteria: string[];
   selectionProcess: string[];
   otherDetails: string;
-  attachment?: {
-    name: string;
-    url: string;
-  };
+
 }
 
 const jobApplicationData: JobApplicationData = {
@@ -94,11 +92,7 @@ const jobApplicationData: JobApplicationData = {
     "Technical Interview",
     "HR Interview"
   ],
-  otherDetails: "Dear Students, Read complete job description carefully and prepare accordingly for the drive.",
-  attachment: {
-    name: "JD- Software Engineer...",
-    url: "/attachments/software-engineer-jd.pdf"
-  }
+  otherDetails: "Dear Students, Read complete job description carefully and prepare accordingly for the drive."
 };
 
 const JobApplicationPage: React.FC = () => {
@@ -106,21 +100,27 @@ const JobApplicationPage: React.FC = () => {
   const navigate = useNavigate();
   const { jobs } = useJobs();
   const [serviceJob, setServiceJob] = useState<Job | null>(null);
+  const [attachments, setAttachments] = useState<JobAttachment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchJob = async () => {
+    const fetchJobData = async () => {
       if (jobId) {
         try {
+          // Fetch job details
           const job = await jobService.getJobById(jobId);
           setServiceJob(job);
+          
+          // Fetch job attachments
+          const jobAttachments = await attachmentService.getJobAttachments(jobId);
+          setAttachments(jobAttachments);
         } catch (error) {
-          console.error('Error fetching job:', error);
+          console.error('Error fetching job data:', error);
         }
       }
       setLoading(false);
     };
-    fetchJob();
+    fetchJobData();
   }, [jobId]);
 
   // Find the job from context or service
@@ -213,7 +213,7 @@ const JobApplicationPage: React.FC = () => {
                 <div className="flex items-start justify-between mb-6">
                   <div className="flex items-center">
                     <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center mr-4 border border-gray-200">
-                      <img src="/images/FluidHire_logo.png" alt="FluidJobs.ai" className="w-8 h-8 object-contain" />
+                      <img src="/images/FLuid Live Icon.png" alt="FluidJobs.ai" className="w-8 h-8 object-contain" />
                     </div>
                     <div>
                       <h1 className="text-xl font-bold text-gray-900 mb-1">{currentJobData.title}</h1>
@@ -281,18 +281,28 @@ const JobApplicationPage: React.FC = () => {
               </div>
             </motion.div>
 
-            {/* Attachment */}
-            {currentJobData.attachment && (
+            {/* Attachments */}
+            {attachments.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
                 className="bg-white rounded-lg shadow-sm border p-6"
               >
-                <h2 className="text-lg font-bold text-gray-900 mb-4 text-left">1 Attachment</h2>
-                <div className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                  <FileText className="w-6 h-6 text-gray-400 mr-3" />
-                  <span className="text-sm text-gray-700">{currentJobData.attachment.name}</span>
+                <h2 className="text-lg font-bold text-gray-900 mb-4 text-left">
+                  {attachments.length} Attachment{attachments.length > 1 ? 's' : ''}
+                </h2>
+                <div className="space-y-2">
+                  {attachments.map((attachment) => (
+                    <div 
+                      key={attachment.attachment_id}
+                      className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                      onClick={() => window.open(attachment.file_path, '_blank')}
+                    >
+                      <FileText className="w-6 h-6 text-gray-400 mr-3" />
+                      <span className="text-sm text-gray-700">{attachment.original_name}</span>
+                    </div>
+                  ))}
                 </div>
               </motion.div>
             )}

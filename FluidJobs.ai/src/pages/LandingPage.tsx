@@ -6,7 +6,7 @@ const LandingPage = () => {
     <div style={{ textAlign: 'center', marginTop: '50px' }}>
       <div style={{ marginBottom: '30px' }}>
         <img 
-          src="/images/FuildJobs.ai logo.png" 
+          src="/images/FLuid Live Icon.png" 
           alt="FluidJobs.ai Logo" 
           style={{ height: '80px', width: 'auto', objectFit: 'contain' }}
         />

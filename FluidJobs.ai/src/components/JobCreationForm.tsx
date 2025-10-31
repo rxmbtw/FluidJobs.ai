@@ -221,7 +221,7 @@ What We Offer:
         <div className="p-6 border-b border-slate-700">
           <div className="flex items-center space-x-3">
             <img 
-              src="/images/FuildJobs.ai logo.png" 
+              src="/images/FLuid Live Icon.png" 
               alt="FluidJobs.ai Logo" 
               className="w-8 h-8 object-contain"
             />
@@ -256,7 +256,7 @@ What We Offer:
             <div className="mb-6 pb-6 border-b border-gray-200">
               <div className="flex items-center gap-3 mb-4">
                 <img 
-                  src="/images/FuildJobs.ai logo.png" 
+                  src="/images/FLuid Live Icon.png" 
                   alt="FluidJobs.ai Logo" 
                   className="w-8 h-8 object-contain"
                 />

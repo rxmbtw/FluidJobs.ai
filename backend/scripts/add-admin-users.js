@@ -4,16 +4,11 @@ const bcrypt = require('bcryptjs');
 async function addAdminUsers() {
   try {
     const adminEmails = [
-      'admin@fluidjobs.ai',
-      'hr@fluidjobs.ai', 
-      'manager@fluidjobs.ai',
-      'ramsurse2@gmail.com',
-      'rohnit@fluid.live',
-      'deepesh.sodhi@fluid.live',
       'ram@fluid.live',
       'meetpandya@fluid.live',
-      'pmeet8926@gmail.com',
-      'meetpandya0101@outlook.com'
+      'deepesh.sodhi@fluid.live',
+      'rohnit@fluid.live',
+      'shobhit@fluid.live'
     ];
     
     const hashedPassword = await bcrypt.hash('admin@123', 10);

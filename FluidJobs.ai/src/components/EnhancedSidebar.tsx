@@ -137,7 +137,7 @@ const EnhancedSidebar: React.FC = () => {
         return [
           { name: 'Home', path: '/dashboard', icon: Home },
           { name: 'Jobs', path: '/jobs', icon: Briefcase, badge: 21 },
-          { name: 'Applications', path: '/applications', icon: Users, badge: 3 },
+          { name: 'Applications', path: '/applications', icon: Users },
           { name: 'Resumes', path: '/resumes', icon: FileText, badge: resumeCount },
         ];
       
@@ -257,7 +257,10 @@ const EnhancedSidebar: React.FC = () => {
       {/* Bottom Section */}
       {!isCollapsed && (
         <div className="px-5 pb-5 space-y-4">
-          <button className="w-full bg-[#EDE7F6] rounded-lg p-3 hover:bg-[#E1D5F6] transition-colors">
+          <button 
+            onClick={() => navigate('/contact')}
+            className="w-full bg-[#EDE7F6] rounded-lg p-3 hover:bg-[#E1D5F6] transition-colors"
+          >
             <div className="flex items-center gap-2.5">
               <MessageSquare className="w-4 h-4 text-[#673AB7] flex-shrink-0" />
               <p className="text-xs font-medium text-gray-900">Get in touch with FluidJobs.ai</p>
@@ -265,7 +268,7 @@ const EnhancedSidebar: React.FC = () => {
           </button>
           <div className="flex justify-center">
             <img 
-              src="/images/FuildJobs.ai logo.png" 
+              src="/images/FLuid Live Icon.png" 
               alt="FluidJobs.ai Logo" 
               className="w-8 h-8 object-contain"
               style={{ background: 'transparent', mixBlendMode: 'multiply' }}

@@ -7,11 +7,13 @@ import {
   Upload
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthProvider';
 import JobPublishingAssistant from './JobPublishingAssistant';
 import JobOpenings from '../pages/JobOpenings';
 import JobSpecificDashboard from './JobSpecificDashboard';
 import BulkImportSection from './BulkImportSection';
 import ManageCandidatesWrapper from './ManageCandidatesWrapper';
+import { ContactForm } from '../pages/Contact';
 
 interface JobOpeningsContentProps {
   onJobSelect: (jobTitle: string) => void;
@@ -23,8 +25,9 @@ const JobOpeningsContent: React.FC<JobOpeningsContentProps> = ({ onJobSelect }) 
 
 
 
-const UnifiedJobDashboard: React.FC = () => {
-  console.log('UnifiedJobDashboard component loaded - Admin dashboard is showing');
+const CompanyDashboard: React.FC = () => {
+  console.log('CompanyDashboard component loaded - Admin dashboard is showing');
+  const { user } = useAuth();
   const [activeNav, setActiveNav] = useState('view_opening');
   const [showCreateJob, setShowCreateJob] = useState(() => {
     return localStorage.getItem('showCreateJob') === 'true';
@@ -39,38 +42,30 @@ const UnifiedJobDashboard: React.FC = () => {
     { id: 'view_opening', label: 'View Openings', icon: Eye },
     { id: 'manage_candidates', label: 'Manage Candidates', icon: Users },
     { id: 'bulk_import', label: 'Bulk Import', icon: Upload },
-    { id: 'contact_us', label: 'Contact Us', icon: MessageCircle, path: '/contact' }
+    { id: 'contact_us', label: 'Contact Us', icon: MessageCircle }
   ];
 
 
 
-  const handleNavClick = (navId: string, path?: string) => {
+  const handleNavClick = (navId: string) => {
+    setActiveNav(navId);
     if (navId === 'create_job') {
-      setShowCreateJob(true);
-      setActiveNav(navId);
       localStorage.setItem('showCreateJob', 'true');
-    } else if (navId === 'view_opening' || navId === 'manage_candidates' || navId === 'bulk_import') {
-      setActiveNav(navId);
-    } else if (path) {
-      navigate(path);
     }
   };
 
   const handleLogoClick = () => {
-    setIsCollapsed(!isCollapsed);
+    setActiveNav('view_opening');
   };
 
   const handleBackToDashboard = () => {
-    setShowCreateJob(false);
     setActiveNav('view_opening');
     localStorage.removeItem('showCreateJob');
     localStorage.removeItem('jobFormData');
     localStorage.removeItem('jobFormStep');
   };
 
-  if (showCreateJob) {
-    return <JobPublishingAssistant onBack={handleBackToDashboard} />;
-  }
+
 
   if (showJobSpecificDashboard) {
     return (
@@ -96,10 +91,11 @@ const UnifiedJobDashboard: React.FC = () => {
         <div className="p-6 border-b border-slate-700">
           <button
             onClick={handleLogoClick}
-            className={`flex items-center w-full text-left hover:opacity-80 transition-opacity ${isCollapsed ? 'justify-center' : 'space-x-3'}`}
+            className={`flex items-center w-full text-left hover:opacity-80 transition-opacity cursor-pointer ${isCollapsed ? 'justify-center' : 'space-x-3'}`}
+            title="Go to View Openings"
           >
             <img 
-              src="/images/FuildJobs.ai logo.png" 
+              src="/images/FLuid Live Icon.png" 
               alt="FluidJobs.ai Logo" 
               className="w-8 h-8 object-contain flex-shrink-0"
             />
@@ -113,7 +109,7 @@ const UnifiedJobDashboard: React.FC = () => {
             {navigationItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => handleNavClick(item.id, item.path)}
+                onClick={() => handleNavClick(item.id)}
                 className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} px-4 py-3 rounded-lg text-left transition-colors ${
                   activeNav === item.id 
                     ? 'bg-indigo-600 text-white' 
@@ -131,10 +127,10 @@ const UnifiedJobDashboard: React.FC = () => {
         {/* User Profile */}
         <div className="p-4 border-t border-slate-700">
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
-            <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
-              AD
+            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
+              {user?.email ? user.email.charAt(0).toUpperCase() : 'A'}
             </div>
-            {!isCollapsed && <span className="font-medium">Admin</span>}
+            {!isCollapsed && <span className="font-medium text-sm">{user?.email || 'Admin'}</span>}
           </div>
         </div>
       </div>
@@ -156,6 +152,12 @@ const UnifiedJobDashboard: React.FC = () => {
           </div>
         ) : activeNav === 'bulk_import' ? (
           <BulkImportSection />
+        ) : activeNav === 'contact_us' ? (
+          <ContactForm />
+        ) : activeNav === 'create_job' ? (
+          <div className="-m-8">
+            <JobPublishingAssistant onBack={handleBackToDashboard} />
+          </div>
         ) : (
           <div className="max-w-4xl mx-auto text-center">
             <div className="bg-white rounded-2xl shadow-xl p-12">
@@ -170,4 +172,4 @@ const UnifiedJobDashboard: React.FC = () => {
   );
 };
 
-export default UnifiedJobDashboard;
+export default CompanyDashboard;

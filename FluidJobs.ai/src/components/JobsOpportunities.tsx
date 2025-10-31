@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Users, Award, Building2 } from 'lucide-react';
+import { FileText, Users, Award, Building2, Search, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { jobService, Job } from '../services/jobService';
+import { jobService, Job, JobAttachment } from '../services/jobService';
 import { useJobs } from '../contexts/JobsProvider';
 import DashboardLayout from './DashboardLayout';
 
 const JobsOpportunities: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('opportunities');
+
   const [eligibleFilter, setEligibleFilter] = useState(true);
   const [nonEligibleFilter, setNonEligibleFilter] = useState(false);
   const { jobs: contextJobs, loading: contextLoading, refreshJobs } = useJobs();
@@ -15,6 +15,8 @@ const JobsOpportunities: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [jobStats, setJobStats] = useState({ total: 0, eligible: 0, applied: 0, offers: 0 });
   const [activeTags, setActiveTags] = useState<string[]>(['IT Product & Services', 'IT / Computers - Software']);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [jobAttachments, setJobAttachments] = useState<{[key: string]: JobAttachment[]}>({});
 
   const popularTags = [
     'IT Product & Services',
@@ -37,28 +39,7 @@ const JobsOpportunities: React.FC = () => {
     return () => window.removeEventListener('jobCreated', handleJobCreated);
   }, [refreshJobs]);
 
-  useEffect(() => {
-    // Convert context jobs to Job format and merge with existing jobs
-    if (contextJobs.length > 0) {
-      const convertedJobs = contextJobs.map(job => ({
-        id: job.jobId,
-        title: job.title,
-        company: 'FluidJobs.ai',
-        type: job.employmentType,
-        industry: job.domain,
-        salary: job.salaryRange,
-        location: job.location,
-        postedDate: job.publishedDate,
-        isEligible: true,
-        registrationDeadline: job.closingDate
-      }));
-      setJobs(prev => {
-        const existingIds = prev.map(j => j.id);
-        const newJobs = convertedJobs.filter(j => !existingIds.includes(j.id));
-        return [...newJobs, ...prev];
-      });
-    }
-  }, [contextJobs]);
+
 
   const fetchJobs = async () => {
     try {
@@ -67,12 +48,18 @@ const JobsOpportunities: React.FC = () => {
         jobService.getAllJobs(),
         jobService.getJobStats()
       ]);
-      setJobs(prev => {
-        const contextJobIds = contextJobs.map(j => j.jobId);
-        const filteredJobData = jobData.filter(j => !contextJobIds.includes(j.id));
-        return [...prev.filter(j => contextJobIds.includes(j.id)), ...filteredJobData];
-      });
+      setJobs(jobData);
       setJobStats(stats);
+      
+      // Fetch attachments for all jobs
+      const attachmentsMap: {[key: string]: JobAttachment[]} = {};
+      await Promise.all(
+        jobData.map(async (job) => {
+          const attachments = await jobService.getJobAttachments(job.id);
+          attachmentsMap[job.id] = attachments;
+        })
+      );
+      setJobAttachments(attachmentsMap);
     } catch (error) {
       console.error('Error fetching jobs:', error);
     } finally {
@@ -81,9 +68,15 @@ const JobsOpportunities: React.FC = () => {
   };
 
   const filteredJobs = jobs.filter(job => {
-    if (eligibleFilter && job.isEligible) return true;
-    if (nonEligibleFilter && !job.isEligible) return true;
-    return false;
+    const matchesSearch = searchQuery === '' || 
+      job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.industry.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesFilter = (eligibleFilter && job.isEligible) || (nonEligibleFilter && !job.isEligible);
+    
+    return matchesSearch && matchesFilter;
   });
 
   const toggleTag = (tag: string) => {
@@ -109,22 +102,19 @@ const JobsOpportunities: React.FC = () => {
       <div className="-m-8 p-6 min-h-full">
         {/* Main Content Column */}
         <div>
-          {/* Navigation Tabs */}
-          <div className="border-b-2 border-gray-200 mb-6">
-            <div className="flex space-x-8">
-              {['opportunities', 'applications', 'offers'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`pb-3 px-1 text-sm font-medium capitalize ${
-                    activeTab === tab
-                      ? 'text-purple-600 border-b-2 border-purple-600 font-bold'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
+
+
+          {/* Search Bar */}
+          <div className="mb-6">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search jobs, companies, locations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white border border-gray-300 rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              />
             </div>
           </div>
 
@@ -170,7 +160,11 @@ const JobsOpportunities: React.FC = () => {
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-white rounded flex items-center justify-center border border-gray-200">
-                          <img src="/images/FluidHire_logo.png" alt="FluidJobs.ai" className="w-full h-full object-cover rounded" />
+                          <img 
+                            src="/images/FLuid Live Icon.png" 
+                            alt="FluidJobs.ai" 
+                            className="w-8 h-8 object-contain rounded"
+                          />
                         </div>
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
@@ -206,6 +200,8 @@ const JobsOpportunities: React.FC = () => {
                         <p className="text-sm font-medium text-gray-900">{job.location}</p>
                       </div>
                     </div>
+
+
 
                     {/* Card Footer */}
                     <div className="flex justify-between items-center">

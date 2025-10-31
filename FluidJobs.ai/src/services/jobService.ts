@@ -12,6 +12,16 @@ export interface Job {
   companyLogo?: string;
   description?: string;
   skills?: string[];
+  attachments?: JobAttachment[];
+}
+
+export interface JobAttachment {
+  attachment_id: number;
+  original_name: string;
+  file_path: string;
+  file_type: string;
+  attachment_type: string;
+  uploaded_at: string;
 }
 
 // Real job data from the careers page
@@ -149,12 +159,8 @@ export const mockJobs: Job[] = [
 
 export const jobService = {
   async getAllJobs(): Promise<Job[]> {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
     try {
-      // Try to fetch from backend first
-      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+      const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
       const response = await fetch(`${backendUrl}/api/jobs`);
       
       if (response.ok) {
@@ -170,8 +176,41 @@ export const jobService = {
   },
 
   async getJobById(id: string): Promise<Job | null> {
+    try {
+      const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${backendUrl}/api/jobs/${id}`);
+      
+      if (response.ok) {
+        const job = await response.json();
+        // Fetch attachments
+        const attachmentsResponse = await fetch(`${backendUrl}/api/job-attachments/${id}`);
+        if (attachmentsResponse.ok) {
+          job.attachments = await attachmentsResponse.json();
+        }
+        return job;
+      }
+    } catch (error) {
+      console.log('Backend not available, using mock data');
+    }
+    
+    // Fallback to mock data
     const jobs = await this.getAllJobs();
     return jobs.find(job => job.id === id) || null;
+  },
+
+  async getJobAttachments(jobId: string): Promise<JobAttachment[]> {
+    try {
+      const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${backendUrl}/api/job-attachments/${jobId}`);
+      
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      console.log('Failed to fetch attachments');
+    }
+    
+    return [];
   },
 
   async getJobStats(): Promise<{ total: number; eligible: number; applied: number; offers: number }> {

@@ -21,13 +21,14 @@ import JobDetailPage from './pages/JobDetailPage';
 import JobApplicationPage from './pages/JobApplicationPage';
 import Contact from './pages/Contact';
 import Signup from './pages/Signup';
-import PremiumAuthPage from './components/PremiumAuthPage';
+import LoginAuthPage from './components/LoginAuthPage';
 import Unauthorized from './pages/Unauthorized';
 import CandidateRegistration from './pages/CandidateRegistration';
-import UnifiedJobDashboard from './components/UnifiedJobDashboard';
+import CompanyDashboard from './components/CompanyDashboard';
 import ChangePassword from './pages/ChangePassword';
 import AuthCallback from './pages/AuthCallback';
 import ManageCandidates from './components/ManageCandidates';
+import ForgotPassword from './pages/ForgotPassword';
 
 import DashboardRouter from './components/DashboardRouter';
 
@@ -39,19 +40,19 @@ const AppRoutes = () => (
 			<Route path="/careers" element={<JobOpenings />} />
 			<Route path="/careers/:jobId" element={<JobDetailPage />} />
 			<Route path="/careers/:jobId/apply" element={<JobApplicationPage />} />
-			<Route path="/login" element={<PremiumAuthPage />} />
+			<Route path="/login" element={<LoginAuthPage />} />
+			<Route path="/forgot-password" element={<ForgotPassword />} />
 			<Route path="/auth/callback" element={<AuthCallback />} />
 
 			<Route path="/dashboard-redirect" element={<DashboardRouter />} />
 			<Route path="/signup" element={<Signup />} />
 			<Route path="/candidate-registration" element={<CandidateRegistration />} />
 			<Route path="/unauthorized" element={<Unauthorized />} />
-			<Route path="/contact" element={<Contact />} />
 			<Route element={<PrivateRoute />}>
 				<Route path="/dashboard" element={<Dashboard />} />
-				<Route path="/admin-dashboard" element={<UnifiedJobDashboard />} />
+				<Route path="/admin-dashboard" element={<CompanyDashboard />} />
 				{/* Alias for backwards compatibility / canonical admin entry */}
-				<Route path="/main-unified-dashboard" element={<UnifiedJobDashboard />} />
+				<Route path="/company-dashboard" element={<CompanyDashboard />} />
 				<Route path="/candidates" element={<Candidates />} />
 				<Route path="/manage-candidates" element={<ManageCandidates />} />
 				<Route path="/companies" element={<Companies />} />
@@ -60,6 +61,7 @@ const AppRoutes = () => (
 				<Route path="/edit-profile" element={<EditProfilePage />} />
 				<Route path="/resumes" element={<ResumesPage />} />
 				<Route path="/settings" element={<Settings />} />
+				<Route path="/contact" element={<Contact />} />
 				<Route path="/change-password" element={<ChangePassword />} />
 				<Route path="/interviews" element={<Interviews />} />
 				<Route path="/saved-jobs" element={<SavedJobs />} />

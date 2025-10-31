@@ -789,7 +789,7 @@ const PremiumLandingPage = () => {
               whileHover={{ scale: 1.05 }}
             >
               <img 
-                src="/images/FuildJobs.ai logo.png" 
+                src="/images/FLuid Live Icon.png" 
                 alt="FluidJobs.ai Logo" 
                 className="w-8 h-8 object-contain"
                 style={{ background: 'transparent', mixBlendMode: 'multiply' }}
@@ -1200,7 +1200,7 @@ const PremiumLandingPage = () => {
             <div className="md:col-span-2">
               <div className="flex items-center space-x-3 mb-8">
                 <img 
-                  src="/images/FuildJobs.ai logo.png" 
+                  src="/images/FLuid Live Icon.png" 
                   alt="FluidJobs.ai Logo" 
                   className="w-8 h-8 object-contain"
                   style={{ background: 'transparent', mixBlendMode: 'multiply' }}

@@ -19,8 +19,11 @@ const ResumesPage: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'Unknown date';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid date';
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -44,37 +47,48 @@ const ResumesPage: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-2">
-              {profileData.resumes.map((resume) => (
-                <div
-                  key={resume.id}
-                  onClick={() => setSelectedResumeUrl(resume.fileUrl)}
-                  className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                    selectedResumeUrl === resume.fileUrl
-                      ? 'bg-[#EDE7F6] border-[#673AB7]'
-                      : 'bg-white border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {resume.fileName}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {formatDate(resume.uploadDate)}
-                      </p>
+              {profileData.resumes.map((resume, index) => {
+                const resumeUrl = (resume as any).url || resume.fileUrl;
+                const resumeName = (resume as any).name || resume.fileName || `Resume ${index + 1}`;
+                const uploadDate = (resume as any).uploadedAt || resume.uploadDate;
+                
+                return (
+                  <div
+                    key={resume.id || index}
+                    onClick={() => {
+                      console.log('Resume clicked:', resumeName, resumeUrl);
+                      console.log('Full resume object:', resume);
+                      setSelectedResumeUrl(resumeUrl);
+                    }}
+                    className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                      selectedResumeUrl === resumeUrl
+                        ? 'bg-[#EDE7F6] border-[#673AB7]'
+                        : 'bg-white border-gray-200 hover:bg-gray-50'
+                    }`}
+                    style={{ userSelect: 'none' }}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {resumeName}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formatDate(uploadDate)}
+                        </p>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteResume(resume.id || index.toString());
+                        }}
+                        className="ml-2 p-1 text-gray-400 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteResume(resume.id);
-                      }}
-                      className="ml-2 p-1 text-gray-400 hover:text-red-600 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -82,11 +96,18 @@ const ResumesPage: React.FC = () => {
         {/* PDF Viewer Panel */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           {selectedResumeUrl ? (
-            <iframe
-              src={selectedResumeUrl}
-              className="w-full h-[calc(100vh-200px)] min-h-[600px]"
-              title="Resume Viewer"
-            />
+            <div className="h-[calc(100vh-200px)] min-h-[600px] flex flex-col">
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-sm font-medium text-gray-900">Resume Viewer</h3>
+              </div>
+              <div className="flex-1 bg-gray-100">
+                <iframe
+                  src={selectedResumeUrl}
+                  className="w-full h-full border-0"
+                  title="Resume PDF Viewer"
+                />
+              </div>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] min-h-[600px]">
               <FileText className="w-16 h-16 text-gray-300 mb-4" />

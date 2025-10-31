@@ -1,15 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Search, 
-  Grid3x3, 
-  Calendar, 
-  Bell, 
-  Bookmark,
   ChevronDown,
-  User,
-  Settings,
-  LogOut
+  User
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthProvider';
 import { useProfile } from '../contexts/ProfileContext';
@@ -19,7 +12,7 @@ const TopNavBar: React.FC = () => {
   const { profileData } = useProfile();
   const navigate = useNavigate();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+
 
   const handleLogout = () => {
     logout();
@@ -29,9 +22,19 @@ const TopNavBar: React.FC = () => {
   return (
     <div className="h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-6">
       {/* Left - Logo Section */}
-      <div className="flex items-center space-x-3 w-[260px]">
+      <div 
+        className="flex items-center space-x-3 w-[260px] cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={() => {
+          if (user?.role === 'Admin') {
+            navigate('/company-dashboard');
+          } else {
+            navigate('/dashboard');
+          }
+        }}
+        title="Go to Dashboard"
+      >
         <img 
-          src="/images/FuildJobs.ai logo.png" 
+          src="/images/FLuid Live Icon.png" 
           alt="FluidJobs.ai Logo" 
           className="w-8 h-8 object-contain"
           style={{ background: 'transparent', mixBlendMode: 'multiply' }}
@@ -39,59 +42,11 @@ const TopNavBar: React.FC = () => {
         <span className="font-semibold text-[#283593] text-xl">FluidJobs.ai</span>
       </div>
 
-      {/* Center - Search Bar */}
-      <div className="flex-1 max-w-md mx-8">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#F0F2F5] border-none rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-200"
-          />
-        </div>
-      </div>
+
 
       {/* Right - Icons and Profile */}
       <div className="flex items-center space-x-4">
-        {/* Apps Icon */}
-        <button 
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          title="Apps"
-        >
-          <Grid3x3 className="w-6 h-6 text-gray-600" />
-        </button>
 
-        {/* Calendar Icon */}
-        <button 
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          title="Calendar"
-          onClick={() => navigate('/calendar')}
-        >
-          <Calendar className="w-6 h-6 text-gray-600" />
-        </button>
-
-        {/* Notifications Icon with Badge */}
-        <button 
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative"
-          title="Notifications"
-          onClick={() => navigate('/notifications')}
-        >
-          <Bell className="w-6 h-6 text-[#EF5350]" />
-          <span className="absolute top-1 right-1 w-4 h-4 bg-[#EF5350] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-            2
-          </span>
-        </button>
-
-        {/* Bookmark Icon */}
-        <button 
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          title="Saved"
-          onClick={() => navigate('/saved')}
-        >
-          <Bookmark className="w-6 h-6 text-gray-600" />
-        </button>
 
         {/* User Profile Dropdown */}
         <div className="relative">

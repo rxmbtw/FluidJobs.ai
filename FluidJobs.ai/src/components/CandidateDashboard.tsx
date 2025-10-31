@@ -8,6 +8,7 @@ import {
   Briefcase,
   User
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthProvider';
 
 interface Post {
@@ -25,6 +26,7 @@ interface Post {
 
 const CandidateDashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [posts] = useState<Post[]>([
     {
       id: 1,
@@ -154,10 +156,10 @@ const CandidateDashboard: React.FC = () => {
           </div>
 
           <button 
-            onClick={() => window.location.href = '/resumes'}
+            onClick={() => navigate('/jobs')}
             className="w-full bg-[#673AB7] hover:bg-[#5E35B1] text-white py-2.5 px-4 rounded-lg text-sm font-medium transition-colors shadow-sm"
           >
-            Generate Resume
+            View Opportunities
           </button>
         </div>
       </div>

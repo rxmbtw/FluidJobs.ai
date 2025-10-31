@@ -2,7 +2,7 @@ import React from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import CandidateDashboard from '../components/CandidateDashboard';
 import ClientDashboard from '../components/ClientDashboard';
-import UnifiedJobDashboard from '../components/UnifiedJobDashboard';
+import CompanyDashboard from '../components/CompanyDashboard';
 
 const Dashboard = () => {
   // Get user from sessionStorage directly

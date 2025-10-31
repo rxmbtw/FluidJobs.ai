@@ -62,20 +62,7 @@ const ProfilePage: React.FC = () => {
             {profileData.coverImage && (
               <img src={profileData.coverImage} alt="Cover" className="w-full h-full object-cover" />
             )}
-            <button
-              onClick={() => coverImageInputRef.current?.click()}
-              className="absolute bottom-3 right-3 flex items-center gap-2 px-3 py-2 bg-white/90 hover:bg-white text-gray-700 border border-gray-200 rounded-lg text-xs font-semibold shadow-sm transition-colors"
-            >
-              <Camera className="w-4 h-4" />
-              Edit Cover Image
-            </button>
-            <input
-              ref={coverImageInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleCoverImageSelect}
-              className="hidden"
-            />
+
           </div>
           
           {/* Profile Details */}

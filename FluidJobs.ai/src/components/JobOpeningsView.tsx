@@ -37,7 +37,7 @@ const JobOpeningsView: React.FC = () => {
     <div className="p-8">
       <div className="flex items-center space-x-3 mb-8">
           <img 
-            src="/images/FuildJobs.ai logo.png" 
+            src="/images/FLuid Live Icon.png" 
             alt="FluidJobs.ai Logo" 
             className="w-8 h-8 object-contain"
           />

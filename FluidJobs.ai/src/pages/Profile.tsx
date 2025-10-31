@@ -184,12 +184,7 @@ const Profile: React.FC = () => {
                   <User className="w-10 h-10 text-purple-600" />
                 )}
               </div>
-              <button 
-                onClick={triggerFileUpload}
-                className="absolute -bottom-1 -right-1 bg-white border-2 border-gray-200 rounded-full p-1 hover:bg-gray-50"
-              >
-                <Camera className="w-4 h-4 text-gray-600" />
-              </button>
+
               <input
                 ref={fileInputRef}
                 type="file"
@@ -201,12 +196,7 @@ const Profile: React.FC = () => {
             <div className="ml-6">
               <h2 className="text-2xl font-bold text-gray-900">{personalInfo.fullName}</h2>
               <p className="text-gray-600">{personalInfo.email}</p>
-              <button 
-                onClick={triggerFileUpload}
-                className="mt-2 text-purple-600 hover:text-purple-700 text-sm font-medium"
-              >
-                Change Photo
-              </button>
+
             </div>
           </div>
         </div>

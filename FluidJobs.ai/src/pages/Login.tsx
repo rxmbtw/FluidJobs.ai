@@ -12,7 +12,7 @@ const Login: React.FC = () => {
         <div>
           <div className="flex justify-center mb-6">
             <img 
-              src="/images/FuildJobs.ai logo.png" 
+              src="/images/FLuid Live Icon.png" 
               alt="FluidJobs.ai Logo" 
               className="h-16 w-auto object-contain"
             />

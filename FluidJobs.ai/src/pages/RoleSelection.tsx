@@ -67,7 +67,7 @@ const RoleSelection: React.FC = () => {
         <div className="text-center mb-12">
           <div className="flex items-center justify-center space-x-3 mb-6">
             <img 
-              src="/images/FuildJobs.ai logo.png" 
+              src="/images/FLuid Live Icon.png" 
               alt="FluidJobs.ai Logo" 
               className="w-12 h-12 object-contain"
             />
