@@ -1,0 +1,245 @@
+import React, { useState, useEffect } from 'react';
+import UiverseButton from './UiverseButton';
+import RegistrationModal from './registration/RegistrationModal';
+import { useAuth } from '../../contexts/AuthContext';
+
+// This is a global declaration to inform TypeScript about the 'google' object from the GSI script
+declare global {
+    interface Window {
+        google: any;
+    }
+}
+
+const CLIENT_ID = '619325207297-2gv3tps9butidjos0phet2q1q55kmq7p.apps.googleusercontent.com';
+const API_BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+
+const GoogleIcon: React.FC = () => (
+    <svg className="w-5 h-5" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12 c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24 c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
+        <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657 C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
+        <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36 c-5.222,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
+        <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574 c0,0,0,0,0,0l6.19,5.238c-0.438-0.382,6.355-5.938,6.355-15.812C44,22.659,43.862,21.35,43.611,20.083z" />
+    </svg>
+);
+
+const LinkedInIcon: React.FC = () => (
+    <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path>
+    </svg>
+);
+
+const EyeIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+    </svg>
+);
+
+const EyeOffIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+    </svg>
+);
+
+const SocialButton: React.FC<{ icon: React.ReactNode; label: string; onClick?: () => void }> = ({ icon, label, onClick }) => (
+    <button onClick={onClick} className="btn-social w-full py-3 rounded-lg font-medium flex items-center justify-center space-x-2">
+        {icon}
+        <span>{label}</span>
+    </button>
+);
+
+const handleGoogleSignIn = (role: string = 'Candidate') => {
+    window.location.href = `${API_BASE}/api/auth/google?role=${role}`;
+};
+
+const handleLinkedInSignIn = (role: string = 'Candidate') => {
+    window.location.href = `${API_BASE}/api/auth/linkedin?role=${role}`;
+};
+
+interface SignUpFormProps {
+    onOpenRegistration: () => void;
+}
+
+const SignUpForm: React.FC<SignUpFormProps> = ({ onOpenRegistration }) => {
+    const [showPassword, setShowPassword] = useState(false);
+
+    return (
+        <div className="space-y-5">
+            <div className="space-y-3">
+                <SocialButton icon={<GoogleIcon />} label="Sign up with Google" onClick={() => handleGoogleSignIn('Candidate')} />
+                <SocialButton icon={<LinkedInIcon />} label="Sign up with LinkedIn" onClick={() => handleLinkedInSignIn('Candidate')} />
+            </div>
+            <div className="flex items-center space-x-3">
+                <hr className="flex-1 border-gray-700" />
+                <span className="text-secondary text-sm">OR</span>
+                <hr className="flex-1 border-gray-700" />
+            </div>
+            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+                <div>
+                    <input type="text" id="signup-name" className="input-custom w-full p-3 rounded-lg ring-accent" placeholder="Your Name" />
+                </div>
+                <div>
+                    <input type="email" id="signup-email" className="input-custom w-full p-3 rounded-lg ring-accent" placeholder="Email address or phone number" />
+                </div>
+                <div>
+                    <div className="relative">
+                        <input
+                            type={showPassword ? 'text' : 'password'}
+                            id="signup-password"
+                            className="input-custom w-full p-3 rounded-lg ring-accent pr-10"
+                            placeholder="Password"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-white"
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                        </button>
+                    </div>
+                </div>
+                <div className="flex justify-end">
+                    <a href="#" className="text-sm text-accent hover:underline">Forgot password?</a>
+                </div>
+                <UiverseButton as="button" type="button" className="w-full" size="medium" onClick={onOpenRegistration}>
+                    Sign Up
+                </UiverseButton>
+            </form>
+        </div>
+    );
+};
+
+const LoginForm: React.FC<{ onNavigateToDashboard?: () => void }> = ({ onNavigateToDashboard }) => {
+    const [showPassword, setShowPassword] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const { login } = useAuth();
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            await login(email, password);
+            if (onNavigateToDashboard) onNavigateToDashboard();
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-5">
+            {error && <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-2 rounded-lg text-sm">{error}</div>}
+            <div className="space-y-3">
+                <SocialButton icon={<GoogleIcon />} label="Login with Google" onClick={() => handleGoogleSignIn('Candidate')} />
+                <SocialButton icon={<LinkedInIcon />} label="Login with LinkedIn" onClick={() => handleLinkedInSignIn('Candidate')} />
+            </div>
+            <div className="flex items-center space-x-3">
+                <hr className="flex-1 border-gray-700" />
+                <span className="text-secondary text-sm">OR</span>
+                <hr className="flex-1 border-gray-700" />
+            </div>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+                <div>
+                    <input type="email" id="login-email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-custom w-full p-3 rounded-lg ring-accent" placeholder="Email address or phone number" required />
+                </div>
+                <div>
+                    <div className="relative">
+                        <input
+                            type={showPassword ? 'text' : 'password'}
+                            id="login-password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="input-custom w-full p-3 rounded-lg ring-accent pr-10"
+                            placeholder="Password"
+                            required
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-white"
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                        </button>
+                    </div>
+                </div>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                        <input id="remember" type="checkbox" className="checkbox-accent h-4 w-4 rounded border-gray-600 bg-gray-900 ring-accent" />
+                        <label htmlFor="remember" className="ml-2 block text-sm text-secondary">Remember me</label>
+                    </div>
+                    <a href="#" className="text-sm text-accent hover:underline">Forgot password?</a>
+                </div>
+                <UiverseButton as="button" type="submit" className="w-full" size="medium" disabled={loading}>
+                    {loading ? 'Logging in...' : 'Login'}
+                </UiverseButton>
+            </form>
+        </div>
+    );
+};
+
+
+interface LoginSignUpFormProps {
+    onNavigateToDashboard?: () => void;
+}
+
+const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard }) => {
+    const [activeTab, setActiveTab] = useState('signup'); // 'signup' or 'login'
+    const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
+
+    useEffect(() => {
+        // Handle OAuth callback
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        const role = params.get('role');
+        
+        if (token) {
+            const decodedToken = JSON.parse(atob(token.split('.')[1]));
+            const user = {
+                id: decodedToken.candidateId,
+                email: decodedToken.email,
+                name: decodedToken.name,
+                role: decodedToken.role
+            };
+            sessionStorage.setItem('fluidjobs_token', token);
+            sessionStorage.setItem('fluidjobs_user', JSON.stringify(user));
+            window.history.replaceState({}, document.title, window.location.pathname);
+            if (onNavigateToDashboard) onNavigateToDashboard();
+        }
+    }, [onNavigateToDashboard]);
+
+    return (
+        <div className="w-full md:w-1/2 p-8 md:p-12 flex items-center justify-center relative" style={{ backgroundColor: 'transparent' }}>
+            <div className="absolute inset-0 bg-black/20"></div>
+            <div className="w-full max-w-sm relative" style={{ zIndex: 10 }}>
+                <div className="mb-6">
+                    <div className="flex border-b border-gray-700">
+                        <button
+                            onClick={() => setActiveTab('signup')}
+                            className={`flex-1 py-3 text-lg font-semibold border-b-2 transition-colors ${activeTab === 'signup' ? 'border-accent text-white' : 'border-transparent text-secondary'}`}
+                        >
+                            Sign Up
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('login')}
+                            className={`flex-1 py-3 text-lg font-semibold border-b-2 transition-colors ${activeTab === 'login' ? 'border-accent text-white' : 'border-transparent text-secondary'}`}
+                        >
+                            Login
+                        </button>
+                    </div>
+                </div>
+
+                {activeTab === 'signup' ? <SignUpForm onOpenRegistration={() => setIsRegistrationOpen(true)} /> : <LoginForm onNavigateToDashboard={onNavigateToDashboard} />}
+            </div>
+            <RegistrationModal isOpen={isRegistrationOpen} onClose={() => setIsRegistrationOpen(false)} />
+        </div>
+    );
+};
+
+export default LoginSignUpForm;

@@ -28,6 +28,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       loadUserProfile();
     }
     setLoading(false);
+    
+    // Listen for storage changes to update user when sessionStorage changes
+    const handleStorageChange = () => {
+      const updatedUser = authService.getCurrentUser();
+      setUser(prev => {
+        if (updatedUser && (!prev || updatedUser.id !== prev.id || updatedUser.email !== prev.email)) {
+          console.log('AuthProvider - User updated from storage:', updatedUser);
+          loadUserProfile();
+          return updatedUser;
+        }
+        return prev;
+      });
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('userUpdated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('userUpdated', handleStorageChange);
+    };
   }, []);
 
   const loadUserProfile = async () => {
@@ -73,9 +94,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string, role?: UserRole) => {
     try {
+      // Clear any cached profile data first
+      sessionStorage.removeItem('fluidjobs_profile');
+      
       const { user } = await authService.login(email, password, role);
       console.log('AuthProvider - login returned user:', user);
       let finalUser = user;
+      
       // If caller requested a role and backend didn't honor it, enforce it client-side
       if (role && finalUser.role !== role) {
         console.warn('AuthProvider - backend role mismatch, enforcing requested role', { requested: role, returned: finalUser.role });
@@ -87,8 +112,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.error('AuthProvider - failed to update user role:', err);
         }
       }
+      
+      // Set user first to trigger re-render
       setUser(finalUser);
+      
+      // Then load fresh profile data
       await loadUserProfile();
+      
+      // Force ProfileContext to refresh by triggering a custom event
+      window.dispatchEvent(new Event('profileRefresh'));
+      
+      // Trigger user updated event
+      window.dispatchEvent(new Event('userUpdated'));
+      
+      // Force another state update to ensure components re-render with fresh data
+      setUser({...finalUser});
     } catch (error) {
       throw error;
     }
@@ -96,9 +134,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signup = async (name: string, email: string, password: string, role: UserRole = 'Candidate') => {
     try {
+      // Clear any cached profile data first
+      sessionStorage.removeItem('fluidjobs_profile');
+      
       const { user } = await authService.signup(name, email, password, role);
       setUser(user);
       await loadUserProfile();
+      
+      // Force ProfileContext to refresh
+      window.dispatchEvent(new Event('profileRefresh'));
+      
+      // Trigger user updated event
+      window.dispatchEvent(new Event('userUpdated'));
+      
+      // Force re-render with fresh data
+      setUser({...user});
     } catch (error) {
       throw error;
     }
@@ -106,9 +156,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const googleLogin = async (token: string) => {
     try {
+      // Clear any cached profile data first
+      sessionStorage.removeItem('fluidjobs_profile');
+      
       const result = await authService.googleLogin(token);
       setUser(result.user);
       await loadUserProfile();
+      
+      // Force ProfileContext to refresh
+      window.dispatchEvent(new Event('profileRefresh'));
+      
+      // Trigger user updated event
+      window.dispatchEvent(new Event('userUpdated'));
+      
+      // Force re-render with fresh data
+      setUser({...result.user});
       return result;
     } catch (error) {
       throw error;

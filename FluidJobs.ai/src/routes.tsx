@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import RoleRoute from './components/RoleRoute';
 import PremiumLandingPage from './components/PremiumLandingPage';
+import NewLandingPage from './new-landing/App';
 import Dashboard from './pages/Dashboard';
 import Jobs from './pages/Jobs';
 import JobsOpportunities from './components/JobsOpportunities';
@@ -15,7 +16,7 @@ import EditProfilePage from './pages/EditProfilePage';
 import ResumesPage from './pages/ResumesPage';
 import Settings from './pages/Settings';
 import Interviews from './pages/Interviews';
-import SavedJobs from './pages/SavedJobs';
+import SavedJobsComponent from './components/SavedJobs';
 import JobOpenings from './pages/JobOpenings';
 import JobDetailPage from './pages/JobDetailPage';
 import JobApplicationPage from './pages/JobApplicationPage';
@@ -37,6 +38,7 @@ const AppRoutes = () => (
 	<Router>
 		<Routes>
 			<Route path="/" element={<PremiumLandingPage />} />
+			<Route path="/new-landing" element={<NewLandingPage />} />
 			<Route path="/careers" element={<JobOpenings />} />
 			<Route path="/careers/:jobId" element={<JobDetailPage />} />
 			<Route path="/careers/:jobId/apply" element={<JobApplicationPage />} />
@@ -64,7 +66,7 @@ const AppRoutes = () => (
 				<Route path="/contact" element={<Contact />} />
 				<Route path="/change-password" element={<ChangePassword />} />
 				<Route path="/interviews" element={<Interviews />} />
-				<Route path="/saved-jobs" element={<SavedJobs />} />
+				<Route path="/saved-jobs" element={<SavedJobsComponent />} />
 				{/* Admin and HR access job management */}
 				<Route element={<RoleRoute allowedRoles={["Admin", "HR"]} />}>
 					<Route path="/job-management" element={<Jobs />} />

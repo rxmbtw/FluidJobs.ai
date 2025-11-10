@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Clock, Building, X, ExternalLink, ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+
 import { useJobs } from '../contexts/JobsProvider';
 import JobSpecificDashboard from '../components/JobSpecificDashboard';
 
@@ -292,7 +292,6 @@ interface JobOpeningsProps {
 
 const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
   const { jobs } = useJobs();
-  const navigate = useNavigate();
   
   // Convert context jobs to JobData format
   const contextJobs: JobData[] = jobs.map(job => ({
@@ -395,13 +394,7 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
           animate={{ opacity: 1, y: 0 }}
           className="bg-slate-800 text-white py-8 mb-8 rounded-xl relative"
         >
-          <button
-            onClick={() => navigate('/')}
-            className="absolute left-6 top-1/2 transform -translate-y-1/2 flex items-center text-slate-300 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Home
-          </button>
+
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-2">Join Our Team</h1>
             <p className="text-slate-300 text-sm">Discover exciting opportunities at FluidJobs.ai</p>
@@ -458,9 +451,11 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
               }}
               whileHover={{ y: -4, boxShadow: "0 8px 25px rgba(0,0,0,0.1)" }}
               onClick={() => {
-                // Always navigate to job detail page for candidates
-                // Admin functionality should be separate
-                navigate(`/careers/${job.jobId}`);
+                if (onJobSelect) {
+                  onJobSelect(job.title);
+                } else {
+                  setSelectedJob(job);
+                }
               }}
               className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden cursor-pointer transition-all duration-300 hover:border-indigo-200"
             >

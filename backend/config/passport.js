@@ -37,7 +37,7 @@ passport.use(new GoogleStrategy({
         last_company, previous_ctc, city, work_mode, 
         created_at, updated_at
       ) VALUES (
-        $1, $2, $3, '', '', '', '', '', '', '', '', '', '', '', 
+        $1, $2, $3, '', '', '', '', '', '', NULL, '', NULL, '', '', 
         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
       ) RETURNING *`,
       [candidateId, name, email]

@@ -71,8 +71,10 @@ class AuthService {
   logout(): void {
     sessionStorage.removeItem(this.TOKEN_KEY);
     sessionStorage.removeItem(this.USER_KEY);
+    sessionStorage.removeItem('fluidjobs_profile');
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
+    localStorage.removeItem('fluidjobs_profile');
   }
 
   getCurrentUser(): User | null {
@@ -129,6 +131,10 @@ class AuthService {
   }
 
   private setSession(user: User, token: string): void {
+    // Clear any existing cached data first
+    sessionStorage.removeItem('fluidjobs_profile');
+    localStorage.removeItem('fluidjobs_profile');
+    
     // Use sessionStorage instead of localStorage for better security
     sessionStorage.setItem(this.TOKEN_KEY, token);
     sessionStorage.setItem(this.USER_KEY, JSON.stringify(user));

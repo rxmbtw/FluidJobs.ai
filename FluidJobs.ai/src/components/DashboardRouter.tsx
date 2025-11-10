@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthProvider';
 
 const DashboardRouter: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
-    const user = JSON.parse(sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('fluidjobs_user') || 'null');
-    
     console.log('DashboardRouter - User data:', user);
     console.log('DashboardRouter - User role:', user?.role);
     
@@ -19,14 +19,14 @@ const DashboardRouter: React.FC = () => {
     // Add a small delay to ensure proper state management
     setTimeout(() => {
       if (user.role === 'Admin') {
-        console.log('ADMIN DETECTED - Redirecting to main-unified-dashboard');
-        window.location.replace('/main-unified-dashboard');
+        console.log('ADMIN DETECTED - Redirecting to company-dashboard');
+        navigate('/company-dashboard', { replace: true });
       } else {
         console.log('CANDIDATE DETECTED - Redirecting to candidate dashboard');
-        window.location.replace('/dashboard');
+        navigate('/dashboard', { replace: true });
       }
     }, 100);
-  }, [navigate]);
+  }, [navigate, user]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

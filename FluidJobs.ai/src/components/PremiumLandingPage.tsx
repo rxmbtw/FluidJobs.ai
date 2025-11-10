@@ -791,10 +791,10 @@ const PremiumLandingPage = () => {
               <img 
                 src="/images/FLuid Live Icon.png" 
                 alt="FluidJobs.ai Logo" 
-                className="w-8 h-8 object-contain"
+                className="w-12 h-12 object-contain"
                 style={{ background: 'transparent', mixBlendMode: 'multiply' }}
               />
-              <span className="font-bold text-xl">
+              <span className="font-bold text-2xl">
                 FluidJobs.ai
               </span>
             </motion.div>
@@ -1202,7 +1202,7 @@ const PremiumLandingPage = () => {
                 <img 
                   src="/images/FLuid Live Icon.png" 
                   alt="FluidJobs.ai Logo" 
-                  className="w-8 h-8 object-contain"
+                  className="w-12 h-12 object-contain"
                   style={{ background: 'transparent', mixBlendMode: 'multiply' }}
                 />
                 <span className="font-heading font-bold text-2xl text-gray-900">FluidJobs.ai</span>

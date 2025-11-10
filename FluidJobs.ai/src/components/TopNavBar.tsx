@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ChevronDown,
-  User
+  User,
+  Bookmark
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthProvider';
 import { useProfile } from '../contexts/ProfileContext';
@@ -12,6 +13,9 @@ const TopNavBar: React.FC = () => {
   const { profileData } = useProfile();
   const navigate = useNavigate();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  
+  // Force re-render when user or profile changes
+  const userKey = user ? `${user.id}-${user.email}-${profileData.fullName}` : 'no-user';
 
 
   const handleLogout = () => {
@@ -46,10 +50,20 @@ const TopNavBar: React.FC = () => {
 
       {/* Right - Icons and Profile */}
       <div className="flex items-center space-x-4">
+        {/* Saved Jobs Icon - Only show for candidates */}
+        {user?.role === 'Candidate' && (
+          <button
+            onClick={() => navigate('/saved-jobs')}
+            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Saved Jobs"
+          >
+            <Bookmark className="h-5 w-5" />
+          </button>
+        )}
 
 
         {/* User Profile Dropdown */}
-        <div className="relative">
+        <div className="relative" key={userKey}>
           <button
             onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
             className="flex items-center gap-2.5 bg-[#F0F2F5] rounded-full py-1.5 pl-1.5 pr-4 hover:bg-gray-200 transition-colors shadow-sm"

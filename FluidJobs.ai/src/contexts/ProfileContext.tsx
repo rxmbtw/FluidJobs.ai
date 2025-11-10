@@ -105,7 +105,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     sessionStorage.setItem('fluidjobs_profile', JSON.stringify(data));
   };
 
-  // Listen for profile updates from sessionStorage
+  // Listen for profile updates from sessionStorage and custom events
   useEffect(() => {
     const handleStorageChange = () => {
       const saved = sessionStorage.getItem('fluidjobs_profile');
@@ -118,14 +118,22 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     };
 
+    const handleProfileRefresh = () => {
+      refreshProfile();
+    };
+
     // Listen for storage events
     window.addEventListener('storage', handleStorageChange);
+    
+    // Listen for custom profile refresh events
+    window.addEventListener('profileRefresh', handleProfileRefresh);
     
     // Also check immediately
     handleStorageChange();
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('profileRefresh', handleProfileRefresh);
     };
   }, []);
 

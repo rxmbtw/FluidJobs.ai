@@ -26,6 +26,9 @@ const EditProfilePage: React.FC = () => {
     previousCTC: '',
     city: '',
     workMode: '',
+    joiningDate: '',
+    startDate: '',
+    endDate: '',
     cv: null as File | null,
     profilePicture: null as File | null
   });
@@ -81,6 +84,9 @@ const EditProfilePage: React.FC = () => {
             previousCTC: profile.previous_ctc || '',
             city: profile.city || profile.location || '',
             workMode: profile.work_mode || '',
+            joiningDate: profile.joining_date || '',
+            startDate: profile.start_date || '',
+            endDate: profile.end_date || '',
             cv: null,
             profilePicture: null
           });
@@ -100,6 +106,9 @@ const EditProfilePage: React.FC = () => {
             previousCTC: profileData.previousCTC,
             city: profileData.city,
             workMode: profileData.workMode,
+            joiningDate: '',
+            startDate: '',
+            endDate: '',
             cv: null,
             profilePicture: null
           });
@@ -121,6 +130,9 @@ const EditProfilePage: React.FC = () => {
           previousCTC: profileData.previousCTC,
           city: profileData.city,
           workMode: profileData.workMode,
+          joiningDate: '',
+          startDate: '',
+          endDate: '',
           cv: null,
           profilePicture: null
         });
@@ -171,7 +183,10 @@ const EditProfilePage: React.FC = () => {
         lastCompany: formData.lastCompany,
         previousCTC: formData.previousCTC,
         city: formData.city,
-        workMode: formData.workMode
+        workMode: formData.workMode,
+        joiningDate: formData.joiningDate,
+        startDate: formData.startDate,
+        endDate: formData.endDate
       });
 
       if (result.success) {
@@ -425,6 +440,16 @@ const EditProfilePage: React.FC = () => {
                   />
                 </div>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Joining Date *</label>
+                <input
+                  type="date"
+                  value={formData.joiningDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, joiningDate: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
             </div>
           )}
 
@@ -453,6 +478,28 @@ const EditProfilePage: React.FC = () => {
                   placeholder="e.g., 600000"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date *</label>
+                  <input
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date *</label>
+                  <input
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
               </div>
             </div>
           )}

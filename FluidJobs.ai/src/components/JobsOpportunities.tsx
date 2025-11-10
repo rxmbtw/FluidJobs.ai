@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { jobService, Job, JobAttachment } from '../services/jobService';
 import { useJobs } from '../contexts/JobsProvider';
 import DashboardLayout from './DashboardLayout';
+import SaveJobButton from './SaveJobButton';
 
 const JobsOpportunities: React.FC = () => {
   const navigate = useNavigate();
@@ -216,7 +217,11 @@ const JobsOpportunities: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <div className="flex gap-3">
+                      <div className="flex gap-3 items-center">
+                        <SaveJobButton 
+                          jobId={job.id} 
+                          className="p-2 hover:bg-gray-50 rounded-lg"
+                        />
                         <button
                           onClick={() => handleApplyNow(job.id)}
                           className="bg-purple-600 text-white px-4 py-2 rounded text-sm hover:bg-purple-700 transition-colors font-medium"

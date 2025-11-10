@@ -28,6 +28,9 @@ const JobOpeningsContent: React.FC<JobOpeningsContentProps> = ({ onJobSelect }) 
 const CompanyDashboard: React.FC = () => {
   console.log('CompanyDashboard component loaded - Admin dashboard is showing');
   const { user } = useAuth();
+  
+  // Force re-render when user changes
+  const userKey = user ? `${user.id}-${user.email}-${user.name}` : 'no-user';
   const [activeNav, setActiveNav] = useState('view_opening');
   const [showCreateJob, setShowCreateJob] = useState(() => {
     return localStorage.getItem('showCreateJob') === 'true';
@@ -125,7 +128,7 @@ const CompanyDashboard: React.FC = () => {
         </nav>
 
         {/* User Profile */}
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t border-slate-700" key={userKey}>
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
             <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
               {user?.email ? user.email.charAt(0).toUpperCase() : 'A'}

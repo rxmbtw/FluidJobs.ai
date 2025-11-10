@@ -396,39 +396,65 @@ const JobDetailPage: React.FC = () => {
       </div>
 
       {/* Job Content */}
-      <div className="max-w-4xl mx-auto px-6 pb-6">
-        <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center border-b border-gray-200 pb-3">
-            <Briefcase className="w-5 h-5 mr-3 text-indigo-600" />
-            Job Description
-          </h2>
-          <p className="text-gray-700 leading-relaxed text-base mb-6">{job.description.overview}</p>
-          
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-            <div className="w-2 h-5 bg-indigo-500 rounded-full mr-3"></div>
-            Key Responsibilities
-          </h3>
-          <ul className="space-y-3 text-gray-700 text-sm mb-6">
-            {job.description.responsibilities.map((responsibility, index) => (
-              <li key={index} className="flex items-start">
-                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full mt-2 mr-4 flex-shrink-0"></span>
-                <span className="leading-relaxed">{responsibility}</span>
-              </li>
-            ))}
-          </ul>
-          
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-            <div className="w-2 h-5 bg-green-500 rounded-full mr-3"></div>
-            Qualifications & Requirements
-          </h3>
-          <ul className="space-y-3 text-gray-700 text-sm">
-            {job.description.qualifications.map((qualification, index) => (
-              <li key={index} className="flex items-start">
-                <span className="w-1.5 h-1.5 bg-green-400 rounded-full mt-2 mr-4 flex-shrink-0"></span>
-                <span className="leading-relaxed">{qualification}</span>
-              </li>
-            ))}
-          </ul>
+      <div className="max-w-7xl mx-auto px-6 pb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center border-b border-gray-200 pb-3">
+                <Briefcase className="w-5 h-5 mr-3 text-indigo-600" />
+                Job Description
+              </h2>
+              <p className="text-gray-700 leading-relaxed text-base mb-6">{job.description.overview}</p>
+              
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                <div className="w-2 h-5 bg-indigo-500 rounded-full mr-3"></div>
+                Key Responsibilities
+              </h3>
+              <ul className="space-y-3 text-gray-700 text-sm mb-6">
+                {job.description.responsibilities.map((responsibility, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full mt-2 mr-4 flex-shrink-0"></span>
+                    <span className="leading-relaxed">{responsibility}</span>
+                  </li>
+                ))}
+              </ul>
+              
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                <div className="w-2 h-5 bg-green-500 rounded-full mr-3"></div>
+                Qualifications & Requirements
+              </h3>
+              <ul className="space-y-3 text-gray-700 text-sm">
+                {job.description.qualifications.map((qualification, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full mt-2 mr-4 flex-shrink-0"></span>
+                    <span className="leading-relaxed">{qualification}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">About the Organization</h3>
+              <p className="text-gray-600 text-sm mb-6">
+                Learn more about our company culture, values, and what makes us a great place to work.
+              </p>
+              
+              {/* Video Placeholder */}
+              <div className="bg-gray-100 rounded-lg p-8 text-center border-2 border-dashed border-gray-300">
+                <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <p className="text-gray-500 text-sm font-medium">Company Video</p>
+                <p className="text-gray-400 text-xs mt-1">Coming Soon</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Apply Now Section */}
@@ -436,7 +462,7 @@ const JobDetailPage: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg p-4 mt-3 text-center text-white shadow-lg"
+          className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg p-4 mt-8 text-center text-white shadow-lg"
         >
           <h3 className="text-2xl font-bold mb-4">Ready to Join Our Team?</h3>
           <p className="text-indigo-100 mb-6 text-lg">

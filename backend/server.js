@@ -73,6 +73,7 @@ app.use('/api/resume', require('./routes/resumeParser'));
 app.use('/api/gemini', require('./routes/geminiReviewer'));
 app.use('/api/test-candidates', require('./routes/testCandidates'));
 app.use('/api/job-attachments', require('./routes/jobAttachments'));
+app.use('/api/saved-jobs', require('./routes/savedJobs'));
 
 // Serve uploaded files with proper headers
 app.use('/uploads', express.static('uploads', {

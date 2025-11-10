@@ -3,10 +3,11 @@ import DashboardLayout from '../components/DashboardLayout';
 import CandidateDashboard from '../components/CandidateDashboard';
 import ClientDashboard from '../components/ClientDashboard';
 import CompanyDashboard from '../components/CompanyDashboard';
+import { useAuth } from '../contexts/AuthProvider';
 
 const Dashboard = () => {
-  // Get user from sessionStorage directly
-  const user = JSON.parse(sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('fluidjobs_user') || 'null');
+  // Use AuthContext instead of direct sessionStorage access
+  const { user } = useAuth();
 
   console.log('Dashboard - Current user:', user);
   console.log('Dashboard - User role:', user?.role);
@@ -44,6 +45,12 @@ const Dashboard = () => {
     }
   };
 
+  // For Candidate role, return new design without DashboardLayout
+  if (user.role === 'Candidate') {
+    return <CandidateDashboard />;
+  }
+
+  // Use DashboardLayout for other roles
   return (
     <DashboardLayout>
       {renderDashboard()}

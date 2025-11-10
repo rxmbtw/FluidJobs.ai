@@ -11,7 +11,7 @@ const router = express.Router();
 // Email transporter setup
 let transporter;
 try {
-  transporter = nodemailer.createTransporter({
+  transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
       user: process.env.EMAIL_USER,
@@ -122,9 +122,9 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password, role } = req.body;
     
-    // Check candidates table
+    // Check candidates table for both email and phone
     const result = await pool.query(
-      'SELECT candidate_id, full_name, email, password_hash FROM candidates WHERE email = $1',
+      'SELECT candidate_id, full_name, email, password_hash, role FROM candidates WHERE email = $1 OR phone = $1',
       [email]
     );
     
@@ -149,7 +149,7 @@ router.post('/login', async (req, res) => {
         candidateId: user.candidate_id,
         email: user.email,
         name: user.full_name,
-        role: 'Candidate'
+        role: user.role || 'Candidate'
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -160,7 +160,7 @@ router.post('/login', async (req, res) => {
         id: user.candidate_id,
         email: user.email,
         name: user.full_name,
-        role: 'Candidate'
+        role: user.role || 'Candidate'
       },
       token
     });
