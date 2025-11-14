@@ -1,8 +1,8 @@
 /* --- Animated Gradient Background --- */
 
 .animated-gradient-bg {
-    /* Define the gradient colors and angle */
-    background: linear-gradient(-45deg, #3b82f6, #8b5cf6, #1f2937, #ffffff);
+    /* Define the gradient colors matching landing page */
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0) 0%, rgba(199, 220, 255, 1) 100%);
     
     /* Make the gradient much larger than the container */
     background-size: 400% 400%;

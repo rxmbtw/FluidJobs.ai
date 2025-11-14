@@ -175,22 +175,46 @@ router.get('/google', async (req, res, next) => {
   const role = req.query.role || 'Candidate';
   const sessionId = req.sessionID;
   
+  console.log('🔵 Google OAuth initiated - Role:', role, 'Session:', sessionId);
+  
   try {
+    // Test database connection first
+    await pool.query('SELECT 1');
+    console.log('✅ Database connection OK');
+    
+    // Ensure table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS pending_auth_roles (
+        id SERIAL PRIMARY KEY,
+        session_id VARCHAR(255) UNIQUE NOT NULL,
+        role VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '10 minutes')
+      )
+    `);
+    
     // Store role in database
     await pool.query(
       'INSERT INTO pending_auth_roles (session_id, role) VALUES ($1, $2) ON CONFLICT (session_id) DO UPDATE SET role = $2, created_at = CURRENT_TIMESTAMP',
       [sessionId, role]
     );
     
-    console.log('Stored role in DB:', role, 'for session:', sessionId);
+    console.log('✅ Stored role in DB:', role, 'for session:', sessionId);
     
     passport.authenticate('google', { 
       scope: ['profile', 'email'],
       state: sessionId
     })(req, res, next);
   } catch (error) {
-    console.error('Database error storing role:', error);
-    return res.redirect(`${process.env.FRONTEND_URL}/login?error=db_error`);
+    console.error('❌ Database error storing role:', error.message);
+    // Continue with OAuth even if DB fails - store role in session as fallback
+    req.session.selectedRole = role;
+    console.log('⚠️  Using session fallback for role:', role);
+    
+    passport.authenticate('google', { 
+      scope: ['profile', 'email'],
+      state: sessionId
+    })(req, res, next);
   }
 });
 
@@ -201,21 +225,30 @@ router.get('/google/callback',
       console.log('✅ Google auth successful for:', req.user.email);
       
       const sessionId = req.query.state || req.sessionID;
-      
-      // Get role from database
-      const roleResult = await pool.query(
-        'SELECT role FROM pending_auth_roles WHERE session_id = $1 AND expires_at > CURRENT_TIMESTAMP',
-        [sessionId]
-      );
-      
       let finalRole = 'Candidate';
-      if (roleResult.rows.length > 0) {
-        finalRole = roleResult.rows[0].role;
-        // Clean up the record
-        await pool.query('DELETE FROM pending_auth_roles WHERE session_id = $1', [sessionId]);
-      }
       
-      console.log('🎭 Final role from DB:', finalRole);
+      try {
+        // Try to get role from database
+        const roleResult = await pool.query(
+          'SELECT role FROM pending_auth_roles WHERE session_id = $1 AND expires_at > CURRENT_TIMESTAMP',
+          [sessionId]
+        );
+        
+        if (roleResult.rows.length > 0) {
+          finalRole = roleResult.rows[0].role;
+          // Clean up the record
+          await pool.query('DELETE FROM pending_auth_roles WHERE session_id = $1', [sessionId]);
+          console.log('🎭 Final role from DB:', finalRole);
+        } else if (req.session.selectedRole) {
+          // Fallback to session
+          finalRole = req.session.selectedRole;
+          console.log('🎭 Final role from session fallback:', finalRole);
+        }
+      } catch (dbError) {
+        console.error('⚠️  Database error, using session fallback:', dbError.message);
+        finalRole = req.session.selectedRole || 'Candidate';
+        console.log('🎭 Final role from session fallback:', finalRole);
+      }
       
       // Generate JWT token with the determined role
       const token = jwt.sign(
@@ -232,8 +265,8 @@ router.get('/google/callback',
       console.log('🔑 JWT token created with role:', finalRole);
       
       // Clear session data
-      delete req.session.selectedRole;
-      delete req.session.redirectType;
+      if (req.session.selectedRole) delete req.session.selectedRole;
+      if (req.session.redirectType) delete req.session.redirectType;
       
       // Redirect based on final role
       const redirectUrl = finalRole === 'Admin' 

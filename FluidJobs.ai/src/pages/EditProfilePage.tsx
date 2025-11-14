@@ -379,7 +379,7 @@ const EditProfilePage: React.FC = () => {
           </div>
 
           {formData.workStatus === 'Yes' && (
-            <div className="space-y-4 mt-4">
+            <div className="space-y-6 mt-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Building className="w-4 h-4 inline mr-2" />
@@ -389,56 +389,9 @@ const EditProfilePage: React.FC = () => {
                   type="text"
                   value={formData.currentCompany}
                   onChange={(e) => setFormData(prev => ({ ...prev, currentCompany: e.target.value }))}
-                  placeholder="e.g., TechCorp Solutions"
+                  placeholder="e.g., FluidLive Solutions"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Notice Period *</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowNoticeDropdown(!showNoticeDropdown)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all text-left"
-                  >
-                    {formData.noticePeriod || 'Select Notice Period'}
-                  </button>
-                  {showNoticeDropdown && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-3">
-                      <div className="grid grid-cols-2 gap-2">
-                        {['Immediate', '15 Days', '1 Month', '2 Months', '3 Months'].map((option) => (
-                          <button
-                            key={option}
-                            type="button"
-                            onClick={() => {
-                              setFormData(prev => ({ ...prev, noticePeriod: option }));
-                              setShowNoticeDropdown(false);
-                            }}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium text-center cursor-pointer transition-all ${
-                              formData.noticePeriod === option 
-                                ? 'bg-indigo-500 text-white shadow-md' 
-                                : 'bg-gray-50 border border-gray-200 text-gray-700 hover:bg-indigo-50 hover:border-indigo-300'
-                            }`}
-                          >
-                            {option}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Current Annual CTC *</label>
-                  <input
-                    type="number"
-                    value={formData.currentCTC}
-                    onChange={(e) => setFormData(prev => ({ ...prev, currentCTC: e.target.value }))}
-                    placeholder="e.g., 800000"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
               </div>
 
               <div>
@@ -447,8 +400,88 @@ const EditProfilePage: React.FC = () => {
                   type="date"
                   value={formData.joiningDate}
                   onChange={(e) => setFormData(prev => ({ ...prev, joiningDate: e.target.value }))}
+                  placeholder="dd-mm-yyyy"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
+              </div>
+
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Work Mode *</label>
+                <button
+                  type="button"
+                  onClick={() => setShowWorkModeDropdown(!showWorkModeDropdown)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all text-left"
+                >
+                  {formData.workMode || 'e.g., on-site/work-from-home/hybrid'}
+                </button>
+                {showWorkModeDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-3">
+                    <div className="grid grid-cols-3 gap-2">
+                      {['Remote', 'On-site', 'Hybrid'].map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({ ...prev, workMode: option }));
+                            setShowWorkModeDropdown(false);
+                          }}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium text-center cursor-pointer transition-all ${
+                            formData.workMode === option 
+                              ? 'bg-indigo-500 text-white shadow-md' 
+                              : 'bg-gray-50 border border-gray-200 text-gray-700 hover:bg-indigo-50 hover:border-indigo-300'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Current Annual CTC *</label>
+                <input
+                  type="number"
+                  value={formData.currentCTC}
+                  onChange={(e) => setFormData(prev => ({ ...prev, currentCTC: e.target.value }))}
+                  placeholder="e.g., 800000"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notice Period *</label>
+                <button
+                  type="button"
+                  onClick={() => setShowNoticeDropdown(!showNoticeDropdown)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all text-left"
+                >
+                  {formData.noticePeriod || 'Select Notice Period'}
+                </button>
+                {showNoticeDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      {['Immediate', '15 Days', '1 Month', '2 Months', '3 Months'].map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({ ...prev, noticePeriod: option }));
+                            setShowNoticeDropdown(false);
+                          }}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium text-center cursor-pointer transition-all ${
+                            formData.noticePeriod === option 
+                              ? 'bg-indigo-500 text-white shadow-md' 
+                              : 'bg-gray-50 border border-gray-200 text-gray-700 hover:bg-indigo-50 hover:border-indigo-300'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -504,7 +537,7 @@ const EditProfilePage: React.FC = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div className="mt-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Current City *</label>
               <input
@@ -514,40 +547,6 @@ const EditProfilePage: React.FC = () => {
                 placeholder="e.g., Bangalore, India"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
-            </div>
-
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Work Mode *</label>
-              <button
-                type="button"
-                onClick={() => setShowWorkModeDropdown(!showWorkModeDropdown)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all text-left"
-              >
-                {formData.workMode || 'Select Work Mode'}
-              </button>
-              {showWorkModeDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-3">
-                  <div className="grid grid-cols-3 gap-2">
-                    {['Remote', 'On-site', 'Hybrid'].map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => {
-                          setFormData(prev => ({ ...prev, workMode: option }));
-                          setShowWorkModeDropdown(false);
-                        }}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium text-center cursor-pointer transition-all ${
-                          formData.workMode === option 
-                            ? 'bg-indigo-500 text-white shadow-md' 
-                            : 'bg-gray-50 border border-gray-200 text-gray-700 hover:bg-indigo-50 hover:border-indigo-300'
-                        }`}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>

@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { LockKeyhole, X } from 'lucide-react';
-import ResetPasswordModal from './ResetPasswordModal';
-import { useTheme, getThemeColors } from '../ThemeContext';
+import { Edit, X } from 'lucide-react';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -9,107 +7,139 @@ interface ChangePasswordModalProps {
 }
 
 const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClose }) => {
-  const { theme } = useTheme();
-  const colors = getThemeColors(theme);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [showResetForm, setShowResetForm] = useState(false);
+  const [formData, setFormData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Password change submitted');
-    onClose();
+  const handleSubmit = () => {
+    // Handle password change/reset logic
+    console.log('Form submitted:', formData);
   };
 
   return (
-    <div 
-      className="fixed inset-0 flex items-center justify-center p-4 z-50 transition-opacity duration-300"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(5px)' }}
-      onClick={onClose}
-    >
-      <div 
-        className="rounded-xl shadow-2xl w-full max-w-lg md:max-w-xl lg:max-w-[630px] p-8 space-y-6 transform transition-all duration-300"
-        style={{ backgroundColor: colors.bgCard, border: `1px solid ${colors.border}` }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="flex justify-center items-center relative">
-          <div className="flex items-center space-x-3" style={{ color: colors.textPrimary }}>
-            <LockKeyhole className="w-7 h-7" style={{ color: colors.accent }} />
-            <h1 className="text-2xl font-bold">Change Password</h1>
-          </div>
-          
-          <button 
-            onClick={onClose}
-            aria-label="Close" 
-            className="absolute right-0 transition-colors p-2 rounded-full"
-            style={{ color: colors.textSecondary }}
-          >
-            <X className="w-6 h-6" />
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {!showResetForm ? (
+        // Change Password Form
+        <div className="relative w-[630px] h-[570px] bg-white rounded-[25px]">
+          <button onClick={onClose} className="absolute top-[35px] right-[25px] w-6 h-6 flex items-center justify-center z-10">
+            <X className="w-5 h-5 text-black opacity-56" />
           </button>
-        </header>
 
-        <hr style={{ borderTop: `1px solid ${colors.border}` }} />
-
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="current-password" className="block text-base font-semibold mb-2" style={{ color: colors.textPrimary }}>Current Password*</label>
-            <input
-              type="password"
-              id="current-password"
-              placeholder="Enter your current password"
-              required
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full h-11 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 transition-shadow"
-              style={{ border: `1px solid ${colors.border}`, backgroundColor: colors.bgMain, color: colors.textPrimary }}
-            />
+          <div className="flex items-center justify-center gap-3 pt-[27px] mb-[38px]">
+            <Edit className="w-[38px] h-[38px] text-black" />
+            <h2 className="font-['Poppins'] font-bold text-[25px] leading-[38px] text-black">Change Password</h2>
           </div>
 
-          <div>
-            <label htmlFor="new-password" className="block text-base font-semibold mb-2" style={{ color: colors.textPrimary }}>New Password*</label>
-            <input
-              type="password"
-              id="new-password"
-              placeholder="Enter your new password"
-              required
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full h-11 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 transition-shadow"
-              style={{ border: `1px solid ${colors.border}`, backgroundColor: colors.bgMain, color: colors.textPrimary }}
-            />
+          <div className="px-[37px]">
+            <div className="mb-[40px]">
+              <label className="block font-['Poppins'] font-bold text-[15px] leading-[22px] text-black text-center mb-[14px]">
+                Current Password*
+              </label>
+              <input
+                type="password"
+                value={formData.currentPassword}
+                onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
+                placeholder="Enter your current password"
+                className="w-full h-[45px] px-4 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
+              />
+            </div>
+
+            <div className="mb-[40px]">
+              <label className="block font-['Poppins'] font-bold text-[15px] leading-[22px] text-black text-center mb-[14px]">
+                New Password*
+              </label>
+              <input
+                type="password"
+                value={formData.newPassword}
+                onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                placeholder="Enter your new password"
+                className="w-full h-[45px] px-4 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
+              />
+            </div>
+
+            <div className="mb-[35px]">
+              <label className="block font-['Poppins'] font-bold text-[15px] leading-[22px] text-black text-center mb-[14px]">
+                Confirm New Password*
+              </label>
+              <input
+                type="password"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                placeholder="Type the new password again"
+                className="w-full h-[45px] px-4 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
+              />
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              className="w-full h-[44px] bg-[#4285F4] rounded-[10px] font-['Poppins'] font-semibold text-[15px] text-white hover:opacity-90 mb-[12px]"
+            >
+              Submit
+            </button>
+
+            <div className="pb-[32px]">
+              <button
+                onClick={() => setShowResetForm(true)}
+                className="w-full font-['Poppins'] font-medium text-[12px] leading-[18px] text-[#4285F4] text-center hover:underline"
+              >
+                Forgot Your Password?
+              </button>
+            </div>
           </div>
-
-          <div>
-            <label htmlFor="confirm-password" className="block text-base font-semibold mb-2" style={{ color: colors.textPrimary }}>Confirm New Password*</label>
-            <input
-              type="password"
-              id="confirm-password"
-              placeholder="Type the new password again"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full h-11 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 transition-shadow"
-              style={{ border: `1px solid ${colors.border}`, backgroundColor: colors.bgMain, color: colors.textPrimary }}
-            />
-          </div>
-
-          <button 
-            type="submit" 
-            className="w-full h-11 text-white font-semibold text-base rounded-lg hover:bg-[#7245d9] transition-colors shadow-md hover:shadow-lg"
-            style={{ backgroundColor: colors.accent }}
-          >
-            Submit
-          </button>
-        </form>
-
-        <div className="text-center pt-2">
-          <a href="#" onClick={(e) => { e.preventDefault(); setIsResetPasswordOpen(true); }} className="text-sm font-medium hover:underline" style={{ color: colors.accent }}>Forgot Your Password?</a>
         </div>
-      </div>
-      <ResetPasswordModal isOpen={isResetPasswordOpen} onClose={() => setIsResetPasswordOpen(false)} />
+      ) : (
+        // Reset Password Form
+        <div className="relative w-[630px] h-[440px] bg-white rounded-[25px]">
+          <button onClick={onClose} className="absolute top-[35px] right-[25px] w-6 h-6 flex items-center justify-center z-10">
+            <X className="w-5 h-5 text-black opacity-56" />
+          </button>
+
+          <div className="flex items-center justify-center gap-3 pt-[28px] mb-[46px]">
+            <Edit className="w-[38px] h-[38px] text-black" />
+            <h2 className="font-['Poppins'] font-bold text-[25px] leading-[38px] text-black">Reset Password</h2>
+          </div>
+
+          <div className="px-[37px]">
+            <div className="mb-[44px]">
+              <label className="block font-['Poppins'] font-bold text-[15px] leading-[22px] text-black text-center mb-[14px]">
+                New Password*
+              </label>
+              <input
+                type="password"
+                value={formData.newPassword}
+                onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                placeholder="Enter your new password"
+                className="w-full h-[45px] px-4 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
+              />
+            </div>
+
+            <div className="mb-[37px]">
+              <label className="block font-['Poppins'] font-bold text-[15px] leading-[22px] text-black text-center mb-[14px]">
+                Confirm New Password*
+              </label>
+              <input
+                type="password"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                placeholder="Type the new password again"
+                className="w-full h-[45px] px-4 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
+              />
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              className="w-full h-[44px] bg-[#4285F4] rounded-[10px] font-['Poppins'] font-semibold text-[15px] text-white hover:opacity-90 mb-[37px]"
+            >
+              Submit
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

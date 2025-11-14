@@ -7,7 +7,7 @@ const Login: React.FC = () => {
   const error = searchParams.get('error');
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0) 0%, rgba(199, 220, 255, 1) 100%)' }}>
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center mb-6">
@@ -17,10 +17,10 @@ const Login: React.FC = () => {
               className="h-16 w-auto object-contain"
             />
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to FluidJobs.ai
+          <h2 className="mt-6 text-center text-3xl font-extrabold" style={{ color: 'rgba(0, 0, 0, 1)' }}>
+            Sign in to <span style={{ color: 'rgba(66, 133, 244, 1)' }}>FluidJobs.ai</span>
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-sm" style={{ color: 'rgba(96, 96, 96, 1)' }}>
             Find your perfect job with AI-powered matching
           </p>
         </div>

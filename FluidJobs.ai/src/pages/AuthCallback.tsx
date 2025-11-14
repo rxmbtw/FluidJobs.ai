@@ -16,14 +16,22 @@ const AuthCallback: React.FC = () => {
           id: decodedToken.candidateId,
           email: decodedToken.email,
           name: decodedToken.name,
-          role: decodedToken.role || role
+          role: decodedToken.role || role || 'Candidate'
         };
         
         sessionStorage.setItem('fluidjobs_token', token);
         sessionStorage.setItem('fluidjobs_user', JSON.stringify(user));
         
-        // Navigate to dashboard
-        navigate('/dashboard');
+        console.log('✅ Auth callback - User:', user);
+        
+        // Navigate based on role
+        if (user.role === 'Admin') {
+          console.log('🔄 Redirecting Admin to company-dashboard');
+          navigate('/company-dashboard');
+        } else {
+          console.log('🔄 Redirecting Candidate to dashboard');
+          navigate('/dashboard');
+        }
       } catch (error) {
         console.error('Auth callback error:', error);
         navigate('/login?error=auth_failed');

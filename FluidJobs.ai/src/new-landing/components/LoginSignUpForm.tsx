@@ -23,7 +23,7 @@ const GoogleIcon: React.FC = () => (
 );
 
 const LinkedInIcon: React.FC = () => (
-    <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgba(66, 133, 244, 1)">
         <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path>
     </svg>
 );
@@ -190,14 +190,17 @@ interface LoginSignUpFormProps {
 }
 
 const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard }) => {
-    const [activeTab, setActiveTab] = useState('signup'); // 'signup' or 'login'
     const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const { login } = useAuth();
 
     useEffect(() => {
-        // Handle OAuth callback
         const params = new URLSearchParams(window.location.search);
         const token = params.get('token');
-        const role = params.get('role');
         
         if (token) {
             const decodedToken = JSON.parse(atob(token.split('.')[1]));
@@ -214,28 +217,114 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
         }
     }, [onNavigateToDashboard]);
 
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            await login(email, password);
+            if (onNavigateToDashboard) onNavigateToDashboard();
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
-        <div className="w-full md:w-1/2 p-8 md:p-12 flex items-center justify-center relative" style={{ backgroundColor: 'transparent' }}>
-            <div className="absolute inset-0 bg-black/20"></div>
-            <div className="w-full max-w-sm relative" style={{ zIndex: 10 }}>
-                <div className="mb-6">
-                    <div className="flex border-b border-gray-700">
-                        <button
-                            onClick={() => setActiveTab('signup')}
-                            className={`flex-1 py-3 text-lg font-semibold border-b-2 transition-colors ${activeTab === 'signup' ? 'border-accent text-white' : 'border-transparent text-secondary'}`}
-                        >
-                            Sign Up
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('login')}
-                            className={`flex-1 py-3 text-lg font-semibold border-b-2 transition-colors ${activeTab === 'login' ? 'border-accent text-white' : 'border-transparent text-secondary'}`}
-                        >
-                            Login
-                        </button>
-                    </div>
+        <div className="w-full md:w-1/2 flex items-center justify-center relative p-12" style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(199, 220, 255, 0.6) 100%)' }}>
+            <div className="w-full max-w-xl flex flex-col">
+                <div className="flex items-center gap-3 mb-8">
+                    <img src="/images/FLuid Live Icon light theme.png" alt="FluidJobs.ai Logo" className="h-10 w-10 object-contain" />
+                    <span className="text-2xl font-bold" style={{ color: 'rgba(66, 133, 244, 1)' }}>FluidJobs.ai</span>
+                </div>
+                <div className="text-center mb-8 flex-grow flex flex-col justify-center">
+                    <h1 className="text-4xl font-bold mb-2" style={{ color: 'rgba(0, 0, 0, 1)' }}>Welcome Back</h1>
+                    <p className="text-sm" style={{ color: 'rgba(96, 96, 96, 1)' }}>Sign in to access your dashboard</p>
                 </div>
 
-                {activeTab === 'signup' ? <SignUpForm onOpenRegistration={() => setIsRegistrationOpen(true)} /> : <LoginForm onNavigateToDashboard={onNavigateToDashboard} />}
+                {error && <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-2 rounded-lg text-sm mb-4">{error}</div>}
+
+                <form className="space-y-5" onSubmit={handleSubmit}>
+                    <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'rgba(0, 0, 0, 1)' }}>Username</label>
+                        <div className="relative">
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'rgba(96, 96, 96, 0.6)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <input 
+                                type="email" 
+                                value={email} 
+                                onChange={(e) => setEmail(e.target.value)} 
+                                className="w-full p-3 pl-10 rounded-lg" 
+                                style={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', border: '1px solid rgba(99, 99, 99, 0.2)', color: 'rgba(0, 0, 0, 1)' }}
+                                placeholder="enter email address or phone no." 
+                                required 
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: 'rgba(0, 0, 0, 1)' }}>Password</label>
+                        <div className="relative">
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'rgba(96, 96, 96, 0.6)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full p-3 pl-10 pr-10 rounded-lg"
+                                style={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', border: '1px solid rgba(99, 99, 99, 0.2)', color: 'rgba(0, 0, 0, 1)' }}
+                                placeholder="enter password"
+                                required
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute inset-y-0 right-0 flex items-center px-3"
+                                style={{ color: 'rgba(96, 96, 96, 0.6)' }}
+                            >
+                                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                            </button>
+                        </div>
+                        <div className="flex justify-end mt-2">
+                            <a href="#" className="text-sm hover:underline" style={{ color: 'rgba(66, 133, 244, 1)' }}>Forgot Your Password?</a>
+                        </div>
+                    </div>
+                    <button 
+                        type="submit" 
+                        className="w-full py-3 rounded-xl font-semibold text-white transition-all"
+                        style={{ backgroundColor: 'rgba(66, 133, 244, 1)' }}
+                        disabled={loading}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(66, 133, 244, 0.9)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(66, 133, 244, 1)'}
+                    >
+                        {loading ? 'Logging in...' : 'Log In'}
+                    </button>
+                </form>
+
+                <div className="flex items-center space-x-3 my-6">
+                    <hr className="flex-1" style={{ borderColor: 'rgba(99, 99, 99, 0.2)' }} />
+                    <span className="text-sm" style={{ color: 'rgba(96, 96, 96, 1)' }}>Or Login With</span>
+                    <hr className="flex-1" style={{ borderColor: 'rgba(99, 99, 99, 0.2)' }} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                    <button onClick={() => handleGoogleSignIn('Candidate')} className="py-3 rounded-lg font-medium flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', border: '1px solid rgba(99, 99, 99, 0.2)' }}>
+                        <GoogleIcon />
+                    </button>
+                    <button onClick={() => handleLinkedInSignIn('Candidate')} className="py-3 rounded-lg font-medium flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', border: '1px solid rgba(99, 99, 99, 0.2)' }}>
+                        <LinkedInIcon />
+                    </button>
+                </div>
+
+                <div className="text-center text-sm">
+                    <span style={{ color: 'rgba(96, 96, 96, 1)' }}>Don't Have An Account? </span>
+                    <button onClick={() => setIsRegistrationOpen(true)} className="hover:underline font-medium" style={{ color: 'rgba(66, 133, 244, 1)' }}>Register as a Candidate</button>
+                    <br />
+                    <span style={{ color: 'rgba(96, 96, 96, 1)' }}>Or, </span>
+                    <a href="#" className="hover:underline font-medium" style={{ color: 'rgba(66, 133, 244, 1)' }}>Register as a Company.</a>
+                </div>
             </div>
             <RegistrationModal isOpen={isRegistrationOpen} onClose={() => setIsRegistrationOpen(false)} />
         </div>

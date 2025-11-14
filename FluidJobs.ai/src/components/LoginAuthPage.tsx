@@ -135,10 +135,10 @@ const LoginAuthPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 grid grid-cols-1 md:grid-cols-2">
+    <div className="min-h-screen bg-white grid grid-cols-1 md:grid-cols-2">
       {/* Left Column - Branding */}
-      <div className="relative animated-gradient-bg flex flex-col p-12 text-white">
-        <div className="absolute inset-0 bg-black/10"></div>
+      <div className="relative animated-gradient-bg flex flex-col p-12">
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0) 0%, rgba(199, 220, 255, 1) 100%)' }}></div>
         
         {/* Back Button and Logo */}
         <motion.div 
@@ -152,7 +152,7 @@ const LoginAuthPage = () => {
               alt="FluidJobs.ai Logo" 
               className="w-8 h-8 object-contain"
             />
-            <span className="font-heading font-bold text-2xl">FluidJobs.ai</span>
+            <span className="font-heading font-bold text-2xl" style={{ color: 'rgba(66, 133, 244, 1)' }}>FluidJobs.ai</span>
           </div>
         </motion.div>
 
@@ -163,19 +163,19 @@ const LoginAuthPage = () => {
           transition={{ delay: 0.2 }}
           className="relative z-10 text-center flex-1 flex flex-col justify-center"
         >
-          <h1 className="text-4xl md:text-5xl font-heading font-bold mb-6 leading-tight">
+          <h1 className="text-4xl md:text-5xl font-heading font-bold mb-6 leading-tight" style={{ color: 'rgba(0, 0, 0, 1)' }}>
             Find Your Next Opportunity, Faster
           </h1>
-          <p className="text-xl text-white/90 leading-relaxed">
-            Join thousands of professionals who trust FluidJobs.ai to accelerate their career growth and hiring success.
+          <p className="text-xl leading-relaxed" style={{ color: 'rgba(96, 96, 96, 1)' }}>
+            Join thousands of professionals who trust <span style={{ color: 'rgba(66, 133, 244, 1)' }}>FluidJobs.ai</span> to accelerate their career growth and hiring success.
           </p>
         </motion.div>
 
 
 
         {/* Floating Elements */}
-        <div className="absolute top-1/4 right-8 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
-        <div className="absolute bottom-1/3 left-8 w-24 h-24 bg-purple-400/20 rounded-full blur-xl"></div>
+        <div className="absolute top-1/4 right-8 w-32 h-32 rounded-full blur-xl" style={{ backgroundColor: 'rgba(199, 220, 255, 0.3)' }}></div>
+        <div className="absolute bottom-1/3 left-8 w-24 h-24 rounded-full blur-xl" style={{ backgroundColor: 'rgba(66, 133, 244, 0.2)' }}></div>
       </div>
 
       {/* Right Column - Auth Form */}
@@ -186,13 +186,13 @@ const LoginAuthPage = () => {
           transition={{ duration: 0.6 }}
           className="w-full max-w-md"
         >
-          <div className="bg-white rounded-2xl shadow-xl p-12">
+          <div className="bg-white rounded-2xl shadow-xl p-12" style={{ border: '1px solid rgba(99, 99, 99, 0.2)' }}>
             {/* Header */}
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-heading font-bold text-gray-900 mb-2">
+              <h2 className="text-3xl font-heading font-bold mb-2" style={{ color: 'rgba(0, 0, 0, 1)' }}>
                 {isSignUp ? 'Create Your Account' : 'Welcome Back'}
               </h2>
-              <p className="text-gray-600">
+              <p style={{ color: 'rgba(96, 96, 96, 1)' }}>
                 {isSignUp ? 'Join FluidJobs.ai and start your journey' : 'Sign in to access your dashboard'}
               </p>
             </div>
@@ -203,7 +203,8 @@ const LoginAuthPage = () => {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleSocialLogin('google')}
-                className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-center px-4 py-3 rounded-xl bg-white hover:bg-gray-50 transition-colors"
+                style={{ border: '1px solid rgba(99, 99, 99, 0.2)' }}
                 title="Always shows account selection for security"
               >
                 <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -219,7 +220,10 @@ const LoginAuthPage = () => {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleSocialLogin('linkedin')}
-                className="w-full flex items-center justify-center px-4 py-3 bg-[#0077B5] text-white rounded-xl hover:bg-[#005885] transition-colors"
+                className="w-full flex items-center justify-center px-4 py-3 text-white rounded-xl transition-colors"
+                style={{ backgroundColor: 'rgba(66, 133, 244, 1)', border: '1px solid rgba(99, 99, 99, 0.2)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(66, 133, 244, 0.9)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(66, 133, 244, 1)'}
               >
                 <svg className="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
@@ -231,10 +235,10 @@ const LoginAuthPage = () => {
             {/* Divider */}
             <div className="relative mb-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
+                <div className="w-full border-t" style={{ borderColor: 'rgba(99, 99, 99, 0.2)' }}></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">OR</span>
+                <span className="px-2 bg-white" style={{ color: 'rgba(96, 96, 96, 1)' }}>OR</span>
               </div>
             </div>
 
@@ -262,7 +266,10 @@ const LoginAuthPage = () => {
                     placeholder="Full Name"
                     value={formData.fullName}
                     onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border-0 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl focus:bg-white focus:outline-none transition-all"
+                    style={{ border: '1px solid rgba(99, 99, 99, 0.2)' }}
+                    onFocus={(e) => e.currentTarget.style.boxShadow = '0 0 0 2px rgba(66, 133, 244, 0.2)'}
+                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
                   />
                 </div>
               )}
@@ -274,7 +281,10 @@ const LoginAuthPage = () => {
                   placeholder="Email Address or Phone Number"
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border-0 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl focus:bg-white focus:outline-none transition-all"
+                  style={{ border: '1px solid rgba(99, 99, 99, 0.2)' }}
+                  onFocus={(e) => e.currentTarget.style.boxShadow = '0 0 0 2px rgba(66, 133, 244, 0.2)'}
+                  onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
                 />
               </div>
 
@@ -285,7 +295,10 @@ const LoginAuthPage = () => {
                   placeholder="Password"
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="w-full pl-10 pr-12 py-3 bg-gray-50 border-0 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                  className="w-full pl-10 pr-12 py-3 bg-gray-50 rounded-xl focus:bg-white focus:outline-none transition-all"
+                  style={{ border: '1px solid rgba(99, 99, 99, 0.2)' }}
+                  onFocus={(e) => e.currentTarget.style.boxShadow = '0 0 0 2px rgba(66, 133, 244, 0.2)'}
+                  onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
                 />
                 <button
                   type="button"
@@ -298,9 +311,10 @@ const LoginAuthPage = () => {
 
               <motion.button
                 type="submit"
-                whileHover={{ scale: 1.02, boxShadow: "0 0 25px rgba(99, 102, 241, 0.4)" }}
+                whileHover={{ scale: 1.02, boxShadow: "0 0 25px rgba(66, 133, 244, 0.4)" }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-glow transition-all flex items-center justify-center group"
+                className="w-full text-white py-3 rounded-xl font-semibold shadow-lg transition-all flex items-center justify-center group"
+                style={{ backgroundColor: 'rgba(66, 133, 244, 1)' }}
               >
                 {isSignUp ? 'Create Account' : 'Sign In'}
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -314,12 +328,15 @@ const LoginAuthPage = () => {
               {!isSignUp && (
                 <button
                   onClick={() => navigate('/forgot-password')}
-                  className="text-indigo-600 hover:text-indigo-700 text-sm"
+                  className="text-sm"
+                  style={{ color: 'rgba(66, 133, 244, 1)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(66, 133, 244, 0.8)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(66, 133, 244, 1)'}
                 >
                   Forgot your password?
                 </button>
               )}
-              <div className="text-sm text-gray-600">
+              <div className="text-sm" style={{ color: 'rgba(96, 96, 96, 1)' }}>
                 {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
                 <button
                   onClick={() => {
@@ -329,7 +346,10 @@ const LoginAuthPage = () => {
                       navigate('/candidate-registration');
                     }
                   }}
-                  className="text-indigo-600 hover:text-indigo-700 font-medium"
+                  className="font-medium"
+                  style={{ color: 'rgba(66, 133, 244, 1)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(66, 133, 244, 0.8)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(66, 133, 244, 1)'}
                 >
                   {isSignUp ? 'Sign In' : 'Sign Up'}
                 </button>

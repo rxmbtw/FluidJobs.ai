@@ -12,24 +12,29 @@ passport.use(new GoogleStrategy({
     const email = profile.emails[0].value;
     const name = profile.displayName;
     
-    // Check if candidate exists
+    console.log('🔍 Google OAuth - Email:', email);
+    
+    // Check if candidate exists by email
     const existingCandidate = await pool.query(
       'SELECT * FROM candidates WHERE email = $1',
       [email]
     );
     
     if (existingCandidate.rows.length > 0) {
-      // CRITICAL: Don't overwrite existing user data on re-login
-      console.log('✅ Existing user found, preserving profile data');
+      console.log('✅ Existing user found:', existingCandidate.rows[0].candidate_id);
       return done(null, existingCandidate.rows[0]);
     }
     
-    // Generate new FLC ID
-    const countResult = await pool.query('SELECT COUNT(*) FROM candidates');
-    const count = parseInt(countResult.rows[0].count) + 1;
-    const candidateId = `FLC${String(count).padStart(10, '0')}`;
+    console.log('📝 Creating new user...');
     
-    // Create new candidate with all required fields initialized
+    // Generate unique candidate ID using timestamp + random
+    const timestamp = Date.now().toString().slice(-8);
+    const random = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+    const candidateId = `FLC${timestamp}${random}`;
+    
+    console.log('🆔 Generated ID:', candidateId);
+    
+    // Create new candidate
     const newCandidate = await pool.query(
       `INSERT INTO candidates (
         candidate_id, full_name, email, phone, gender, marital_status, 
@@ -43,8 +48,10 @@ passport.use(new GoogleStrategy({
       [candidateId, name, email]
     );
     
+    console.log('✅ New user created:', newCandidate.rows[0].candidate_id);
     return done(null, newCandidate.rows[0]);
   } catch (error) {
+    console.error('❌ Google OAuth error:', error.message);
     return done(error, null);
   }
 }));

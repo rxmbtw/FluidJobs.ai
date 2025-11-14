@@ -13,8 +13,8 @@
     <style>
         body {
             font-family: 'Manrope', sans-serif;
-            background-color: #050505;
-            color: #f9fafb;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0) 0%, rgba(199, 220, 255, 1) 100%) !important;
+            color: rgba(0, 0, 0, 1);
             overflow-x: hidden;
         }
 
@@ -27,7 +27,7 @@
             height: 100%;
             z-index: -10;
             overflow: hidden;
-            background-color: #050505;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0) 0%, rgba(199, 220, 255, 1) 100%);
         }
 
         /* The glowing grid */
@@ -38,8 +38,8 @@
             width: 100%;
             height: 100%;
             background-image: 
-                linear-gradient(to right, rgba(139, 92, 246, 0.1) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(139, 92, 246, 0.1) 1px, transparent 1px);
+                linear-gradient(to right, rgba(99, 99, 99, 0.2) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(99, 99, 99, 0.2) 1px, transparent 1px);
             background-size: 50px 50px;
             opacity: 0.5;
         }
@@ -54,10 +54,10 @@
             height: 600px; 
             background: radial-gradient(
                 ellipse at center,
-                rgba(139, 92, 246, 0.35) 0%, /* Brighter center */
+                rgba(66, 133, 244, 0.2) 0%,
                 transparent 60%
             );
-            filter: blur(80px); /* Soft blur */
+            filter: blur(80px);
             opacity: 0.7;
             animation: pulse-glow 6s infinite alternate ease-in-out;
         }
@@ -72,7 +72,7 @@
             height: 400px; 
             background: radial-gradient(
                 ellipse at bottom,
-                rgba(139, 92, 246, 0.25) 0%,
+                rgba(66, 133, 244, 0.15) 0%,
                 transparent 70%
             );
             opacity: 0.8;
@@ -92,18 +92,15 @@
         
         /* --- UNIFIED BRAND GRADIENT --- */
         .brand-gradient-text {
-            background: linear-gradient(135deg, #6366F1 0%, #A78BFA 50%, #C084FC 100%);
-            background-size: 200% 200%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: rgba(66, 133, 244, 1);
         }
         
         .brand-gradient-bg {
-             background: linear-gradient(135deg, rgba(4,0,255,1) 0%, rgba(136,0,255,1) 35%, rgba(209,0,255,1) 100%);
+             background: rgba(66, 133, 244, 1);
         }
 
         .brand-static-accent {
-            color: #8B5CF6; /* Static Purple */
+            color: rgba(66, 133, 244, 1);
         }
         /* --- End Unified Palette --- */
         
@@ -237,8 +234,8 @@
             cursor: pointer;
             border-radius: 16px;
             border: none;
-            padding: 2px;
-            background: linear-gradient(135deg, rgba(4,0,255,1) 0%, rgba(136,0,255,1) 35%, rgba(209,0,255,1) 100%);
+            padding: 0;
+            background: rgba(66, 133, 244, 1);
             position: relative;
             text-decoration: none; 
             display: inline-block; 
@@ -257,11 +254,11 @@
         }
         .uiverse-button .inner {
             padding: 14px 25px; /* Default large padding */
-            border-radius: 14px;
+            border-radius: 16px;
             color: #fff;
             z-index: 3;
             position: relative;
-            background: radial-gradient(circle 80px at 80% -50%, #777777, #0f1111);
+            background: rgba(66, 133, 244, 1);
         }
 
         /* Medium size for login forms */
@@ -275,25 +272,10 @@
 
 
         .blob1, .blob2 {
-            position: absolute;
-            width: 70px;
-            height: 100%;
-            border-radius: 16px;
-            bottom: 0;
-            left: 0;
-            background: linear-gradient(135deg, rgba(4,0,255,1) 0%, rgba(136,0,255,1) 35%, rgba(209,0,255,1) 100%);
-            opacity: 0.7;
-            box-shadow: -10px 10px 30px #8B5CF62d;
+            display: none;
         }
         .inner::before {
-            content: "";
-            width: 100%;
-            height: 100%;
-            left: 0;
-            top: 0;
-            border-radius: 14px;
-            background: linear-gradient(135deg, rgba(4,0,255,0.1) 0%, rgba(136,0,255,0.1) 35%, rgba(209,0,255,0.1) 100%);
-            position: absolute;
+            display: none;
         }
         /* --- End Uiverse Button CSS --- */
 
@@ -504,12 +486,12 @@
         /* --- LOGIN PAGE STYLES --- */
         .login-page-body {
             font-family: 'Manrope', sans-serif;
-            background-color: #000000;
-            color: #f9fafb;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0) 0%, rgba(199, 220, 255, 1) 100%);
+            color: rgba(0, 0, 0, 1);
         }
 
         .btn-gradient {
-            background-image: linear-gradient(to right, #0400FF, #8800FF, #D100FF);
+            background: rgba(66, 133, 244, 1);
             transition: opacity 0.3s ease;
         }
         .btn-gradient:hover {
@@ -517,50 +499,55 @@
         }
         
         .text-accent {
-            color: #8B5CF6;
+            color: rgba(66, 133, 244, 1);
         }
         .border-accent {
-            border-color: #8B5CF6;
+            border-color: rgba(66, 133, 244, 1);
         }
         .ring-accent:focus {
-            --tw-ring-color: #8B5CF6;
+            --tw-ring-color: rgba(66, 133, 244, 1);
         }
         .checkbox-accent:checked {
-            background-color: #8B5CF6;
-            border-color: #8B5CF6;
+            background-color: rgba(66, 133, 244, 1);
+            border-color: rgba(66, 133, 244, 1);
         }
 
         .bg-card {
-            background-color: #1a1a1a;
+            background-color: rgba(255, 255, 255, 0.9);
         }
 
         .border-glass {
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(99, 99, 99, 0.2);
         }
 
         .text-secondary {
-            color: #9ca3af;
+            color: rgba(96, 96, 96, 1);
         }
         
         .input-custom {
-            background-color: #000000; /* Primary Background */
-            border: 1px solid #374151; /* gray-700 */
+            background-color: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(99, 99, 99, 0.2);
+            color: rgba(0, 0, 0, 1);
+        }
+        .input-custom::placeholder {
+            color: rgba(96, 96, 96, 0.6);
         }
         .input-custom:focus {
-            border-color: #8B5CF6; /* Static Accent */
-            --tw-ring-color: #8B5CF6;
-            --tw-ring-shadow: 0 0 0 1px #8B5CF6;
+            border-color: rgba(66, 133, 244, 1);
+            --tw-ring-color: rgba(66, 133, 244, 1);
+            --tw-ring-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
             box-shadow: var(--tw-ring-inset) var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
         }
 
         .btn-social {
-            background-color: rgba(255, 255, 255, 0.05); /* Glass Effect */
-            border: 1px solid transparent;
+            background-color: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(99, 99, 99, 0.2);
             transition: all 0.3s ease;
+            color: rgba(0, 0, 0, 1);
         }
         .btn-social:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-color: #8B5CF6; /* Static Accent */
+            background-color: rgba(255, 255, 255, 1);
+            border-color: rgba(66, 133, 244, 1);
         }
         
         @keyframes gradient-flow {
@@ -576,18 +563,18 @@
         }
 
         .spinner {
-          background-image: linear-gradient(rgb(139, 92, 246) 35%, rgb(209, 0, 255));
+          background: rgba(66, 133, 244, 1);
           width: 100px;
           height: 100px;
           animation: spinning82341 1.7s linear infinite;
           text-align: center;
           border-radius: 50px;
           filter: blur(1px);
-          box-shadow: 0px -5px 20px 0px rgb(139, 92, 246), 0px 5px 20px 0px rgb(209, 0, 255);
+          box-shadow: 0px -5px 20px 0px rgba(66, 133, 244, 0.6), 0px 5px 20px 0px rgba(66, 133, 244, 0.4);
         }
 
         .spinner1 {
-          background-color: #000000; 
+          background-color: rgba(255, 255, 255, 0.95);
           width: 100px;
           height: 100px;
           border-radius: 50px;
