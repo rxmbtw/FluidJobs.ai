@@ -25,9 +25,8 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, o
         return <ManageCandidates />;
       case 'hiring-automation':
         return (
-          <div className="p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Hiring Automation</h2>
-            <p className="text-gray-600">Automated hiring workflows and processes.</p>
+          <div className="flex items-center justify-center h-full">
+            <h2 className="text-4xl font-bold text-gray-400">Coming Soon !</h2>
           </div>
         );
       case 'job-settings':

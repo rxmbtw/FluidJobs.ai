@@ -62,6 +62,8 @@ interface FormData {
   selection_process: string;
   other_details: string;
   registration_schedule: string;
+  registration_opening_date: string;
+  registration_closing_date: string;
   about_organisation: string;
   website: string;
   industry: string;
@@ -96,6 +98,8 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
       selection_process: '',
       other_details: '',
       registration_schedule: '',
+      registration_opening_date: '',
+      registration_closing_date: '',
       about_organisation: '',
       website: '',
       industry: '',
@@ -148,6 +152,8 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
           selection_process: draft.selection_process || '',
           other_details: draft.other_details || '',
           registration_schedule: draft.registration_schedule || '',
+          registration_opening_date: draft.registration_opening_date || '',
+          registration_closing_date: draft.registration_closing_date || '',
           about_organisation: draft.about_organisation || '',
           website: draft.website || '',
           industry: draft.industry || '',
@@ -250,7 +256,28 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
     'DevOps', 'UI/UX Design', 'Product Management', 'Quality Assurance'
   ];
 
-  const locationOptions = ['Mumbai', 'Delhi', 'Bangalore', 'Pune', 'Chennai', 'Hyderabad'];
+  const locationOptions = [
+    'Mumbai, Maharashtra', 'Delhi, Delhi', 'Bangalore, Karnataka', 'Hyderabad, Telangana', 'Ahmedabad, Gujarat', 'Chennai, Tamil Nadu', 'Kolkata, West Bengal', 'Surat, Gujarat', 'Pune, Maharashtra', 'Jaipur, Rajasthan',
+    'Lucknow, Uttar Pradesh', 'Kanpur, Uttar Pradesh', 'Nagpur, Maharashtra', 'Indore, Madhya Pradesh', 'Thane, Maharashtra', 'Bhopal, Madhya Pradesh', 'Visakhapatnam, Andhra Pradesh', 'Pimpri-Chinchwad, Maharashtra', 'Patna, Bihar', 'Vadodara, Gujarat',
+    'Ghaziabad, Uttar Pradesh', 'Ludhiana, Punjab', 'Agra, Uttar Pradesh', 'Nashik, Maharashtra', 'Faridabad, Haryana', 'Meerut, Uttar Pradesh', 'Rajkot, Gujarat', 'Kalyan-Dombivali, Maharashtra', 'Vasai-Virar, Maharashtra', 'Varanasi, Uttar Pradesh',
+    'Srinagar, Jammu and Kashmir', 'Aurangabad, Maharashtra', 'Dhanbad, Jharkhand', 'Amritsar, Punjab', 'Navi Mumbai, Maharashtra', 'Allahabad, Uttar Pradesh', 'Ranchi, Jharkhand', 'Howrah, West Bengal', 'Coimbatore, Tamil Nadu', 'Jabalpur, Madhya Pradesh',
+    'Gwalior, Madhya Pradesh', 'Vijayawada, Andhra Pradesh', 'Jodhpur, Rajasthan', 'Madurai, Tamil Nadu', 'Raipur, Chhattisgarh', 'Kota, Rajasthan', 'Chandigarh, Chandigarh', 'Guwahati, Assam', 'Solapur, Maharashtra', 'Hubli-Dharwad, Karnataka',
+    'Mysore, Karnataka', 'Tiruchirappalli, Tamil Nadu', 'Bareilly, Uttar Pradesh', 'Aligarh, Uttar Pradesh', 'Tiruppur, Tamil Nadu', 'Moradabad, Uttar Pradesh', 'Jalandhar, Punjab', 'Bhubaneswar, Odisha', 'Salem, Tamil Nadu', 'Warangal, Telangana',
+    'Mira-Bhayandar, Maharashtra', 'Thiruvananthapuram, Kerala', 'Bhiwandi, Maharashtra', 'Saharanpur, Uttar Pradesh', 'Guntur, Andhra Pradesh', 'Amravati, Maharashtra', 'Bikaner, Rajasthan', 'Noida, Uttar Pradesh', 'Jamshedpur, Jharkhand', 'Bhilai, Chhattisgarh',
+    'Cuttack, Odisha', 'Firozabad, Uttar Pradesh', 'Kochi, Kerala', 'Nellore, Andhra Pradesh', 'Bhavnagar, Gujarat', 'Dehradun, Uttarakhand', 'Durgapur, West Bengal', 'Asansol, West Bengal', 'Rourkela, Odisha', 'Nanded, Maharashtra',
+    'Kolhapur, Maharashtra', 'Ajmer, Rajasthan', 'Akola, Maharashtra', 'Gulbarga, Karnataka', 'Jamnagar, Gujarat', 'Ujjain, Madhya Pradesh', 'Loni, Uttar Pradesh', 'Siliguri, West Bengal', 'Jhansi, Uttar Pradesh', 'Ulhasnagar, Maharashtra',
+    'Jammu, Jammu and Kashmir', 'Sangli-Miraj, Maharashtra', 'Mangalore, Karnataka', 'Erode, Tamil Nadu', 'Belgaum, Karnataka', 'Ambattur, Tamil Nadu', 'Tirunelveli, Tamil Nadu', 'Malegaon, Maharashtra', 'Gaya, Bihar', 'Jalgaon, Maharashtra',
+    'Udaipur, Rajasthan', 'Maheshtala, West Bengal', 'Davanagere, Karnataka', 'Kozhikode, Kerala', 'Kurnool, Andhra Pradesh', 'Rajpur Sonarpur, West Bengal', 'Rajahmundry, Andhra Pradesh', 'Bokaro, Jharkhand', 'South Dumdum, West Bengal', 'Bellary, Karnataka',
+    'Patiala, Punjab', 'Gopalpur, Odisha', 'Agartala, Tripura', 'Bhagalpur, Bihar', 'Muzaffarnagar, Uttar Pradesh', 'Bhatpara, West Bengal', 'Panihati, West Bengal', 'Latur, Maharashtra', 'Dhule, Maharashtra', 'Tirupati, Andhra Pradesh',
+    'Rohtak, Haryana', 'Korba, Chhattisgarh', 'Bhilwara, Rajasthan', 'Berhampur, Odisha', 'Muzaffarpur, Bihar', 'Ahmednagar, Maharashtra', 'Mathura, Uttar Pradesh', 'Kollam, Kerala', 'Avadi, Tamil Nadu', 'Kadapa, Andhra Pradesh',
+    'Kamarhati, West Bengal', 'Sambalpur, Odisha', 'Bilaspur, Chhattisgarh', 'Shahjahanpur, Uttar Pradesh', 'Satara, Maharashtra', 'Bijapur, Karnataka', 'Rampur, Uttar Pradesh', 'Shivamogga, Karnataka', 'Chandrapur, Maharashtra', 'Junagadh, Gujarat',
+    'Thrissur, Kerala', 'Alwar, Rajasthan', 'Bardhaman, West Bengal', 'Kulti, West Bengal', 'Kakinada, Andhra Pradesh', 'Nizamabad, Telangana', 'Parbhani, Maharashtra', 'Tumkur, Karnataka', 'Khammam, Telangana', 'Ozhukarai, Puducherry',
+    'Bihar Sharif, Bihar', 'Panipat, Haryana', 'Darbhanga, Bihar', 'Bally, West Bengal', 'Aizawl, Mizoram', 'Dewas, Madhya Pradesh', 'Ichalkaranji, Maharashtra', 'Karnal, Haryana', 'Bathinda, Punjab', 'Jalna, Maharashtra',
+    'Eluru, Andhra Pradesh', 'Kirari Suleman Nagar, Delhi', 'Barasat, West Bengal', 'Purnia, Bihar', 'Satna, Madhya Pradesh', 'Mau, Uttar Pradesh', 'Sonipat, Haryana', 'Farrukhabad, Uttar Pradesh', 'Sagar, Madhya Pradesh',
+    'Durg, Chhattisgarh', 'Imphal, Manipur', 'Ratlam, Madhya Pradesh', 'Hapur, Uttar Pradesh', 'Arrah, Bihar', 'Karimnagar, Telangana', 'Anantapur, Andhra Pradesh', 'Etawah, Uttar Pradesh', 'Ambernath, Maharashtra', 'North Dumdum, West Bengal',
+    'Bharatpur, Rajasthan', 'Begusarai, Bihar', 'New Delhi, Delhi', 'Gandhidham, Gujarat', 'Baranagar, West Bengal', 'Tiruvottiyur, Tamil Nadu', 'Puducherry, Puducherry', 'Sikar, Rajasthan', 'Thoothukudi, Tamil Nadu',
+    'Nagercoil, Tamil Nadu', 'Thanjavur, Tamil Nadu', 'Murwara, Madhya Pradesh', 'Naihati, West Bengal', 'Sambhal, Uttar Pradesh', 'Nadiad, Gujarat', 'Yamunanagar, Haryana', 'English Bazar, West Bengal', 'Unnao, Uttar Pradesh', 'Raiganj, West Bengal'
+  ];
   const jobTypeOptions = ['Full-time', 'Part-time', 'Contract', 'Internship'];
   const modeOptions = ['Work From Home', 'Hybrid', 'On-site'];
 
@@ -972,12 +999,21 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Registration Schedule</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Registration Opening Date</label>
                 <input
-                  type="text"
-                  value={formData.registration_schedule}
-                  onChange={(e) => setFormData(prev => ({ ...prev, registration_schedule: e.target.value }))}
-                  placeholder="e.g., Open till 15th Dec 2024"
+                  type="date"
+                  value={formData.registration_opening_date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, registration_opening_date: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Registration Closing Date</label>
+                <input
+                  type="date"
+                  value={formData.registration_closing_date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, registration_closing_date: e.target.value }))}
+                  min={formData.registration_opening_date}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 />
               </div>
@@ -1135,70 +1171,192 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
             </div>
             
             <div className="border border-gray-300 rounded-xl overflow-hidden">
-              {/* Rich Text Editor Toolbar */}
-              <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Format Dropdown */}
-                  <select onChange={(e) => { 
-                    const value = e.target.value;
-                    if(value) {
-                      applyFormat(value);
-                      e.target.value = '';
-                    }
-                  }} className="px-2 py-1 text-sm border rounded bg-white">
-                    <option value="">Format</option>
-                    <option value="h1">Heading 1</option>
-                    <option value="h2">Heading 2</option>
-                    <option value="h3">Heading 3</option>
-                    <option value="p">Paragraph</option>
-                  </select>
-                  
-                  {/* Font Family */}
-                  <select onChange={(e) => { if(e.target.value && editorRef.current) { editorRef.current.focus(); document.execCommand('fontName', false, e.target.value); updateContent(); e.target.selectedIndex = 0; }}} className="px-2 py-1 text-sm border rounded bg-white">
-                    <option>Font</option>
+              {/* Excel-Style Rich Text Editor Toolbar */}
+              <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
+                <div className="flex items-center gap-1">
+                  {/* Font Family - Excel Style */}
+                  <select 
+                    onChange={(e) => { 
+                      if(e.target.value && editorRef.current) { 
+                        editorRef.current.focus(); 
+                        document.execCommand('fontName', false, e.target.value); 
+                        updateContent(); 
+                      }
+                    }} 
+                    className="w-28 px-2 py-1 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500"
+                    defaultValue="Calibri"
+                  >
+                    <option value="Calibri">Calibri</option>
                     <option value="Arial">Arial</option>
-                    <option value="Georgia">Georgia</option>
                     <option value="Times New Roman">Times New Roman</option>
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="Georgia">Georgia</option>
                     <option value="Verdana">Verdana</option>
+                    <option value="Tahoma">Tahoma</option>
+                    <option value="Trebuchet MS">Trebuchet MS</option>
+                    <option value="Arial Black">Arial Black</option>
+                    <option value="Impact">Impact</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Lucida Console">Lucida Console</option>
                   </select>
                   
-                  {/* Font Size */}
-                  <select onChange={(e) => { if(e.target.value && editorRef.current) { editorRef.current.focus(); document.execCommand('fontSize', false, e.target.value); updateContent(); e.target.selectedIndex = 0; }}} className="px-2 py-1 text-sm border rounded bg-white">
-                    <option>Size</option>
-                    <option value="1">Small</option>
-                    <option value="3">Normal</option>
-                    <option value="5">Medium</option>
-                    <option value="7">Large</option>
+                  {/* Font Size - Excel Style */}
+                  <select 
+                    onChange={(e) => { 
+                      if(e.target.value && editorRef.current) { 
+                        editorRef.current.focus(); 
+                        document.execCommand('fontSize', false, e.target.value); 
+                        updateContent(); 
+                      }
+                    }} 
+                    className="w-12 px-1 py-1 text-sm border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500"
+                    defaultValue="3"
+                  >
+                    <option value="1">8</option>
+                    <option value="1">9</option>
+                    <option value="1">10</option>
+                    <option value="3">11</option>
+                    <option value="3">12</option>
+                    <option value="4">14</option>
+                    <option value="5">16</option>
+                    <option value="5">18</option>
+                    <option value="6">20</option>
+                    <option value="6">22</option>
+                    <option value="7">24</option>
+                    <option value="7">26</option>
+                    <option value="7">28</option>
+                    <option value="7">36</option>
+                    <option value="7">48</option>
+                    <option value="7">72</option>
                   </select>
                   
-                  <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                  <div className="w-px h-5 bg-gray-300 mx-1"></div>
                   
-                  {/* Text Formatting */}
-                  <button onClick={() => execCommand('bold')} className="w-7 h-7 text-sm font-bold border rounded hover:bg-blue-50">B</button>
-                  <button onClick={() => execCommand('italic')} className="w-7 h-7 text-sm italic border rounded hover:bg-blue-50">I</button>
-                  <button onClick={() => execCommand('underline')} className="w-7 h-7 text-sm underline border rounded hover:bg-blue-50">U</button>
-                  <button onClick={() => execCommand('strikeThrough')} className="w-7 h-7 text-sm line-through border rounded hover:bg-blue-50">S</button>
+                  {/* Bold, Italic, Underline - Excel Style */}
+                  <button 
+                    onClick={() => execCommand('bold')} 
+                    className="w-7 h-7 flex items-center justify-center text-sm font-bold border border-gray-300 rounded hover:bg-gray-100 focus:outline-none focus:bg-blue-100"
+                    title="Bold (Ctrl+B)"
+                  >
+                    B
+                  </button>
+                  <button 
+                    onClick={() => execCommand('italic')} 
+                    className="w-7 h-7 flex items-center justify-center text-sm italic border border-gray-300 rounded hover:bg-gray-100 focus:outline-none focus:bg-blue-100"
+                    title="Italic (Ctrl+I)"
+                  >
+                    I
+                  </button>
                   
-                  <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                  {/* Underline Dropdown - Excel Style */}
+                  <div className="relative">
+                    <button 
+                      onClick={() => execCommand('underline')} 
+                      className="w-7 h-7 flex items-center justify-center text-sm underline border border-gray-300 rounded hover:bg-gray-100 focus:outline-none focus:bg-blue-100"
+                      title="Underline (Ctrl+U)"
+                    >
+                      U
+                    </button>
+                  </div>
                   
-                  {/* Lists Dropdown */}
-                  <select onChange={(e) => { 
-                    const value = e.target.value;
-                    if(value) {
-                      applyList(value);
-                      e.target.value = '';
-                    }
-                  }} className="px-2 py-1 text-sm border rounded bg-white">
-                    <option value="">Lists</option>
-                    <option value="insertUnorderedList">• Bullet List</option>
-                    <option value="insertOrderedList">1. Numbered List</option>
-                  </select>
+                  <div className="w-px h-5 bg-gray-300 mx-1"></div>
                   
-                  <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                  {/* Font Color - Excel Style */}
+                  <div className="relative">
+                    <button 
+                      onClick={() => {
+                        const color = prompt('Enter color (e.g., red, #ff0000):');
+                        if(color) execCommand('foreColor', color);
+                      }}
+                      className="w-8 h-7 flex flex-col items-center justify-center border border-gray-300 rounded hover:bg-gray-100 focus:outline-none focus:bg-blue-100"
+                      title="Font Color"
+                    >
+                      <span className="text-xs font-bold">A</span>
+                      <div className="w-6 h-1 bg-red-500 mt-0.5"></div>
+                    </button>
+                  </div>
                   
-                  {/* Link & Clear */}
-                  <button onClick={() => { const url = prompt('Enter URL:'); if(url) execCommand('createLink', url); }} className="px-2 py-1 text-sm border rounded bg-white hover:bg-gray-100">Link</button>
-                  <button onClick={() => { if(editorRef.current) { editorRef.current.innerHTML = ''; setFormData(prev => ({...prev, job_description: ''})); localStorage.setItem('jobFormData', JSON.stringify({...formData, job_description: ''})); }}} className="px-2 py-1 text-sm border border-red-300 rounded text-red-600 hover:bg-red-50">Clear</button>
+                  {/* Text Highlight Color - Excel Style */}
+                  <div className="relative">
+                    <button 
+                      onClick={() => {
+                        const color = prompt('Enter highlight color (e.g., yellow, #ffff00):');
+                        if(color) execCommand('backColor', color);
+                      }}
+                      className="w-8 h-7 flex flex-col items-center justify-center border border-gray-300 rounded hover:bg-gray-100 focus:outline-none focus:bg-blue-100"
+                      title="Text Highlight Color"
+                    >
+                      <span className="text-xs">🖍️</span>
+                      <div className="w-6 h-1 bg-yellow-400 mt-0.5"></div>
+                    </button>
+                  </div>
+                  
+                  <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                  
+                  {/* Bullet List Dropdown - Excel Style */}
+                  <div className="relative">
+                    <button 
+                      onClick={() => {
+                        if(editorRef.current) {
+                          editorRef.current.focus();
+                          document.execCommand('insertUnorderedList', false);
+                          updateContent();
+                        }
+                      }}
+                      className="w-8 h-7 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-100 focus:outline-none focus:bg-blue-100"
+                      title="Bullets"
+                    >
+                      <div className="flex items-center text-xs">
+                        <div className="flex flex-col mr-1">
+                          <div className="w-1 h-1 bg-black rounded-full mb-0.5"></div>
+                          <div className="w-1 h-1 bg-black rounded-full mb-0.5"></div>
+                          <div className="w-1 h-1 bg-black rounded-full"></div>
+                        </div>
+                        <div className="flex flex-col">
+                          <div className="w-2 h-0.5 bg-black mb-0.5"></div>
+                          <div className="w-2 h-0.5 bg-black mb-0.5"></div>
+                          <div className="w-2 h-0.5 bg-black"></div>
+                        </div>
+                        <span className="ml-1 text-xs">▼</span>
+                      </div>
+                    </button>
+                  </div>
+                  
+                  {/* Numbered List Dropdown - Excel Style */}
+                  <div className="relative">
+                    <button 
+                      onClick={() => {
+                        if(editorRef.current) {
+                          editorRef.current.focus();
+                          document.execCommand('insertOrderedList', false);
+                          updateContent();
+                        }
+                      }}
+                      className="w-8 h-7 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-100 focus:outline-none focus:bg-blue-100"
+                      title="Numbering"
+                    >
+                      <div className="flex items-center text-xs">
+                        <div className="flex flex-col mr-1 text-xs leading-none">
+                          <div>1</div>
+                          <div>2</div>
+                          <div>3</div>
+                        </div>
+                        <div className="flex flex-col">
+                          <div className="w-2 h-0.5 bg-black mb-0.5"></div>
+                          <div className="w-2 h-0.5 bg-black mb-0.5"></div>
+                          <div className="w-2 h-0.5 bg-black"></div>
+                        </div>
+                        <span className="ml-1 text-xs text-blue-500">▼</span>
+                      </div>
+                    </button>
+                  </div>
+                  
+
+                </div>
+                
+                {/* Font Label - Excel Style */}
+                <div className="text-xs text-gray-500 mt-1 text-center">
+                  
                 </div>
               </div>
               

@@ -45,14 +45,18 @@ const ThemedJobSpecificDashboard: React.FC<ThemedJobSpecificDashboardProps> = ({
                 opacity: 1 !important;
               }
             `}</style>
-            <ManageCandidates />
+            <ManageCandidates isJobSpecific={true} />
           </div>
         );
       case 'hiring-automation':
         return (
-          <div className="p-8" style={{ backgroundColor: colors.bgMain, minHeight: '100vh' }}>
-            <h2 className="text-2xl font-bold mb-4" style={{ color: colors.textPrimary }}>Hiring Automation</h2>
-            <p style={{ color: colors.textSecondary }}>Automated hiring workflows and processes.</p>
+          <div style={{ backgroundColor: colors.bgMain, minHeight: '100vh' }}>
+            <div className="p-8">
+              <h2 className="text-2xl font-bold mb-4" style={{ color: colors.textPrimary }}>Hiring Automation</h2>
+            </div>
+            <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 120px)' }}>
+              <h2 className="text-4xl font-bold text-gray-400">Coming Soon !</h2>
+            </div>
           </div>
         );
       case 'job-settings':
@@ -64,9 +68,13 @@ const ThemedJobSpecificDashboard: React.FC<ThemedJobSpecificDashboardProps> = ({
         );
       case 'testing-environment':
         return (
-          <div className="p-8" style={{ backgroundColor: colors.bgMain, minHeight: '100vh' }}>
-            <h2 className="text-2xl font-bold mb-4" style={{ color: colors.textPrimary }}>Testing Environment</h2>
-            <p style={{ color: colors.textSecondary }}>Testing tools and environment setup.</p>
+          <div style={{ backgroundColor: colors.bgMain, minHeight: '100vh' }}>
+            <div className="p-8">
+              <h2 className="text-2xl font-bold mb-4" style={{ color: colors.textPrimary }}>Testing Environment</h2>
+            </div>
+            <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 120px)' }}>
+              <h2 className="text-4xl font-bold text-gray-400">Coming Soon !</h2>
+            </div>
           </div>
         );
       default:

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle, Download } from 'lucide-react';
 
 const BulkImportSection: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -35,34 +35,94 @@ const BulkImportSection: React.FC = () => {
     setStatusMessage('Processing candidates...');
 
     try {
-      const formData = new FormData();
-      formData.append('csvFile', selectedFile);
+      const text = await selectedFile.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        setImportStatus('error');
+        setStatusMessage('CSV file must contain headers and at least one data row.');
+        setIsImporting(false);
+        return;
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim());
+      const requiredHeaders = ['full_name', 'email'];
+      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+      
+      if (missingHeaders.length > 0) {
+        setImportStatus('error');
+        setStatusMessage(`Missing required headers: ${missingHeaders.join(', ')}`);
+        setIsImporting(false);
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+      let duplicateCount = 0;
+      const errors = [];
 
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
-      const response = await fetch(`${backendUrl}/api/bulk-import/candidates`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('fluidjobs_token')}`,
-        },
-        body: formData,
-      });
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim());
+        const candidate: any = {};
+        
+        headers.forEach((header, index) => {
+          if (values[index]) {
+            candidate[header] = values[index];
+          }
+        });
 
-      if (response.ok) {
-        const result = await response.json();
-        setImportStatus('success');
-        setStatusMessage(`Successfully imported ${result.processed} of ${result.total} candidates!`);
-        setSelectedFile(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+        if (!candidate.full_name || !candidate.email) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Missing required fields`);
+          continue;
         }
-      } else {
-        const error = await response.json();
-        setImportStatus('error');
-        setStatusMessage(error.message || 'Import failed. Please try again.');
+
+        try {
+          const response = await fetch(`${backendUrl}/api/candidates`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(candidate),
+          });
+
+          if (response.ok) {
+            successCount++;
+          } else {
+            const error = await response.json();
+            if (error.message && error.message.includes('duplicate')) {
+              duplicateCount++;
+            } else {
+              errorCount++;
+              errors.push(`Row ${i + 1}: ${error.message || 'Failed to create candidate'}`);
+            }
+          }
+        } catch (err) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Network error`);
+        }
+      }
+
+      setImportStatus('success');
+      let message = `Import completed! ${successCount} added`;
+      if (duplicateCount > 0) message += `, ${duplicateCount} duplicates skipped`;
+      if (errorCount > 0) message += `, ${errorCount} errors`;
+      
+      setStatusMessage(message);
+      
+      if (errors.length > 0 && errors.length <= 5) {
+        setStatusMessage(message + '\n\nErrors:\n' + errors.slice(0, 5).join('\n'));
+      }
+      
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
     } catch (error) {
       setImportStatus('error');
-      setStatusMessage('Network error. Please check your connection and try again.');
+      setStatusMessage('Failed to process CSV file. Please check the format.');
     } finally {
       setIsImporting(false);
     }
@@ -111,13 +171,36 @@ const BulkImportSection: React.FC = () => {
           )}
         </div>
 
+        {/* Download Template Button */}
+        <div className="text-center mb-6">
+          <button
+            onClick={() => {
+              const csvContent = `full_name,email,phone_number,gender,marital_status,current_company,notice_period,current_ctc,location,currently_employed,previous_company,expected_ctc,experience_years
+John Doe,john.doe@email.com,+91 9876543210,Male,Single,Tech Corp,30 Days,800000,Mumbai,Yes,Previous Corp,1200000,3.5
+Jane Smith,jane.smith@email.com,+91 9876543211,Female,Married,Software Inc,60 Days,1200000,Delhi,Yes,Old Company,1500000,5.2`;
+              const blob = new Blob([csvContent], { type: 'text/csv' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'candidates_template.csv';
+              a.click();
+              window.URL.revokeObjectURL(url);
+            }}
+            className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors mx-auto"
+          >
+            <Download className="w-5 h-5" />
+            <span>Download CSV Template</span>
+          </button>
+        </div>
+
         {/* CSV Format Instructions */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <h3 className="font-medium text-blue-900 mb-2">CSV Format Requirements:</h3>
           <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Headers: <code>CandidateName, EmailAddress</code></li>
-            <li>• Each row represents one candidate</li>
+            <li>• <strong>Required:</strong> full_name, email</li>
+            <li>• <strong>Optional:</strong> phone_number, gender, marital_status, current_company, notice_period, current_ctc, location, currently_employed, previous_company, expected_ctc, experience_years</li>
             <li>• Email addresses must be unique</li>
+            <li>• Download template above for correct format</li>
             <li>• Maximum file size: 10MB</li>
           </ul>
         </div>

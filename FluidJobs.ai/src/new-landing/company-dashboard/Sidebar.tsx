@@ -28,11 +28,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
       className="hidden md:block sticky p-3 flex flex-col justify-between shadow-lg transition-all duration-300" 
       style={{ 
         width: isCollapsed ? '80px' : '297px', 
-        top: '6rem', 
-        height: 'calc(100vh - 6rem)', 
+        top: '4rem', 
+        height: 'calc(100vh - 4rem)', 
         backgroundColor: colors.bgSidebar, 
         borderRight: `1px solid ${colors.border}`, 
-        borderBottomRightRadius: '16px', 
         overflow: 'hidden' 
       }}
     >
@@ -63,7 +62,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
               }}
             >
               <item.icon className="w-6 h-6" />
-              {!isCollapsed && <span>{item.label}</span>}
+              {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
             </a>
           ))}
         </nav>

@@ -25,7 +25,11 @@ interface Candidate {
 
 
 
-const ManageCandidates: React.FC = () => {
+interface ManageCandidatesProps {
+  isJobSpecific?: boolean;
+}
+
+const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = false }) => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,6 +38,7 @@ const ManageCandidates: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [parsing, setParsing] = useState(false);
+  const [sortOrder, setSortOrder] = useState('asc');
 
   // AI Resume Review function
   const reviewResume = async (candidateId: string) => {
@@ -70,7 +75,7 @@ const ManageCandidates: React.FC = () => {
   const fetchCandidates = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5001/api/test-candidates', {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidates?page=1&limit=1000`, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -92,8 +97,8 @@ const ManageCandidates: React.FC = () => {
             currentCompany: candidate.current_company || 'Not specified',
             noticePeriod: candidate.notice_period || 'Not specified',
             lastWorkingDay: '',
-            currentSalary: candidate.current_ctc ? `₹${parseFloat(candidate.current_ctc).toLocaleString()}` : 'Not specified',
-            expectedSalary: candidate.expected_ctc ? `₹${parseFloat(candidate.expected_ctc).toLocaleString()}` : 'Not specified',
+            currentSalary: candidate.current_ctc ? `₹${parseFloat(candidate.current_ctc).toLocaleString('en-IN')}` : 'Not specified',
+            expectedSalary: candidate.expected_ctc ? `₹${parseFloat(candidate.expected_ctc).toLocaleString('en-IN')}` : 'Not specified',
             location: candidate.location || 'Not specified',
             source: 'Database',
             resumeUrl: candidate.resume_link || '',
@@ -181,12 +186,20 @@ const ManageCandidates: React.FC = () => {
   }, []);
 
   const filteredCandidates = useMemo(() => {
-    return candidates.filter(candidate =>
+    const filtered = candidates.filter(candidate =>
       candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.phone.includes(searchTerm)
     );
-  }, [candidates, searchTerm]);
+    
+    return filtered.sort((a, b) => {
+      if (sortOrder === 'asc') {
+        return a.name.localeCompare(b.name);
+      } else {
+        return b.name.localeCompare(a.name);
+      }
+    });
+  }, [candidates, searchTerm, sortOrder]);
 
   if (loading) {
     return (
@@ -207,9 +220,9 @@ const ManageCandidates: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 font-sans">
+    <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
       {/* Left Sidebar - Filters and Candidates List */}
-      <div className="w-[42.5%] bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-[35%] bg-white border-r border-gray-200 flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
@@ -229,7 +242,7 @@ const ManageCandidates: React.FC = () => {
             {candidates.length > 0 && candidates[0].source === 'Database' ? 'Database Candidates' : 'Sample Candidates'} ({filteredCandidates.length})
           </h2>
           
-          {/* Filter Button and Search Bar */}
+          {/* Filter Button, Sort Dropdown and Search Bar */}
           <div className="flex items-center space-x-2 mb-4">
             <button 
               onClick={() => setShowFilters(!showFilters)}
@@ -237,6 +250,15 @@ const ManageCandidates: React.FC = () => {
             >
               <Filter className="w-4 h-4 text-gray-600" />
             </button>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex-shrink-0"
+            >
+              <option value="">Sort</option>
+              <option value="asc">Alphabetical Asc. (A → Z)</option>
+              <option value="desc">Alphabetical Desc. (Z → A)</option>
+            </select>
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
@@ -337,7 +359,8 @@ const ManageCandidates: React.FC = () => {
           </div>
           
           {/* Candidates List */}
-          <div className="flex-1 overflow-y-auto px-4">
+          <div className="flex-1 overflow-y-auto px-4" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+
           {filteredCandidates.map((candidate, index) => {
             const matchPercentage = candidate.resumeScore || 35;
             const getMatchColor = (percentage: number) => {
@@ -363,28 +386,7 @@ const ManageCandidates: React.FC = () => {
                       <p className="text-xs text-gray-500">{candidate.experience} Yrs | {candidate.currentCompany || 'Not specified'}</p>
                     </div>
                   </div>
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 relative">
-                      <svg className="w-12 h-12 transform -rotate-90" viewBox="0 0 36 36">
-                        <path
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          fill="none"
-                          stroke="#e5e7eb"
-                          strokeWidth="2"
-                        />
-                        <path
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          fill="none"
-                          stroke="#ef4444"
-                          strokeWidth="2"
-                          strokeDasharray={`${matchPercentage}, 100`}
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-xs font-semibold text-red-600">{matchPercentage}%</span>
-                      </div>
-                    </div>
-                  </div>
+
                 </div>
               </div>
             );
@@ -394,48 +396,23 @@ const ManageCandidates: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {selectedCandidate && (
           <>
             {/* Top Header - Candidate Profile Card */}
-            <div className="bg-white border-b border-gray-100 p-6">
-              {/* Stage Progress */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-8">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                      <FileText className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 uppercase">STAGE 1</p>
-                      <p className="text-sm font-semibold text-gray-900">Resume Review</p>
-                    </div>
-                  </div>
-                  <div className="w-12 h-0.5 bg-gray-200"></div>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                      <User className="w-5 h-5 text-gray-400" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-400 uppercase">STAGE 2</p>
-                      <p className="text-sm font-medium text-gray-400">Manual Review</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <button 
-                    onClick={() => reviewResume(selectedCandidate.id)}
-                    disabled={parsing}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2 text-sm font-medium disabled:opacity-50"
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span>{parsing ? 'Reviewing...' : 'AI Review'}</span>
-                  </button>
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2 text-sm font-medium">
+            <div className="bg-white border-b border-gray-100 p-3">
+              {/* Action Buttons */}
+              <div className="flex justify-end mb-6 space-x-3">
+                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2 text-sm font-medium">
+                  <Plus className="w-4 h-4" />
+                  <span>Invite</span>
+                </button>
+                {isJobSpecific && (
+                  <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-2 text-sm font-medium">
                     <Plus className="w-4 h-4" />
-                    <span>Invite</span>
+                    <span>Invite for this Job</span>
                   </button>
-                </div>
+                )}
               </div>
 
               {/* Candidate Header */}
@@ -462,41 +439,24 @@ const ManageCandidates: React.FC = () => {
                     <Linkedin className="w-5 h-5" />
                   </button>
                 </div>
-                <div className="text-right">
-                  <div className="text-xs text-gray-500 uppercase mb-1">RESUME SCORE</div>
-                  <div className="text-sm font-semibold text-gray-900">AI Analysis</div>
-                  <div className={`text-2xl font-bold mt-1 ${
-                    selectedCandidate.resumeScore >= 70 ? 'text-green-600' : 
-                    selectedCandidate.resumeScore >= 50 ? 'text-orange-600' : 'text-red-600'
-                  }`}>
-                    {selectedCandidate.resumeScore}/100
-                  </div>
-                </div>
+
               </div>
             </div>
 
             {/* Content Tabs */}
             <div className="bg-white border-b border-gray-100">
               <div className="flex space-x-6 px-6">
-                {['Application', 'Resume Review'].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`py-3 px-1 border-b-2 font-medium text-sm transition-all ${
-                      activeTab === tab
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
+                <button
+                  className="py-3 px-1 border-b-2 font-medium text-sm transition-all border-blue-500 text-blue-600"
+                >
+                  Application
+                </button>
               </div>
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 bg-white">
-              <div className="h-full overflow-y-auto">
+            <div className="flex-1 bg-white overflow-hidden">
+              <div className="h-full">
                 {activeTab === 'Application' ? (
                   <div className="flex h-full">
                     {/* Left Column */}
@@ -506,32 +466,16 @@ const ManageCandidates: React.FC = () => {
                         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
                           <h3 className="text-lg font-semibold text-gray-900 mb-4">Work Experience</h3>
                           <div className="space-y-4">
-                            <div className="flex items-start space-x-3">
-                              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mt-1">
-                                <Briefcase className="w-4 h-4 text-blue-600" />
-                              </div>
-                              <div className="flex-1">
-                                <h4 className="font-medium text-gray-900 mb-1">{selectedCandidate.position}</h4>
-                                <p className="text-sm text-gray-600 mb-1">{selectedCandidate.currentCompany}</p>
-                                <div className="flex items-center text-xs text-gray-500">
-                                  <Calendar className="w-3 h-3 mr-1" />
-                                  1 Nov '22 - Present
+                            {selectedCandidate.currentCompany && selectedCandidate.currentCompany !== 'Not specified' && (
+                              <div className="flex items-start space-x-3">
+                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mt-1">
+                                  <Briefcase className="w-4 h-4 text-blue-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-sm text-gray-600">{selectedCandidate.currentCompany}</p>
                                 </div>
                               </div>
-                            </div>
-                            <div className="flex items-start space-x-3">
-                              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mt-1">
-                                <Briefcase className="w-4 h-4 text-gray-600" />
-                              </div>
-                              <div className="flex-1">
-                                <h4 className="font-medium text-gray-900 mb-1">Software Engineer</h4>
-                                <p className="text-sm text-gray-600 mb-1">Collegedunia Web Private Limited</p>
-                                <div className="flex items-center text-xs text-gray-500">
-                                  <Calendar className="w-3 h-3 mr-1" />
-                                  1 Jun '19 - 30 Nov '22
-                                </div>
-                              </div>
-                            </div>
+                            )}
                           </div>
                         </div>
 
@@ -567,23 +511,8 @@ const ManageCandidates: React.FC = () => {
                               <span className="text-sm font-medium text-gray-600">Expected Salary</span>
                               <span className="text-sm text-gray-900">{selectedCandidate.expectedSalary}</span>
                             </div>
-                          </div>
-                        </div>
-
-                        {/* Experience */}
-                        <div className="bg-white rounded-lg border border-gray-200 p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Experience</h3>
-                          <div className="grid grid-cols-1 gap-4">
                             <div className="flex justify-between">
                               <span className="text-sm font-medium text-gray-600">Full-Time Experience</span>
-                              <span className="text-sm text-gray-900">{selectedCandidate.experience} years</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm font-medium text-gray-600">Internship Experience</span>
-                              <span className="text-sm text-gray-900">N/A</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm font-medium text-gray-600">Relevant Experience</span>
                               <span className="text-sm text-gray-900">{selectedCandidate.experience} years</span>
                             </div>
                           </div>
@@ -594,23 +523,27 @@ const ManageCandidates: React.FC = () => {
                     {/* Right Column */}
                     <div className="w-1/2 p-8">
                       <div className="max-w-2xl">
-                        {/* Education */}
+                        {/* Skills */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Skills</h3>
+                        </div>
+
+                        {/* Resume */}
                         <div className="bg-white rounded-lg border border-gray-200 p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Education</h3>
-                          <div className="flex items-start space-x-3">
-                            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mt-1">
-                              <Building className="w-4 h-4 text-green-600" />
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="font-medium text-gray-900 mb-1">Computer Science Engineering</h4>
-                              <p className="text-sm text-gray-600 mb-1">Btech Bachelor Of Technology</p>
-                              <p className="text-sm text-gray-600 mb-1">Jaypee Institute of Information Technology</p>
-                              <div className="flex items-center text-xs text-gray-500">
-                                <Calendar className="w-3 h-3 mr-1" />
-                                1 May '15 - 31 Dec '19 • CGPA: 7.0
-                              </div>
-                            </div>
-                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Resume</h3>
+                          {selectedCandidate.resumeUrl ? (
+                            <a
+                              href={selectedCandidate.resumeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                              <Eye className="w-4 h-4" />
+                              <span>View Resume</span>
+                            </a>
+                          ) : (
+                            <p className="text-sm text-gray-500">No resume available</p>
+                          )}
                         </div>
                       </div>
                     </div>
