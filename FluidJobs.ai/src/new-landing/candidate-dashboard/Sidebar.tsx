@@ -17,6 +17,13 @@ const Sidebar: React.FC<SidebarProps> = ({ userName, onNavigate, currentView = '
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.clear();
+    window.location.href = '/login';
+  };
+
   const handleMouseEnter = () => setIsCollapsed(false);
   const handleMouseLeave = () => setIsCollapsed(true);
 
@@ -203,7 +210,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userName, onNavigate, currentView = '
           {!isCollapsed && isLogoutOpen && (
             <div className="absolute bottom-full left-0 w-full mb-1 rounded-xl shadow-2xl overflow-hidden z-20" style={{ backgroundColor: colors.bgCard, border: `1px solid ${colors.border}` }}>
               <nav className="p-2">
-                <a href="#" onClick={(e) => { e.preventDefault(); console.log('Logout clicked'); }} className="flex items-center space-x-3 p-3 rounded-lg transition duration-150" style={{ color: '#EF4444' }}>
+                <a href="#" onClick={(e) => { e.preventDefault(); handleLogout(); }} className="flex items-center space-x-3 p-3 rounded-lg transition duration-150" style={{ color: '#EF4444' }}>
                   <LogOut className="w-5 h-5" style={{ color: '#EF4444' }} />
                   <span className="font-semibold text-base">Logout</span>
                 </a>

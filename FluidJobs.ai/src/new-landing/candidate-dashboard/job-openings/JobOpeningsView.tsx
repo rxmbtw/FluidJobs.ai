@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardHeader from '../DashboardHeader';
 import Sidebar from '../Sidebar';
 import MobileSidebar from '../MobileSidebar';
@@ -6,6 +6,7 @@ import JobSearchBar from './JobSearchBar';
 import JobCard from './JobCard';
 import JobDetailView from './job-detail/JobDetailView';
 import { useTheme, getThemeColors } from '../ThemeContext';
+import axios from 'axios';
 
 interface JobOpeningsViewProps {
   savedJobIds: string[];
@@ -19,79 +20,41 @@ const JobOpeningsView: React.FC<JobOpeningsViewProps> = ({ savedJobIds, onToggle
   const [currentView, setCurrentView] = useState('list');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [userName] = useState('Shriram Surse');
+  const [jobData, setJobData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        console.log('Fetching jobs from API...');
+        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced`);
+        console.log('API Response:', response.data);
+        const jobs = response.data as any[];
+        const mappedJobs = jobs.map((job: any) => ({
+          id: job.id,
+          title: job.title,
+          companyInitial: job.company?.[0] || 'F',
+          postedOn: job.postedDate,
+          type: job.type,
+          ctc: job.salary,
+          industry: job.industry,
+          location: job.location,
+          status: 'Open until filled'
+        }));
+        console.log('Mapped jobs:', mappedJobs);
+        setJobData(mappedJobs);
+      } catch (error) {
+        console.error('Error fetching jobs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJobs();
+  }, []);
 
   if (currentView === 'detail') {
     return <JobDetailView onBackToList={() => setCurrentView('list')} />;
   }
-
-  const jobData = [
-    {
-      id: 'job-1',
-      title: 'QA Engineer - Insurance',
-      companyInitial: 'A',
-      postedOn: '30/10/2025',
-      type: 'Full-Time',
-      ctc: 'Rs.6.0L-Rs.15.0L',
-      industry: 'Technology',
-      location: 'Pune, Mumbai',
-      status: 'Open until filled'
-    },
-    {
-      id: 'job-2',
-      title: 'Senior Frontend Developer',
-      companyInitial: 'B',
-      postedOn: '01/11/2025',
-      type: 'Full-Time',
-      ctc: 'Rs.12.0L-Rs.25.0L',
-      industry: 'FinTech',
-      location: 'Bengaluru, Remote',
-      status: 'Open until filled'
-    },
-    {
-      id: 'job-3',
-      title: 'Data Analyst - Supply Chain',
-      companyInitial: 'C',
-      postedOn: '25/10/2025',
-      type: 'Part-Time',
-      ctc: 'Rs.4.0L-Rs.8.0L',
-      industry: 'Logistics',
-      location: 'Gurgaon',
-      status: 'Open until filled'
-    },
-    {
-      id: 'job-4',
-      title: 'Product Manager - AI',
-      companyInitial: 'D',
-      postedOn: '04/11/2025',
-      type: 'Full-Time',
-      ctc: 'Rs.15.0L-Rs.35.0L',
-      industry: 'AI/ML',
-      location: 'San Francisco, Remote',
-      status: 'Open until filled'
-    },
-    {
-      id: 'job-5',
-      title: 'Cloud Security Architect',
-      companyInitial: 'E',
-      postedOn: '02/11/2025',
-      type: 'Full-Time',
-      ctc: 'Rs.20.0L-Rs.40.0L',
-      industry: 'Cloud Computing',
-      location: 'Hyderabad',
-      status: 'Open until filled'
-    },
-    {
-      id: 'job-6',
-      title: 'UX/UI Designer',
-      companyInitial: 'F',
-      postedOn: '28/10/2025',
-      type: 'Contract',
-      ctc: 'Rs.5.0L-Rs.10.0L',
-      industry: 'Creative Agency',
-      location: 'Delhi',
-      status: 'Open until filled'
-    }
-  ];
 
   return (
     <div className="min-h-screen antialiased" style={{ backgroundColor: colors.bgMain, color: colors.textPrimary, width: '100%' }}>
@@ -111,17 +74,28 @@ const JobOpeningsView: React.FC<JobOpeningsViewProps> = ({ savedJobIds, onToggle
             <JobSearchBar />
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {jobData.map(job => (
-              <JobCard 
-                key={job.id} 
-                job={job} 
-                isSaved={savedJobIds.includes(job.id)}
-                onToggleSave={onToggleSave}
-                onViewDetails={() => setCurrentView('detail')} 
-              />
-            ))}
-          </div>
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+              <p className="mt-4" style={{ color: colors.textSecondary }}>Loading jobs...</p>
+            </div>
+          ) : jobData.length === 0 ? (
+            <div className="text-center py-12">
+              <p style={{ color: colors.textSecondary }}>No jobs available at the moment.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {jobData.map(job => (
+                <JobCard 
+                  key={job.id} 
+                  job={job} 
+                  isSaved={savedJobIds.includes(job.id)}
+                  onToggleSave={onToggleSave}
+                  onViewDetails={() => setCurrentView('detail')} 
+                />
+              ))}
+            </div>
+          )}
         </main>
       </div>
     </div>
