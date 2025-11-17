@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTheme, getThemeColors } from '../candidate-dashboard/ThemeContext';
-import JobPublishingAssistant from '../../components/JobPublishingAssistant';
+import JobCreationForm from '../../components/JobCreationForm';
 
 interface ThemedJobPublishingProps {
   onBack: () => void;
@@ -58,7 +58,7 @@ const ThemedJobPublishing: React.FC<ThemedJobPublishingProps> = ({ onBack }) => 
         .border-indigo-300 { border-color: ${colors.accent} !important; }
         .hover\:border-indigo-300:hover { border-color: ${colors.accent} !important; }
       `}</style>
-      <JobPublishingAssistant onBack={onBack} />
+      <JobCreationForm onBack={onBack} />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, AlertCircle, CheckCircle, Download } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle, Download, X } from 'lucide-react';
 
 const BulkImportSection: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -155,6 +155,20 @@ const BulkImportSection: React.FC = () => {
                 <p className="font-medium text-gray-900">{selectedFile.name}</p>
                 <p className="text-sm text-gray-500">{(selectedFile.size / 1024).toFixed(1)} KB</p>
               </div>
+              <button
+                onClick={() => {
+                  setSelectedFile(null);
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                  }
+                  setImportStatus('idle');
+                  setStatusMessage('');
+                }}
+                className="p-2 hover:bg-red-100 rounded-full transition-colors"
+                title="Remove file"
+              >
+                <X className="w-5 h-5 text-red-500" />
+              </button>
             </div>
           ) : (
             <div>
@@ -231,17 +245,6 @@ Jane Smith,jane.smith@email.com,+91 9876543211,Female,Married,Software Inc,60 Da
           >
             {isImporting ? 'Importing...' : 'Start Import'}
           </button>
-        </div>
-
-        {/* Security Warning */}
-        <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex items-start space-x-2">
-            <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-            <div className="text-sm text-yellow-800">
-              <p className="font-medium mb-1">Security Notice:</p>
-              <p>Temporary passwords will be generated for each candidate. Consider implementing a secure password reset flow instead of storing plain text passwords.</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>

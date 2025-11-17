@@ -87,6 +87,74 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Create new candidate
+router.post('/', async (req, res) => {
+  try {
+    const {
+      full_name,
+      phone_number,
+      email,
+      gender,
+      marital_status,
+      current_company,
+      notice_period,
+      current_ctc,
+      location,
+      resume_link,
+      currently_employed,
+      previous_company,
+      expected_ctc,
+      experience_years
+    } = req.body;
+
+    if (!full_name || !email) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'full_name and email are required'
+      });
+    }
+
+    const checkEmail = await pool.query(
+      'SELECT candidate_id FROM public.candidates WHERE email = $1',
+      [email]
+    );
+
+    if (checkEmail.rows.length > 0) {
+      return res.status(409).json({
+        status: 'error',
+        message: 'Email already exists - duplicate candidate'
+      });
+    }
+
+    const candidateId = `FLC${Date.now().toString().slice(-8)}`;
+
+    const result = await pool.query(`
+      INSERT INTO public.candidates (
+        candidate_id, full_name, phone_number, email, gender, marital_status,
+        current_company, notice_period, current_ctc, location, resume_link,
+        currently_employed, previous_company, expected_ctc, experience_years
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      RETURNING *
+    `, [
+      candidateId, full_name, phone_number, email, gender, marital_status,
+      current_company, notice_period, current_ctc, location, resume_link,
+      currently_employed, previous_company, expected_ctc, experience_years
+    ]);
+
+    res.status(201).json({
+      status: 'success',
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error creating candidate:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to create candidate'
+    });
+  }
+});
+
 // Get candidate by ID
 router.get('/:id', async (req, res) => {
   try {

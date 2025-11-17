@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Users, FileText, Eye, MoreVertical, Download, Mail, Phone, MapPin, Calendar, Building, DollarSign, Linkedin, User, Clock, Briefcase, Plus } from 'lucide-react';
+import { Search, Filter, Users, FileText, Eye, MoreVertical, Download, Mail, Phone, MapPin, Calendar, Building, DollarSign, Linkedin, User, Clock, Briefcase, Plus, Trash2 } from 'lucide-react';
 
 interface Candidate {
   id: string;
@@ -227,7 +227,11 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
-              <button className="p-2 hover:bg-gray-100 rounded border border-gray-300">
+              <button 
+                onClick={fetchCandidates}
+                className="p-2 hover:bg-gray-100 rounded border border-gray-300"
+                title="Refresh candidates"
+              >
                 <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
@@ -402,17 +406,18 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
             {/* Top Header - Candidate Profile Card */}
             <div className="bg-white border-b border-gray-100 p-3">
               {/* Action Buttons */}
-              <div className="flex justify-end mb-6 space-x-3">
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2 text-sm font-medium">
-                  <Plus className="w-4 h-4" />
-                  <span>Invite</span>
+              <div className="flex justify-between items-center mb-6">
+                <button className="p-2.5 hover:opacity-80">
+                  <Trash2 className="w-5 h-5 text-red-500" />
                 </button>
-                {isJobSpecific && (
-                  <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-2 text-sm font-medium">
-                    <Plus className="w-4 h-4" />
-                    <span>Invite for this Job</span>
+                <div className="flex space-x-3">
+                  <button className="px-6 py-2.5 bg-gray-300 text-gray-800 rounded-full hover:bg-gray-400 text-sm font-medium">
+                    Send Job Notification
                   </button>
-                )}
+                  <button className="px-6 py-2.5 bg-blue-500 text-white rounded-full hover:bg-blue-600 text-sm font-medium">
+                    Send Invite
+                  </button>
+                </div>
               </div>
 
               {/* Candidate Header */}
@@ -443,107 +448,91 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
               </div>
             </div>
 
-            {/* Content Tabs */}
-            <div className="bg-white border-b border-gray-100">
-              <div className="flex space-x-6 px-6">
-                <button
-                  className="py-3 px-1 border-b-2 font-medium text-sm transition-all border-blue-500 text-blue-600"
-                >
-                  Application
-                </button>
-              </div>
-            </div>
+
 
             {/* Main Content */}
-            <div className="flex-1 bg-white overflow-hidden">
+            <div className="flex-1 bg-white overflow-y-auto">
               <div className="h-full">
                 {activeTab === 'Application' ? (
-                  <div className="flex h-full">
-                    {/* Left Column */}
-                    <div className="w-1/2 p-8 border-r border-gray-100">
-                      <div className="max-w-2xl">
-                        {/* Work Experience */}
-                        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Work Experience</h3>
-                          <div className="space-y-4">
-                            {selectedCandidate.currentCompany && selectedCandidate.currentCompany !== 'Not specified' && (
-                              <div className="flex items-start space-x-3">
-                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mt-1">
-                                  <Briefcase className="w-4 h-4 text-blue-600" />
-                                </div>
-                                <div className="flex-1">
-                                  <p className="text-sm text-gray-600">{selectedCandidate.currentCompany}</p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Candidate Information */}
-                        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Candidate Information</h3>
-                          <div className="grid grid-cols-1 gap-4">
-                            <div className="flex justify-between">
-                              <span className="text-sm font-medium text-gray-600">Gender</span>
-                              <span className="text-sm text-gray-900">{selectedCandidate.gender.toUpperCase()}</span>
+                  <div className="p-6 space-y-3">
+                    {/* Work Experience - Full Width */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-3">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-2">Work Experience</h3>
+                      <div className="space-y-2">
+                        {selectedCandidate.currentCompany && selectedCandidate.currentCompany !== 'Not specified' && (
+                          <div className="flex items-start space-x-2">
+                            <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <Briefcase className="w-3 h-3 text-blue-600" />
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm font-medium text-gray-600">Currently Employed</span>
-                              <span className="text-sm text-gray-900">{selectedCandidate.currentlyEmployed}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm font-medium text-gray-600">Marital Status</span>
-                              <span className="text-sm text-gray-900">{selectedCandidate.maritalStatus}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm font-medium text-gray-600">Location</span>
-                              <span className="text-sm text-gray-900">{selectedCandidate.location}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm font-medium text-gray-600">Notice Period</span>
-                              <span className="text-sm text-gray-900">{selectedCandidate.noticePeriod}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm font-medium text-gray-600">Current Salary</span>
-                              <span className="text-sm text-gray-900">{selectedCandidate.currentSalary}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm font-medium text-gray-600">Expected Salary</span>
-                              <span className="text-sm text-gray-900">{selectedCandidate.expectedSalary}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm font-medium text-gray-600">Full-Time Experience</span>
-                              <span className="text-sm text-gray-900">{selectedCandidate.experience} years</span>
+                            <div className="flex-1">
+                              <p className="text-xs text-gray-600">{selectedCandidate.currentCompany}</p>
                             </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Right Column */}
-                    <div className="w-1/2 p-8">
-                      <div className="max-w-2xl">
-                        {/* Skills */}
-                        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Skills</h3>
-                        </div>
+                    {/* Skills and Resume - Side by Side */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Skills */}
+                      <div className="bg-white rounded-lg border border-gray-200 p-3">
+                        <h3 className="text-sm font-semibold text-gray-900">Skills</h3>
+                      </div>
 
-                        {/* Resume */}
-                        <div className="bg-white rounded-lg border border-gray-200 p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Resume</h3>
-                          {selectedCandidate.resumeUrl ? (
-                            <a
-                              href={selectedCandidate.resumeUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                              <Eye className="w-4 h-4" />
-                              <span>View Resume</span>
-                            </a>
-                          ) : (
-                            <p className="text-sm text-gray-500">No resume available</p>
-                          )}
+                      {/* Resume */}
+                      <div className="bg-white rounded-lg border border-gray-200 p-3">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-2">Resume</h3>
+                        {selectedCandidate.resumeUrl ? (
+                          <a
+                            href={selectedCandidate.resumeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center space-x-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs"
+                          >
+                            <Eye className="w-3 h-3" />
+                            <span>View Resume</span>
+                          </a>
+                        ) : (
+                          <p className="text-xs text-gray-500">No resume available</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Candidate Information */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-3">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-2">Candidate Information</h3>
+                      <div className="grid grid-cols-1 gap-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm font-medium text-gray-600">Gender</span>
+                          <span className="text-sm text-gray-900">{selectedCandidate.gender.toUpperCase()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm font-medium text-gray-600">Currently Employed</span>
+                          <span className="text-sm text-gray-900">{selectedCandidate.currentlyEmployed}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm font-medium text-gray-600">Marital Status</span>
+                          <span className="text-sm text-gray-900">{selectedCandidate.maritalStatus}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm font-medium text-gray-600">Location</span>
+                          <span className="text-sm text-gray-900">{selectedCandidate.location}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm font-medium text-gray-600">Notice Period</span>
+                          <span className="text-sm text-gray-900">{selectedCandidate.noticePeriod}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm font-medium text-gray-600">Current Salary</span>
+                          <span className="text-sm text-gray-900">{selectedCandidate.currentSalary}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm font-medium text-gray-600">Expected Salary</span>
+                          <span className="text-sm text-gray-900">{selectedCandidate.expectedSalary}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm font-medium text-gray-600">Full-Time Experience</span>
+                          <span className="text-sm text-gray-900">{selectedCandidate.experience} years</span>
                         </div>
                       </div>
                     </div>
