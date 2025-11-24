@@ -22,265 +22,223 @@ interface JobData {
 
 const jobsData: JobData[] = [
   {
-    "jobId": "BA_MOTOR_01",
+    "jobId": "15",
     "title": "Business Analyst | Motor Insurance",
     "experience": "4+ Years",
-    "location": "Mumbai",
-    "workplace": "Work from Office",
-    "tags": ["Insurance", "Business Analysis", "IRDAI"],
+    "location": "Remote, Hybrid",
+    "workplace": "Remote/Hybrid",
+    "tags": ["Insurance", "Business Analysis", "Technology"],
     "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=250&fit=crop",
     "description": {
-      "overview": "We are seeking a skilled Business Analyst with strong domain expertise in Motor Insurance to join our team. This role involves analyzing business requirements, bridging the gap between business users and technology teams, and driving digital transformation within motor insurance processes.",
+      "overview": "We are seeking a skilled Business Analyst with strong domain expertise in Motor Insurance to join our team. View full job description in the attached PDF file.",
       "responsibilities": [
         "Gather, analyze, and document business requirements specific to motor insurance products.",
         "Work with product, operations, and IT teams to design and enhance motor insurance workflows.",
         "Translate business needs into functional and technical specifications.",
-        "Support product design for new insurance offerings.",
-        "Identify process gaps and support automation initiatives.",
-        "Conduct impact analysis for system and regulatory changes.",
-        "Collaborate with QA/testing teams to define test cases.",
-        "Provide support during UAT and ensure timely issue resolution.",
-        "Act as a subject matter expert (SME) in Motor Insurance.",
-        "Prepare business process documents, user manuals, and training materials."
+        "Support product design for new insurance offerings."
       ],
       "qualifications": [
-        "BE / BTech / MCA",
-        "4+ years' experience as a Business Analyst, with at least 2+ years in Motor/General Insurance domain.",
-        "Strong knowledge of Motor Insurance Domain (underwriting, claims, policy issuance, renewals, etc.).",
-        "Experience in requirement gathering and business process mapping.",
-        "Familiarity with Insurance Systems (Policy Administration Systems, CRM, etc.).",
-        "Knowledge of Insurance Regulations and IRDAI Guidelines is a plus."
+        "4+ years' experience as a Business Analyst in Motor/General Insurance domain.",
+        "Strong knowledge of Motor Insurance Domain.",
+        "Experience in requirement gathering and business process mapping."
       ]
     }
   },
   {
-    "jobId": "CA_NEWS_02",
+    "jobId": "16",
     "title": "Content Analyst",
-    "experience": "0 - 3 Years",
-    "location": "Pune",
-    "workplace": "Work from Office",
-    "tags": ["Content", "Analysis", "Supply Chain", "Journalism"],
+    "experience": "0-3 Years",
+    "location": "Remote, Hybrid",
+    "workplace": "Remote/Hybrid",
+    "tags": ["Content", "Analysis", "Technology"],
     "image": "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop",
     "description": {
-      "overview": "Analyzing incoming data streams and monitoring for events such as industrial fires, explosions, and natural disasters that can impact supply chain resiliency. You will be reporting time-sensitive risk alerts based on information from open source media.",
+      "overview": "Analyzing incoming data streams and monitoring for events. View full job description in the attached PDF file.",
       "responsibilities": [
-        "Monitoring for events that can impact supply chain resiliency.",
-        "Reporting time-sensitive risk alerts based on information from open source media.",
-        "Writing, editing and updating shorter real-time reports.",
-        "Applying supply chain understanding and risk analysis to critical events."
+        "Monitoring for events that can impact business operations.",
+        "Reporting time-sensitive alerts based on information from open source media.",
+        "Writing, editing and updating real-time reports."
       ],
       "qualifications": [
-        "Graduate/Post Graduate (Journalism/Mass Comm/Media Comm/BBA/MBA or equivalent).",
-        "0 – 3 Years Relevant and Focussed experience.",
+        "0-3 Years relevant experience.",
         "Excellent verbal and written communication skills in English.",
-        "Ability to work in a fast-paced environment with short turnaround times.",
-        "Proficient with MS Office Suite."
+        "Ability to work in a fast-paced environment."
       ]
     }
   },
   {
-    "jobId": "QA_AUTO_03",
-    "title": "QA Automation Selenium",
+    "jobId": "17",
+    "title": "Data Research Analyst",
     "experience": "2+ Years",
-    "location": "Pune",
-    "workplace": "Work from Office",
-    "tags": ["QA", "Automation", "Selenium", "Java"],
+    "location": "Remote, Hybrid",
+    "workplace": "Remote/Hybrid",
+    "tags": ["Data Analysis", "Research", "Technology"],
     "image": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=250&fit=crop",
     "description": {
-      "overview": "We are looking for a QA Automation Engineer to independently write, design, and execute automated test scripts for our products. You will be responsible for maintaining our automated regression suites and ensuring product quality.",
+      "overview": "We are looking for a Data Research Analyst to analyze and interpret complex data. View full job description in the attached PDF file.",
       "responsibilities": [
-        "Independently write automated test scripts.",
-        "Plan, design and execute automated test cases.",
-        "Test the product manually to identify automation opportunities.",
-        "Execute and schedule automated test runs and analyze logs.",
-        "Record test results and report/verify software bug fixes.",
-        "Maintain automated regression suites."
+        "Conduct data research and analysis.",
+        "Prepare detailed reports and presentations.",
+        "Collaborate with cross-functional teams."
       ],
       "qualifications": [
-        "BE / BTech / MCA",
-        "2-4 Years of experience.",
-        "Strong hands-on experience on Selenium.",
-        "Strong Core Java fundamentals and Object Oriented concepts.",
-        "Good knowledge on database queries.",
-        "Experience in the Insurance Domain is a plus."
+        "2+ years of experience in data analysis.",
+        "Strong analytical and problem-solving skills.",
+        "Proficiency in data analysis tools."
       ]
     }
   },
   {
-    "jobId": "QA_INSURE_04",
-    "title": "QA Engineer | Insurance",
-    "experience": "2+ Years",
-    "location": "Pune",
-    "workplace": "Work from Office",
-    "tags": ["QA", "Manual Testing", "Insurance"],
-    "image": "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "We are seeking a meticulous QA Engineer with a strong background in the insurance domain to join our team. You will be responsible for developing test scenarios, executing test cases, and ensuring the quality of our software solutions.",
-      "responsibilities": [
-        "Developing Test scenarios / cases.",
-        "Execution of test cases.",
-        "Creation of defect & Maintaining defect lists.",
-        "Planning of testing tasks.",
-        "Documentation of test results and reports."
-      ],
-      "qualifications": [
-        "Bachelor's Degree in computer science or related field.",
-        "2-4 years' Software Testing Experience.",
-        "Minimum 2 years experience in the Insurance Domain (India).",
-        "Good communication skills are a must."
-      ]
-    }
-  },
-  {
-    "jobId": "AS_L2_PY_05",
-    "title": "Application Support Engineer | L2 | Python",
-    "experience": "2+ Years",
-    "location": "Pune",
-    "workplace": "Work from Office",
-    "tags": ["Support", "Python", "SaaS", "AWS"],
-    "image": "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "We are seeking a skilled Support Engineer to serve as a critical link between our customers and engineering teams. You will provide high-quality technical assistance, troubleshoot complex issues, and ensure timely resolution of problems for our American and European customer base.",
-      "responsibilities": [
-        "Provide first- and second-line technical support.",
-        "Diagnose, troubleshoot, and provide solutions for software and network-related issues.",
-        "Act as a liaison between customers and internal teams.",
-        "Document customer interactions and technical issues in the ticketing system.",
-        "Reproduce customer-reported issues and escalate bugs.",
-        "Prioritize tasks effectively to meet SLAs."
-      ],
-      "qualifications": [
-        "Bachelor's degree in computer science, IT, Engineering, or equivalent.",
-        "2+ years of experience in a technical support or IT role.",
-        "Strong understanding of operating systems and networking concepts.",
-        "Experience with ticketing systems (Zendesk, Jira).",
-        "Familiarity with scripting languages (Javascript, Python) and SaaS platforms (AWS) is desirable."
-      ]
-    }
-  },
-  {
-    "jobId": "BA_PROP_06",
-    "title": "Business Analyst | Property Insurance",
-    "experience": "2+ Years",
-    "location": "Pune",
-    "workplace": "Work from Office",
-    "tags": ["Insurance", "Business Analysis", "Project Management"],
-    "image": "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "Join our team as a Business Analyst specializing in Property Insurance. You will be responsible for engaging with stakeholders, managing projects end-to-end, and working on the development and deployment of our insurance products.",
-      "responsibilities": [
-        "Engaging with stakeholders and understanding business requirements.",
-        "End-to-end project management/product development & deployments.",
-        "Work on scoping, preparing wireframes, use cases, and BRDs.",
-        "Working with partners for the launch of new products.",
-        "Work on UAT testing and review QA / UAT functional test cases.",
-        "Investigating and working on production issues."
-      ],
-      "qualifications": [
-        "Bachelor's Degree in computer science or related field.",
-        "2+ years' experience as a Business Analyst in Property Insurance.",
-        "Solid understanding of the insurance industry, including regulations, products, and processes.",
-        "Strong analytical and communication skills."
-      ]
-    }
-  },
-  {
-    "jobId": "CSM_SCM_07",
-    "title": "Customer Success Manager | Supply Chain",
-    "experience": "5+ Years",
-    "location": "Pune",
-    "workplace": "Work from Office",
-    "tags": ["Customer Success", "Supply Chain", "SaaS"],
-    "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "As a Customer Success Manager, you will drive customer outcomes, deepen product adoption, and build lasting strategic relationships with our Enterprise accounts in the supply chain domain. You will lead clients through their value realization journey.",
-      "responsibilities": [
-        "Drive strategic planning, onboarding, adoption, and renewal for Enterprise accounts.",
-        "Act as the primary point of contact for customer business outcomes.",
-        "Build and maintain executive-level relationships.",
-        "Conduct focused supply chain analyses for and with customers.",
-        "Partner closely with Sales, Account Management, and Implementation teams.",
-        "Gather customer feedback to influence the product roadmap."
-      ],
-      "qualifications": [
-        "BBA/MBA (Supply Chain Management, Logistics, Operations or a related field).",
-        "5+ Years of relevant and focussed experience.",
-        "Experience working with Enterprise-level customers, ideally in B2B SaaS or supply chain solutions.",
-        "Depth in problem solving, supply chain analysis, and strategic planning."
-      ]
-    }
-  },
-  {
-    "jobId": "CSS_SCM_08",
-    "title": "Customer Success Specialist | Supply Chain",
-    "experience": "2+ Years",
-    "location": "Pune",
-    "workplace": "Work from Office",
-    "tags": ["Customer Success", "Supply Chain", "Analysis"],
-    "image": "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "As a Customer Success Specialist, you will play a critical role in driving customer insight analyses and deepening product adoption. You will work hands-on with some of our largest and most strategic accounts in the supply chain domain.",
-      "responsibilities": [
-        "Support strategic planning, onboarding, adoption, and renewal efforts.",
-        "Conduct focused supply chain analyses using client data and tools.",
-        "Drive supplier research and build up industry vertical knowledge.",
-        "Prepare client-ready PowerPoint presentations.",
-        "Support partnering with Sales, Account Management, and Implementation teams."
-      ],
-      "qualifications": [
-        "BBA/MBA (Supply Chain Management, Logistics, Operations or a related field).",
-        "Minimum 2 years' experience in management consulting or customer success.",
-        "Experience in B2B SaaS or supply chain solutions is preferred.",
-        "Basic to Intermediate Excel and PowerPoint skills."
-      ]
-    }
-  },
-  {
-    "jobId": "NA_SCM_09",
-    "title": "News Analyst | Supply Chain",
-    "experience": "1 - 3 Years",
-    "location": "Pune",
-    "workplace": "Work from Office",
-    "tags": ["Analysis", "Supply Chain", "Media", "Research"],
-    "image": "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "As a News Analyst, you will monitor incoming data streams for global events that can impact supply chain resiliency. You will be responsible for reporting time-sensitive risk alerts based on information obtained from open source media.",
-      "responsibilities": [
-        "Analyzing data streams for events like natural disasters, labor strikes, etc.",
-        "Reporting time-sensitive risk alerts.",
-        "Writing, editing, and updating shorter real-time reports.",
-        "Applying supply chain understanding and risk analysis to critical events."
-      ],
-      "qualifications": [
-        "Graduate/Post Graduate (Journalism/Mass Com/Media Comm).",
-        "1 – 3 Years of relevant and focussed experience.",
-        "Proficiency in the English language is a must.",
-        "Ability to analyze news articles and extract important information."
-      ]
-    }
-  },
-  {
-    "jobId": "FD_REACT_10",
+    "jobId": "18",
     "title": "Frontend Developer",
     "experience": "4+ Years",
-    "location": "Pune",
-    "workplace": "Work from Office",
-    "tags": ["React", "AngularJS", "JavaScript", "HTML/CSS"],
-    "image": "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop",
+    "location": "Remote, Hybrid",
+    "workplace": "Remote/Hybrid",
+    "tags": ["React", "JavaScript", "Technology"],
+    "image": "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=250&fit=crop",
     "description": {
-      "overview": "We are looking for an experienced Frontend Developer to design, develop, and deploy complex applications. You will be responsible for understanding our existing product, coming up with UI design improvements, and implementing them.",
+      "overview": "We are looking for an experienced Frontend Developer to design and develop web applications. View full job description in the attached PDF file.",
       "responsibilities": [
-        "Designing, developing, deploying and supporting complex computing applications.",
-        "Tracking records of technical achievements, delivering to tight schedules.",
-        "Understand existing product and propose UI design improvements.",
-        "Implement improvements through projects & programs."
+        "Designing and developing web applications.",
+        "Implementing UI design improvements.",
+        "Collaborating with backend developers."
       ],
       "qualifications": [
-        "BE/B Tech/BCA/MCA.",
-        "Min 4 Years of Experience.",
-        "Experience with React, AngularJS, HTML, CSS, JavaScript, Bootstrap.",
-        "Responsive design experience across tablets and smartphones.",
-        "Background in User Experience and creating mockups/wireframes is a strong plus."
+        "4+ years of experience in frontend development.",
+        "Experience with React, HTML, CSS, JavaScript.",
+        "Strong understanding of responsive design."
+      ]
+    }
+  },
+  {
+    "jobId": "19",
+    "title": "Frontend Developer | Forex CFD Domain",
+    "experience": "3+ Years",
+    "location": "Remote, Hybrid",
+    "workplace": "Remote/Hybrid",
+    "tags": ["React", "Forex", "Technology"],
+    "image": "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=250&fit=crop",
+    "description": {
+      "overview": "We are seeking a Frontend Developer with Forex CFD domain expertise. View full job description in the attached PDF file.",
+      "responsibilities": [
+        "Develop trading platforms and financial applications.",
+        "Implement real-time data visualization.",
+        "Work with financial APIs and data feeds."
+      ],
+      "qualifications": [
+        "3+ years of experience in frontend development.",
+        "Knowledge of Forex/CFD trading platforms.",
+        "Experience with real-time data handling."
+      ]
+    }
+  },
+  {
+    "jobId": "20",
+    "title": "Data Analyst - Fresher",
+    "experience": "0-1 Years",
+    "location": "Remote, Hybrid",
+    "workplace": "Remote/Hybrid",
+    "tags": ["Data Analysis", "Fresher", "Technology"],
+    "image": "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=250&fit=crop",
+    "description": {
+      "overview": "We are looking for a fresher Data Analyst to join our team. View full job description in the attached PDF file.",
+      "responsibilities": [
+        "Analyze data and generate insights.",
+        "Create reports and dashboards.",
+        "Support data-driven decision making."
+      ],
+      "qualifications": [
+        "Bachelor's degree in relevant field.",
+        "Basic knowledge of data analysis tools.",
+        "Strong analytical skills."
+      ]
+    }
+  },
+  {
+    "jobId": "21",
+    "title": "Manager Talent Acquisition",
+    "experience": "6+ Years",
+    "location": "Remote, Hybrid",
+    "workplace": "Remote/Hybrid",
+    "tags": ["HR", "Recruitment", "Technology"],
+    "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400&h=250&fit=crop",
+    "description": {
+      "overview": "We are seeking an experienced Manager for Talent Acquisition. View full job description in the attached PDF file.",
+      "responsibilities": [
+        "Lead talent acquisition strategy.",
+        "Manage recruitment team.",
+        "Build strong candidate pipelines."
+      ],
+      "qualifications": [
+        "6+ years of experience in talent acquisition.",
+        "Strong leadership and management skills.",
+        "Experience in tech recruitment."
+      ]
+    }
+  },
+  {
+    "jobId": "22",
+    "title": "Python Fullstack Developer",
+    "experience": "5+ Years",
+    "location": "Remote, Hybrid",
+    "workplace": "Remote/Hybrid",
+    "tags": ["Python", "Fullstack", "Technology"],
+    "image": "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=250&fit=crop",
+    "description": {
+      "overview": "We are looking for a Python Fullstack Developer with strong backend and frontend skills. View full job description in the attached PDF file.",
+      "responsibilities": [
+        "Develop and maintain fullstack applications.",
+        "Work with Python frameworks like Django/Flask.",
+        "Implement RESTful APIs and frontend interfaces."
+      ],
+      "qualifications": [
+        "5+ years of experience in fullstack development.",
+        "Strong Python programming skills.",
+        "Experience with modern frontend frameworks."
+      ]
+    }
+  },
+  {
+    "jobId": "23",
+    "title": "QA Automation Selenium",
+    "experience": "2+ Years",
+    "location": "Remote, Hybrid",
+    "workplace": "Remote/Hybrid",
+    "tags": ["QA", "Automation", "Selenium"],
+    "image": "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&h=250&fit=crop",
+    "description": {
+      "overview": "We are looking for a QA Automation Engineer with Selenium expertise. View full job description in the attached PDF file.",
+      "responsibilities": [
+        "Write and execute automated test scripts.",
+        "Maintain automated regression suites.",
+        "Collaborate with development teams."
+      ],
+      "qualifications": [
+        "2+ years of experience in QA automation.",
+        "Strong hands-on experience with Selenium.",
+        "Knowledge of Java and testing frameworks."
+      ]
+    }
+  },
+  {
+    "jobId": "24",
+    "title": "QA Engineer | Insurance",
+    "experience": "2+ Years",
+    "location": "Remote, Hybrid",
+    "workplace": "Remote/Hybrid",
+    "tags": ["QA", "Insurance", "Technology"],
+    "image": "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop",
+    "description": {
+      "overview": "We are seeking a QA Engineer with insurance domain knowledge. View full job description in the attached PDF file.",
+      "responsibilities": [
+        "Develop and execute test scenarios.",
+        "Ensure quality of insurance software solutions.",
+        "Document test results and defects."
+      ],
+      "qualifications": [
+        "2+ years of software testing experience.",
+        "Experience in Insurance Domain.",
+        "Strong communication skills."
       ]
     }
   }
@@ -292,6 +250,49 @@ interface JobOpeningsProps {
 
 const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
   const { jobs } = useJobs();
+  
+  const [dbJobs, setDbJobs] = useState<JobData[]>([]);
+
+  // Fetch jobs from database
+  useEffect(() => {
+    const fetchDbJobs = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/jobs-enhanced/list');
+        const data = await response.json();
+        
+        if (data.success) {
+          const formattedJobs: JobData[] = data.jobs.map((job: any) => ({
+            jobId: job.job_id.toString(),
+            title: job.job_title,
+            experience: `${job.min_experience}-${job.max_experience} years`,
+            location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations,
+            workplace: job.mode_of_job,
+            tags: Array.isArray(job.skills) ? job.skills.split(', ').slice(0, 3) : [job.job_domain],
+            image: job.selected_image || 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
+            description: {
+              overview: job.job_description || 'Join our team and contribute to exciting projects.',
+              responsibilities: [
+                'Work on innovative projects',
+                'Collaborate with cross-functional teams',
+                'Drive technical excellence',
+                'Contribute to product development'
+              ],
+              qualifications: [
+                `${job.min_experience}-${job.max_experience} years of experience`,
+                'Strong communication skills',
+                'Team collaboration abilities'
+              ]
+            }
+          }));
+          setDbJobs(formattedJobs);
+        }
+      } catch (error) {
+        console.error('Error fetching jobs from database:', error);
+      }
+    };
+
+    fetchDbJobs();
+  }, []);
   
   // Convert context jobs to JobData format
   const contextJobs: JobData[] = jobs.map(job => ({
@@ -319,8 +320,8 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
     }
   }));
   
-  // Combine static jobs with context jobs (context jobs first to show newest)
-  const allJobs = [...contextJobs, ...jobsData];
+  // Combine database jobs, context jobs, and static jobs (database jobs first)
+  const allJobs = [...dbJobs, ...contextJobs, ...jobsData];
   
   const [filteredJobs, setFilteredJobs] = useState<JobData[]>(allJobs);
   const [selectedLocation, setSelectedLocation] = useState('All');
@@ -355,9 +356,41 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
 
   // Listen for new job creation events
   useEffect(() => {
-    const handleJobCreated = () => {
-      // Jobs will be automatically updated through the useJobs context
-      console.log('New job created - jobs will be refreshed');
+    const handleJobCreated = async () => {
+      // Refetch jobs from database
+      try {
+        const response = await fetch('http://localhost:8000/api/jobs-enhanced/list');
+        const data = await response.json();
+        
+        if (data.success) {
+          const formattedJobs: JobData[] = data.jobs.map((job: any) => ({
+            jobId: job.job_id.toString(),
+            title: job.job_title,
+            experience: `${job.min_experience}-${job.max_experience} years`,
+            location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations,
+            workplace: job.mode_of_job,
+            tags: Array.isArray(job.skills) ? job.skills.split(', ').slice(0, 3) : [job.job_domain],
+            image: job.selected_image || 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
+            description: {
+              overview: job.job_description || 'Join our team and contribute to exciting projects.',
+              responsibilities: [
+                'Work on innovative projects',
+                'Collaborate with cross-functional teams',
+                'Drive technical excellence',
+                'Contribute to product development'
+              ],
+              qualifications: [
+                `${job.min_experience}-${job.max_experience} years of experience`,
+                'Strong communication skills',
+                'Team collaboration abilities'
+              ]
+            }
+          }));
+          setDbJobs(formattedJobs);
+        }
+      } catch (error) {
+        console.error('Error refetching jobs:', error);
+      }
     };
     
     window.addEventListener('jobCreated', handleJobCreated);

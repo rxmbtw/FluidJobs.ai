@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import { ThemeProvider, useTheme, getThemeColors } from '../candidate-dashboard/ThemeContext';
 import { JobsProvider } from '../../contexts/JobsProvider';
 import ThemedJobPublishing from './ThemedJobPublishing';
-import ThemedJobOpenings from './ThemedJobOpenings';
+import JobOpeningsViewNew from '../../components/JobOpeningsView_new';
 import ThemedManageCandidates from './ThemedManageCandidates';
 import ThemedBulkImport from './ThemedBulkImport';
 import ThemedJobSpecificDashboard from './ThemedJobSpecificDashboard';
@@ -52,10 +52,7 @@ const DashboardContent: React.FC = () => {
         
         <main className="flex-1 overflow-y-auto" style={{ backgroundColor: colors.bgMain }}>
           {currentView === 'view_opening' && (
-            <ThemedJobOpenings onJobSelect={(jobTitle: string) => {
-              setSelectedJobTitle(jobTitle);
-              setShowJobSpecificDashboard(true);
-            }} />
+            <JobOpeningsViewNew />
           )}
           
           {currentView === 'create_job' && (

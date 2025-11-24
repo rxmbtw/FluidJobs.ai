@@ -1406,8 +1406,8 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-      <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="p-6">
+      <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <ProgressBar />
           

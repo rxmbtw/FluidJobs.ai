@@ -228,10 +228,14 @@ const ManageCandidates: React.FC = () => {
         <div className="mb-6">
           <h1 className="text-xl font-semibold text-gray-900 mb-1">Manage Candidates</h1>
           <p className="text-sm text-gray-500">All Job Applications</p>
-          <button className="mt-3 flex items-center space-x-2 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md text-sm hover:bg-blue-100">
-            <Plus className="w-4 h-4" />
-            <span>Invite</span>
-          </button>
+          <div className="mt-3 flex space-x-2">
+            <button className="px-4 py-2 bg-gray-300 text-gray-800 rounded-full text-sm hover:bg-gray-400">
+              Send Job Notification
+            </button>
+            <button className="px-4 py-2 bg-blue-500 text-white rounded-full text-sm hover:bg-blue-600">
+              Send Invite
+            </button>
+          </div>
         </div>
 
         {/* Action Buttons */}
@@ -348,23 +352,7 @@ const ManageCandidates: React.FC = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Top Navigation */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center space-x-6">
-            <button 
-              onClick={() => setActiveTab('application')}
-              className={`text-sm pb-1 ${activeTab === 'application' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
-            >
-              Application
-            </button>
-            <button 
-              onClick={() => setActiveTab('resume')}
-              className={`text-sm pb-1 ${activeTab === 'resume' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
-            >
-              Resume Review
-            </button>
-          </div>
-        </div>
+
 
         {/* Content based on active tab */}
         <div className="flex-1 p-6">

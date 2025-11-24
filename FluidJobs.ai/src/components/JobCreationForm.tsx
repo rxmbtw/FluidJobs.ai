@@ -32,7 +32,8 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
     min_salary: '',
     max_salary: '',
     show_salary_to_candidate: true,
-    job_close_days: '15',
+    registration_opening_date: '',
+    registration_closing_date: '',
     locations: '',
     mode_of_job: '',
     skills: '',
@@ -55,6 +56,24 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
   const [fontSearch, setFontSearch] = useState('');
   const [selectedFormat, setSelectedFormat] = useState('Paragraph');
   const [selectedFont, setSelectedFont] = useState('Arial');
+  const [selectedImage, setSelectedImage] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [uploadedPdfUrl, setUploadedPdfUrl] = useState('');
+  const [pdfFileName, setPdfFileName] = useState('');
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+
+  const jobImages = [
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop'
+  ];
 
   const fonts = [
     'Arial', 'Arial Black', 'Comic Sans MS', 'Courier New', 'Georgia', 'Helvetica', 'Impact',
@@ -71,25 +90,25 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
   const jobTypeOptions = ['Full-time', 'Part-time', 'Contract', 'Internship'];
   const modeOptions = ['Work From Home', 'Hybrid', 'On-site'];
   const indianCities = [
-    'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Ahmedabad', 'Chennai', 'Kolkata', 'Surat', 'Pune', 'Jaipur',
-    'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Pimpri-Chinchwad', 'Patna', 'Vadodara',
-    'Ghaziabad', 'Ludhiana', 'Agra', 'Nashik', 'Faridabad', 'Meerut', 'Rajkot', 'Kalyan-Dombivali', 'Vasai-Virar', 'Varanasi',
-    'Srinagar', 'Aurangabad', 'Dhanbad', 'Amritsar', 'Navi Mumbai', 'Allahabad', 'Ranchi', 'Howrah', 'Coimbatore', 'Jabalpur',
-    'Gwalior', 'Vijayawada', 'Jodhpur', 'Madurai', 'Raipur', 'Kota', 'Chandigarh', 'Guwahati', 'Solapur', 'Hubli-Dharwad',
-    'Mysore', 'Tiruchirappalli', 'Bareilly', 'Aligarh', 'Tiruppur', 'Moradabad', 'Jalandhar', 'Bhubaneswar', 'Salem', 'Warangal',
-    'Mira-Bhayandar', 'Thiruvananthapuram', 'Bhiwandi', 'Saharanpur', 'Guntur', 'Amravati', 'Bikaner', 'Noida', 'Jamshedpur', 'Bhilai',
-    'Cuttack', 'Firozabad', 'Kochi', 'Nellore', 'Bhavnagar', 'Dehradun', 'Durgapur', 'Asansol', 'Rourkela', 'Nanded',
-    'Kolhapur', 'Ajmer', 'Akola', 'Gulbarga', 'Jamnagar', 'Ujjain', 'Loni', 'Siliguri', 'Jhansi', 'Ulhasnagar',
-    'Jammu', 'Sangli-Miraj', 'Mangalore', 'Erode', 'Belgaum', 'Ambattur', 'Tirunelveli', 'Malegaon', 'Gaya', 'Jalgaon',
-    'Udaipur', 'Maheshtala', 'Davanagere', 'Kozhikode', 'Kurnool', 'Rajpur Sonarpur', 'Rajahmundry', 'Bokaro', 'South Dumdum', 'Bellary',
-    'Patiala', 'Gopalpur', 'Agartala', 'Bhagalpur', 'Muzaffarnagar', 'Bhatpara', 'Panihati', 'Latur', 'Dhule', 'Tirupati',
-    'Rohtak', 'Korba', 'Bhilwara', 'Berhampur', 'Muzaffarpur', 'Ahmednagar', 'Mathura', 'Kollam', 'Avadi', 'Kadapa',
-    'Kamarhati', 'Sambalpur', 'Bilaspur', 'Shahjahanpur', 'Satara', 'Bijapur', 'Rampur', 'Shivamogga', 'Chandrapur', 'Junagadh',
-    'Thrissur', 'Alwar', 'Bardhaman', 'Kulti', 'Kakinada', 'Nizamabad', 'Parbhani', 'Tumkur', 'Khammam', 'Ozhukarai',
-    'Bihar Sharif', 'Panipat', 'Darbhanga', 'Bally', 'Aizawl', 'Dewas', 'Ichalkaranji', 'Karnal', 'Bathinda', 'Jalna',
-    'Eluru', 'Kirari Suleman Nagar', 'Barasat', 'Purnia', 'Satna', 'Mau', 'Sonipat', 'Farrukhabad', 'Sagar', 'Rourkela',
-    'Durg', 'Imphal', 'Ratlam', 'Hapur', 'Arrah', 'Karimnagar', 'Anantapur', 'Etawah', 'Ambernath', 'North Dumdum',
-    'Bharatpur', 'Begusarai', 'New Delhi', 'Gandhidham', 'Baranagar', 'Tiruvottiyur', 'Puducherry', 'Sikar', 'Thoothukudi'
+    'Mumbai, Maharashtra', 'Delhi, Delhi', 'Bangalore, Karnataka', 'Hyderabad, Telangana', 'Ahmedabad, Gujarat', 'Chennai, Tamil Nadu', 'Kolkata, West Bengal', 'Surat, Gujarat', 'Pune, Maharashtra', 'Jaipur, Rajasthan',
+    'Lucknow, Uttar Pradesh', 'Kanpur, Uttar Pradesh', 'Nagpur, Maharashtra', 'Indore, Madhya Pradesh', 'Thane, Maharashtra', 'Bhopal, Madhya Pradesh', 'Visakhapatnam, Andhra Pradesh', 'Pimpri-Chinchwad, Maharashtra', 'Patna, Bihar', 'Vadodara, Gujarat',
+    'Ghaziabad, Uttar Pradesh', 'Ludhiana, Punjab', 'Agra, Uttar Pradesh', 'Nashik, Maharashtra', 'Faridabad, Haryana', 'Meerut, Uttar Pradesh', 'Rajkot, Gujarat', 'Kalyan-Dombivali, Maharashtra', 'Vasai-Virar, Maharashtra', 'Varanasi, Uttar Pradesh',
+    'Srinagar, Jammu and Kashmir', 'Aurangabad, Maharashtra', 'Dhanbad, Jharkhand', 'Amritsar, Punjab', 'Navi Mumbai, Maharashtra', 'Allahabad, Uttar Pradesh', 'Ranchi, Jharkhand', 'Howrah, West Bengal', 'Coimbatore, Tamil Nadu', 'Jabalpur, Madhya Pradesh',
+    'Gwalior, Madhya Pradesh', 'Vijayawada, Andhra Pradesh', 'Jodhpur, Rajasthan', 'Madurai, Tamil Nadu', 'Raipur, Chhattisgarh', 'Kota, Rajasthan', 'Chandigarh, Chandigarh', 'Guwahati, Assam', 'Solapur, Maharashtra', 'Hubli-Dharwad, Karnataka',
+    'Mysore, Karnataka', 'Tiruchirappalli, Tamil Nadu', 'Bareilly, Uttar Pradesh', 'Aligarh, Uttar Pradesh', 'Tiruppur, Tamil Nadu', 'Moradabad, Uttar Pradesh', 'Jalandhar, Punjab', 'Bhubaneswar, Odisha', 'Salem, Tamil Nadu', 'Warangal, Telangana',
+    'Mira-Bhayandar, Maharashtra', 'Thiruvananthapuram, Kerala', 'Bhiwandi, Maharashtra', 'Saharanpur, Uttar Pradesh', 'Guntur, Andhra Pradesh', 'Amravati, Maharashtra', 'Bikaner, Rajasthan', 'Noida, Uttar Pradesh', 'Jamshedpur, Jharkhand', 'Bhilai, Chhattisgarh',
+    'Cuttack, Odisha', 'Firozabad, Uttar Pradesh', 'Kochi, Kerala', 'Nellore, Andhra Pradesh', 'Bhavnagar, Gujarat', 'Dehradun, Uttarakhand', 'Durgapur, West Bengal', 'Asansol, West Bengal', 'Rourkela, Odisha', 'Nanded, Maharashtra',
+    'Kolhapur, Maharashtra', 'Ajmer, Rajasthan', 'Akola, Maharashtra', 'Gulbarga, Karnataka', 'Jamnagar, Gujarat', 'Ujjain, Madhya Pradesh', 'Loni, Uttar Pradesh', 'Siliguri, West Bengal', 'Jhansi, Uttar Pradesh', 'Ulhasnagar, Maharashtra',
+    'Jammu, Jammu and Kashmir', 'Sangli-Miraj, Maharashtra', 'Mangalore, Karnataka', 'Erode, Tamil Nadu', 'Belgaum, Karnataka', 'Ambattur, Tamil Nadu', 'Tirunelveli, Tamil Nadu', 'Malegaon, Maharashtra', 'Gaya, Bihar', 'Jalgaon, Maharashtra',
+    'Udaipur, Rajasthan', 'Maheshtala, West Bengal', 'Davanagere, Karnataka', 'Kozhikode, Kerala', 'Kurnool, Andhra Pradesh', 'Rajpur Sonarpur, West Bengal', 'Rajahmundry, Andhra Pradesh', 'Bokaro, Jharkhand', 'South Dumdum, West Bengal', 'Bellary, Karnataka',
+    'Patiala, Punjab', 'Gopalpur, Odisha', 'Agartala, Tripura', 'Bhagalpur, Bihar', 'Muzaffarnagar, Uttar Pradesh', 'Bhatpara, West Bengal', 'Panihati, West Bengal', 'Latur, Maharashtra', 'Dhule, Maharashtra', 'Tirupati, Andhra Pradesh',
+    'Rohtak, Haryana', 'Korba, Chhattisgarh', 'Bhilwara, Rajasthan', 'Berhampur, Odisha', 'Muzaffarpur, Bihar', 'Ahmednagar, Maharashtra', 'Mathura, Uttar Pradesh', 'Kollam, Kerala', 'Avadi, Tamil Nadu', 'Kadapa, Andhra Pradesh',
+    'Kamarhati, West Bengal', 'Sambalpur, Odisha', 'Bilaspur, Chhattisgarh', 'Shahjahanpur, Uttar Pradesh', 'Satara, Maharashtra', 'Bijapur, Karnataka', 'Rampur, Uttar Pradesh', 'Shivamogga, Karnataka', 'Chandrapur, Maharashtra', 'Junagadh, Gujarat',
+    'Thrissur, Kerala', 'Alwar, Rajasthan', 'Bardhaman, West Bengal', 'Kulti, West Bengal', 'Kakinada, Andhra Pradesh', 'Nizamabad, Telangana', 'Parbhani, Maharashtra', 'Tumkur, Karnataka', 'Khammam, Telangana', 'Ozhukarai, Puducherry',
+    'Bihar Sharif, Bihar', 'Panipat, Haryana', 'Darbhanga, Bihar', 'Bally, West Bengal', 'Aizawl, Mizoram', 'Dewas, Madhya Pradesh', 'Ichalkaranji, Maharashtra', 'Karnal, Haryana', 'Bathinda, Punjab', 'Jalna, Maharashtra',
+    'Eluru, Andhra Pradesh', 'Kirari Suleman Nagar, Delhi', 'Barasat, West Bengal', 'Purnia, Bihar', 'Satna, Madhya Pradesh', 'Mau, Uttar Pradesh', 'Sonipat, Haryana', 'Farrukhabad, Uttar Pradesh', 'Sagar, Madhya Pradesh',
+    'Durg, Chhattisgarh', 'Imphal, Manipur', 'Ratlam, Madhya Pradesh', 'Hapur, Uttar Pradesh', 'Arrah, Bihar', 'Karimnagar, Telangana', 'Anantapur, Andhra Pradesh', 'Etawah, Uttar Pradesh', 'Ambernath, Maharashtra', 'North Dumdum, West Bengal',
+    'Bharatpur, Rajasthan', 'Begusarai, Bihar', 'New Delhi, Delhi', 'Gandhidham, Gujarat', 'Baranagar, West Bengal', 'Tiruvottiyur, Tamil Nadu', 'Puducherry, Puducherry', 'Sikar, Rajasthan', 'Thoothukudi, Tamil Nadu'
   ];
   const domainSuggestions = [
     'Software Development',
@@ -161,6 +180,9 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
         ? prev.filter(s => s !== skill)
         : [...prev, skill];
       setFormData(prevForm => ({ ...prevForm, skills: updated.join(', ') }));
+      if (updated.length > 0) {
+        setErrors(prevErrors => ({ ...prevErrors, skills: '' }));
+      }
       return updated;
     });
   };
@@ -202,12 +224,15 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
     } else if (step === 2) {
       if (!formData.min_salary.trim()) newErrors.min_salary = 'Min salary is required';
       if (!formData.max_salary.trim()) newErrors.max_salary = 'Max salary is required';
+      if (!formData.registration_opening_date.trim()) newErrors.registration_opening_date = 'Registration opening date is required';
+      if (!formData.registration_closing_date.trim()) newErrors.registration_closing_date = 'Registration closing date is required';
     } else if (step === 3) {
       if (!formData.locations.trim()) newErrors.locations = 'At least one location is required';
       if (!formData.mode_of_job.trim()) newErrors.mode_of_job = 'Mode of job is required';
     } else if (step === 4) {
       if (!formData.skills.trim()) newErrors.skills = 'At least one skill is required';
       if (!formData.job_description.trim()) newErrors.job_description = 'Job description is required';
+      if (!selectedImage) newErrors.selectedImage = 'Please select a job posting image';
     }
     
     setErrors(newErrors);
@@ -223,13 +248,16 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
              formData.job_type.trim().length > 0;
     } else if (step === 2) {
       return formData.min_salary.trim().length > 0 && 
-             formData.max_salary.trim().length > 0;
+             formData.max_salary.trim().length > 0 &&
+             formData.registration_opening_date.trim().length > 0 &&
+             formData.registration_closing_date.trim().length > 0;
     } else if (step === 3) {
       return formData.locations.trim().length > 0 && 
              formData.mode_of_job.trim().length > 0;
     } else if (step === 4) {
       return formData.skills.trim().length > 0 && 
-             formData.job_description.trim().length > 0;
+             formData.job_description.trim().length > 0 &&
+             selectedImage.length > 0;
     }
     return false;
   };
@@ -244,12 +272,57 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateStep(4)) {
-      console.log('Job Creation Data:', formData);
-      alert('Job created successfully!');
-      onBack();
+      try {
+        const jobPayload = {
+          job_title: formData.job_title,
+          job_domain: formData.job_domain,
+          job_type: formData.job_type,
+          locations: formData.locations.split(', ').filter(loc => loc.trim()),
+          mode_of_job: formData.mode_of_job,
+          min_experience: formData.min_experience,
+          max_experience: formData.max_experience,
+          skills: formData.skills.split(', ').filter(skill => skill.trim()),
+          min_salary: formData.min_salary,
+          max_salary: formData.max_salary,
+          show_salary_to_candidate: formData.show_salary_to_candidate,
+          job_description: formData.job_description,
+          selected_image: selectedImage,
+          jd_attachment_name: uploadedPdfUrl,
+          registration_opening_date: formData.registration_opening_date,
+          registration_closing_date: formData.registration_closing_date,
+          job_close_days: 30
+        };
+
+        const response = await fetch('http://localhost:8000/api/jobs-enhanced/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(jobPayload)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // Show success modal
+          setShowSuccessModal(true);
+          // Dispatch event to refresh job list
+          window.dispatchEvent(new Event('jobCreated'));
+          // Auto close and redirect after 2 seconds
+          setTimeout(() => {
+            setShowSuccessModal(false);
+            onBack();
+          }, 5000);
+        } else {
+          alert('Failed to create job: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error creating job:', error);
+        alert('Failed to create job. Please try again.');
+      }
     }
   };
 
@@ -401,53 +474,13 @@ What We Offer:
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <div className="w-64 bg-slate-800 text-white flex flex-col">
-        <div className="p-6 border-b border-slate-700">
-          <div className="flex items-center space-x-3">
-            <img 
-              src="/images/FLuid Live Icon.png" 
-              alt="FluidJobs.ai Logo" 
-              className="w-8 h-8 object-contain"
-            />
-            <span className="text-xl font-bold text-white">FluidJobs.ai</span>
-          </div>
-        </div>
-
-        <nav className="flex-1 p-4">
-          <div className="space-y-2">
-            <div className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-indigo-600 text-white">
-              <Sparkles className="w-5 h-5" />
-              <span>Create Job</span>
-            </div>
-          </div>
-        </nav>
-
-        <div className="p-4 border-t border-slate-700">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white font-semibold">
-              HR
-            </div>
-            <span className="font-medium">HR Manager</span>
-          </div>
-        </div>
-      </div>
-
+    <div className="h-screen bg-white">
       {/* Main Content */}
-      <div className="flex-1 p-8 overflow-auto">
+      <div className="w-full p-8 overflow-visible">
         <div className="max-w-4xl mx-auto">
           <div ref={formRef} className="bg-white rounded-lg p-8 shadow-md">
             {/* Header */}
             <div className="mb-6 pb-6 border-b border-gray-200">
-              <div className="flex items-center gap-3 mb-4">
-                <img 
-                  src="/images/FLuid Live Icon.png" 
-                  alt="FluidJobs.ai Logo" 
-                  className="w-8 h-8 object-contain"
-                />
-                <span className="text-2xl font-bold text-indigo-600">Fluid Live</span>
-              </div>
               <h1 className="text-xl font-bold mb-2">Job Creation Form - Step {currentStep} of 4</h1>
               <p className="text-gray-600">
                 {currentStep === 1 && 'Basic job information'}
@@ -657,60 +690,79 @@ What We Offer:
               {/* Step 2: Salary and Timeline */}
               {currentStep === 2 && (
                 <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Annual Salary Per annum (₹) <span className="text-red-500">*</span>
+                    </label>
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          name="min_salary"
+                          value={formData.min_salary}
+                          onChange={handleInputChange}
+                          placeholder="Min Salary"
+                          className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                            errors.min_salary ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                        />
+                        <input
+                          type="number"
+                          name="max_salary"
+                          value={formData.max_salary}
+                          onChange={handleInputChange}
+                          placeholder="Max Salary"
+                          className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                            errors.max_salary ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                        />
+                      </div>
+                      {(errors.min_salary || errors.max_salary) && (
+                        <p className="text-red-500 text-sm">{errors.min_salary || errors.max_salary}</p>
+                      )}
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          name="show_salary_to_candidate"
+                          checked={formData.show_salary_to_candidate}
+                          onChange={handleInputChange}
+                          className="mr-2"
+                        />
+                        <span className="text-sm text-gray-600">Show this to candidate.</span>
+                      </label>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Annual Salary (in INR) <span className="text-red-500">*</span>
+                        Registration Opening Date <span className="text-red-500">*</span>
                       </label>
-                      <div className="space-y-3">
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            name="min_salary"
-                            value={formData.min_salary}
-                            onChange={handleInputChange}
-                            placeholder="Min Salary"
-                            className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                              errors.min_salary ? 'border-red-500' : 'border-gray-300'
-                            }`}
-                          />
-                          <input
-                            type="number"
-                            name="max_salary"
-                            value={formData.max_salary}
-                            onChange={handleInputChange}
-                            placeholder="Max Salary"
-                            className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                              errors.max_salary ? 'border-red-500' : 'border-gray-300'
-                            }`}
-                          />
-                        </div>
-                        {(errors.min_salary || errors.max_salary) && (
-                          <p className="text-red-500 text-sm">{errors.min_salary || errors.max_salary}</p>
-                        )}
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            name="show_salary_to_candidate"
-                            checked={formData.show_salary_to_candidate}
-                            onChange={handleInputChange}
-                            className="mr-2"
-                          />
-                          <span className="text-sm text-gray-600">Show this to candidate.</span>
-                        </label>
-                      </div>
+                      <input
+                        type="date"
+                        name="registration_opening_date"
+                        value={formData.registration_opening_date}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                          errors.registration_opening_date ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      />
+                      {errors.registration_opening_date && <p className="text-red-500 text-sm mt-1">{errors.registration_opening_date}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Job Close In (Days) <span className="text-red-500">*</span>
+                        Registration Closing Date <span className="text-red-500">*</span>
                       </label>
                       <input
-                        type="number"
-                        name="job_close_days"
-                        value={formData.job_close_days}
+                        type="date"
+                        name="registration_closing_date"
+                        value={formData.registration_closing_date}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                          errors.registration_closing_date ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       />
+                      {errors.registration_closing_date && <p className="text-red-500 text-sm mt-1">{errors.registration_closing_date}</p>}
                     </div>
                   </div>
                 </>
@@ -830,6 +882,87 @@ What We Offer:
               {/* Step 4: Skills and Description */}
               {currentStep === 4 && (
                 <>
+                  {/* Job Posting Image Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Job Posting Image <span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-5 gap-3">
+                      {jobImages.map((image, index) => (
+                        <div
+                          key={index}
+                          onClick={() => {
+                            setSelectedImage(image);
+                            setErrors(prev => ({ ...prev, selectedImage: '' }));
+                          }}
+                          className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                            selectedImage === image
+                              ? 'border-indigo-600 ring-2 ring-indigo-200'
+                              : 'border-gray-200 hover:border-indigo-300'
+                          }`}
+                        >
+                          <img
+                            src={image}
+                            alt={`Job image ${index + 1}`}
+                            className="w-full h-24 object-cover"
+                          />
+                          {selectedImage === image && (
+                            <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                              <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center">
+                                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {errors.selectedImage && <p className="text-red-500 text-sm mt-1">{errors.selectedImage}</p>}
+                  </div>
+
+                  {/* Job Description PDF */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Job Description PDF
+                    </label>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setIsUploadingPdf(true);
+                          const formData = new FormData();
+                          formData.append('jdFile', file);
+                          
+                          try {
+                            const response = await fetch('http://localhost:8000/api/jobs-enhanced/upload-jd', {
+                              method: 'POST',
+                              body: formData
+                            });
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                              setUploadedPdfUrl(data.filename);
+                              setPdfFileName(data.originalName);
+                            } else {
+                              alert('Failed to upload PDF');
+                            }
+                          } catch (error) {
+                            console.error('Error uploading PDF:', error);
+                            alert('Failed to upload PDF');
+                          } finally {
+                            setIsUploadingPdf(false);
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    {isUploadingPdf && <p className="text-sm text-gray-500 mt-1">Uploading PDF...</p>}
+                    {pdfFileName && <p className="text-sm text-green-600 mt-1">✓ {pdfFileName} uploaded</p>}
+                  </div>
+
                   {/* Skills */}
                   <div className="relative">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -904,7 +1037,7 @@ What We Offer:
                   
                   {/* Rich Text Editor Toolbar */}
                   <div className="border border-gray-300 rounded-lg">
-                    <div className="flex items-center gap-2 p-2 bg-gray-50 border-b border-gray-300 rounded-t-lg flex-wrap">
+                    <div className="flex items-center gap-2 p-2 bg-white border-b border-gray-300 rounded-t-lg flex-wrap">
                       {/* Format Dropdown */}
                       <div className="relative">
                         <button
@@ -1109,6 +1242,46 @@ What We Offer:
           </div>
         </div>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-sm w-full mx-4 text-center relative">
+            <button
+              onClick={() => {
+                setShowSuccessModal(false);
+                onBack();
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            <div className="mb-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Success!</h2>
+            <p className="text-gray-600 mb-6">Job created successfully</p>
+            
+            <button
+              onClick={() => {
+                setShowSuccessModal(false);
+                onBack();
+              }}
+              className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+            >
+              Awesome!
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

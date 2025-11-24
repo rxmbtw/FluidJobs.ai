@@ -26,6 +26,22 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
+// Get all jobs
+router.get('/list', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT * FROM jobs_enhanced 
+      WHERE status = 'Published'
+      ORDER BY created_at DESC;
+    `);
+    
+    res.json({ success: true, jobs: result.rows });
+  } catch (error) {
+    console.error('Error fetching jobs:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get all jobs with attachments
 router.get('/', async (req, res) => {
   try {
@@ -244,6 +260,10 @@ router.post('/create', async (req, res) => {
     const closingDate = new Date();
     closingDate.setDate(closingDate.getDate() + (jobData.job_close_days || 30));
     
+    // Convert arrays to PostgreSQL array format
+    const locationsArray = Array.isArray(jobData.locations) ? jobData.locations : [jobData.locations];
+    const skillsArray = Array.isArray(jobData.skills) ? jobData.skills : [jobData.skills];
+
     const result = await pool.query(`
       INSERT INTO jobs_enhanced (
         job_title, job_domain, job_type, locations, mode_of_job,
@@ -257,9 +277,9 @@ router.post('/create', async (req, res) => {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, 'Published')
       RETURNING job_id;
     `, [
-      jobData.job_title, jobData.job_domain, jobData.job_type, jobData.locations,
+      jobData.job_title, jobData.job_domain, jobData.job_type, locationsArray,
       jobData.mode_of_job, jobData.min_experience, jobData.max_experience,
-      jobData.skills, jobData.min_salary, jobData.max_salary,
+      skillsArray, jobData.min_salary, jobData.max_salary,
       jobData.show_salary_to_candidate, jobData.job_description,
       jobData.selected_image, jobData.jd_attachment_name, jobData.eligible_courses,
       jobData.eligibility_criteria, jobData.selection_process, jobData.other_details,
@@ -280,22 +300,6 @@ router.post('/create', async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating job:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get all jobs
-router.get('/list', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT * FROM jobs_enhanced 
-      WHERE status = 'Published'
-      ORDER BY created_at DESC;
-    `);
-    
-    res.json({ success: true, jobs: result.rows });
-  } catch (error) {
-    console.error('Error fetching jobs:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
