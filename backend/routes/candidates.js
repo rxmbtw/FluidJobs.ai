@@ -120,6 +120,118 @@ router.get('/:id', async (req, res) => {
 
 
 
+// CREATE - Add new candidate
+router.post('/', async (req, res) => {
+  try {
+    const { 
+      full_name, email, phone_number, gender, marital_status,
+      current_company, notice_period, current_ctc, location,
+      currently_employed, previous_company, expected_ctc, experience_years
+    } = req.body;
+    
+    const result = await pool.query(
+      `INSERT INTO public.candidates (
+        full_name, email, phone_number, gender, marital_status,
+        current_company, notice_period, current_ctc, location,
+        currently_employed, previous_company, expected_ctc, experience_years
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+      RETURNING *`,
+      [full_name, email, phone_number, gender, marital_status,
+       current_company, notice_period, current_ctc, location,
+       currently_employed, previous_company, expected_ctc, experience_years]
+    );
+    
+    res.status(201).json({
+      status: 'success',
+      message: 'Candidate created successfully',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error creating candidate:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to create candidate',
+      error: error.message
+    });
+  }
+});
+
+// UPDATE - Update candidate by ID
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      full_name, email, phone_number, gender, marital_status,
+      current_company, notice_period, current_ctc, location,
+      currently_employed, previous_company, expected_ctc, experience_years
+    } = req.body;
+    
+    const result = await pool.query(
+      `UPDATE public.candidates SET
+        full_name = $1, email = $2, phone_number = $3, gender = $4,
+        marital_status = $5, current_company = $6, notice_period = $7,
+        current_ctc = $8, location = $9, currently_employed = $10,
+        previous_company = $11, expected_ctc = $12, experience_years = $13
+      WHERE candidate_id = $14 RETURNING *`,
+      [full_name, email, phone_number, gender, marital_status,
+       current_company, notice_period, current_ctc, location,
+       currently_employed, previous_company, expected_ctc, experience_years, id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Candidate not found'
+      });
+    }
+    
+    res.json({
+      status: 'success',
+      message: 'Candidate updated successfully',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error updating candidate:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to update candidate',
+      error: error.message
+    });
+  }
+});
+
+// DELETE - Delete candidate by ID
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(
+      'DELETE FROM public.candidates WHERE candidate_id = $1 RETURNING *',
+      [id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Candidate not found'
+      });
+    }
+    
+    res.json({
+      status: 'success',
+      message: 'Candidate deleted successfully',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error deleting candidate:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to delete candidate',
+      error: error.message
+    });
+  }
+});
+
 // Get candidate statistics
 router.get('/stats/overview', async (req, res) => {
   try {

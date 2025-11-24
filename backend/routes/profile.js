@@ -2,6 +2,8 @@ const express = require('express');
 const pool = require('../config/database');
 const { authenticateToken } = require('./auth');
 const { upload, uploadToLocal } = require('../config/storage');
+const { analyzeResumeForJobs } = require('../utils/resumeAnalyzer');
+const path = require('path');
 const router = express.Router();
 
 // Test endpoint
@@ -128,6 +130,44 @@ router.post('/upload-resume', authenticateToken, upload.single('resume'), async 
     );
     
     console.log('SUCCESS: Resume uploaded and saved');
+    
+    // Analyze resume and match with jobs
+    console.log('\n=== STARTING RESUME ANALYSIS ===');
+    try {
+      const jobsResult = await pool.query('SELECT * FROM jobs_enhanced WHERE status = \'Published\'');
+      const jobs = jobsResult.rows;
+      console.log(`Found ${jobs.length} published jobs to analyze`);
+      
+      if (jobs.length === 0) {
+        console.log('No jobs to analyze against');
+      } else {
+        const resumeFilePath = path.join(__dirname, '..', publicUrl.replace(/^\//,''));
+        console.log('Resume file path:', resumeFilePath);
+        
+        const analysisResult = await analyzeResumeForJobs(resumeFilePath, jobs);
+        console.log('Resume keywords found:', analysisResult.resumeKeywords);
+        console.log(`Found ${analysisResult.matches.length} job matches`);
+        
+        if (analysisResult.matches.length > 0) {
+          // Store ALL matches in database
+          for (const match of analysisResult.matches) {
+            console.log(`Saving match: Job ${match.jobId} - ${match.score}%`);
+            await pool.query(
+              'INSERT INTO job_matches (candidate_id, job_id, match_score, matched_keywords) VALUES ($1, $2, $3, $4) ON CONFLICT (candidate_id, job_id) DO UPDATE SET match_score = $3, matched_keywords = $4',
+              [candidateId, match.jobId, match.score, JSON.stringify(match.matchedKeywords)]
+            );
+          }
+          console.log(`✅ ${analysisResult.matches.length} job matches saved to database`);
+        } else {
+          console.log('⚠️ No matches found');
+        }
+      }
+    } catch (analysisError) {
+      console.error('❌ Resume analysis error:', analysisError);
+      console.error('Error stack:', analysisError.stack);
+    }
+    console.log('=== RESUME ANALYSIS COMPLETE ===\n');
+    
     console.log('=== RESUME UPLOAD END ===\n');
     
     res.json({ success: true, fileUrl: publicUrl, resume: newResume });
@@ -173,10 +213,23 @@ router.get('/profile', authenticateToken, async (req, res) => {
       resume_files: profile.resume_files
     });
     
+    // Ensure all fields have proper values (convert NULL to empty string or appropriate default)
     const responseData = {
       ...profile,
-      resume_files: profile.resume_files || [],
-      documents: profile.documents || []
+      phone: profile.phone_number || '',
+      phone_number: profile.phone_number || '',
+      gender: profile.gender || '',
+      marital_status: profile.marital_status || '',
+      city: profile.city || profile.location || '',
+      location: profile.city || profile.location || '',
+      current_company: profile.current_company || '',
+      notice_period: profile.notice_period || '',
+      work_mode: profile.work_mode || '',
+      last_company: profile.last_company || '',
+      work_status: profile.work_status || '',
+      resume_files: Array.isArray(profile.resume_files) ? profile.resume_files : [],
+      documents: Array.isArray(profile.documents) ? profile.documents : [],
+      created_at: profile.created_at
     };
     
     console.log('SUCCESS: Profile data retrieved');
@@ -229,7 +282,6 @@ router.put('/profile', authenticateToken, async (req, res) => {
       `UPDATE candidates SET 
         full_name = $1, 
         phone_number = $2, 
-        phone = $2,
         email = $3, 
         gender = $4, 
         marital_status = $5, 
@@ -261,6 +313,99 @@ router.put('/profile', authenticateToken, async (req, res) => {
     console.log('Error stack:', error.stack);
     console.log('=== PROFILE UPDATE REQUEST END (ERROR) ===\n');
     res.status(500).json({ error: 'Failed to update profile', details: error.message });
+  }
+});
+
+// Delete resume
+router.delete('/delete-resume/:resumeId', authenticateToken, async (req, res) => {
+  try {
+    const candidateId = req.user.candidateId;
+    const { resumeId } = req.params;
+    
+    const result = await pool.query('SELECT resume_files FROM candidates WHERE candidate_id = $1', [candidateId]);
+    const currentResumes = result.rows[0]?.resume_files || [];
+    
+    const updatedResumes = currentResumes.filter(r => r.id !== resumeId);
+    
+    await pool.query(
+      'UPDATE candidates SET resume_files = $1, updated_at = CURRENT_TIMESTAMP WHERE candidate_id = $2',
+      [JSON.stringify(updatedResumes), candidateId]
+    );
+    
+    res.json({ success: true, message: 'Resume deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting resume:', error);
+    res.status(500).json({ error: 'Failed to delete resume' });
+  }
+});
+
+// Manually trigger resume analysis
+router.post('/analyze-resume', authenticateToken, async (req, res) => {
+  try {
+    const candidateId = req.user.candidateId;
+    
+    // Get candidate's latest resume
+    const result = await pool.query('SELECT resume_files FROM candidates WHERE candidate_id = $1', [candidateId]);
+    const resumes = result.rows[0]?.resume_files || [];
+    
+    if (resumes.length === 0) {
+      return res.status(400).json({ error: 'No resume found. Please upload a resume first.' });
+    }
+    
+    const latestResume = resumes[resumes.length - 1];
+    const resumeFilePath = path.join(__dirname, '..', latestResume.url.replace(/^\//,''));
+    
+    // Get all published jobs
+    const jobsResult = await pool.query('SELECT * FROM jobs_enhanced WHERE status = \'Published\'');
+    const jobs = jobsResult.rows;
+    
+    if (jobs.length === 0) {
+      return res.json({ success: true, message: 'No jobs available to match against', matches: [] });
+    }
+    
+    // Analyze resume
+    const analysisResult = await analyzeResumeForJobs(resumeFilePath, jobs);
+    
+    // Store matches
+    for (const match of analysisResult.matches) {
+      await pool.query(
+        'INSERT INTO job_matches (candidate_id, job_id, match_score, matched_keywords) VALUES ($1, $2, $3, $4) ON CONFLICT (candidate_id, job_id) DO UPDATE SET match_score = $3, matched_keywords = $4',
+        [candidateId, match.jobId, match.score, JSON.stringify(match.matchedKeywords)]
+      );
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Found ${analysisResult.matches.length} job matches`,
+      matchCount: analysisResult.matches.length,
+      resumeKeywords: analysisResult.resumeKeywords.slice(0, 20)
+    });
+  } catch (error) {
+    console.error('Error analyzing resume:', error);
+    res.status(500).json({ error: 'Failed to analyze resume' });
+  }
+});
+
+// Get matched jobs for candidate
+router.get('/matched-jobs', authenticateToken, async (req, res) => {
+  try {
+    const candidateId = req.user.candidateId;
+    
+    const result = await pool.query(`
+      SELECT 
+        jm.match_score,
+        jm.matched_keywords,
+        j.*
+      FROM job_matches jm
+      JOIN jobs_enhanced j ON jm.job_id = j.job_id
+      WHERE jm.candidate_id = $1
+      ORDER BY jm.match_score DESC
+    `, [candidateId]);
+    
+    res.json({ success: true, matches: result.rows });
+  } catch (error) {
+    console.error('Error fetching matched jobs:', error);
+    res.status(500).json({ error: 'Failed to fetch matched jobs' });
   }
 });
 

@@ -1,15 +1,22 @@
 import React from 'react';
 import { FileText, Sparkles, Mail, Phone, Calendar, MapPin, Info } from 'lucide-react';
+import { useProfileCompletionContext } from '../../../contexts/ProfileCompletionContext';
 
 interface MyResumeViewProps {
   themeState?: 'light' | 'dark';
 }
 
 const MyResumeView: React.FC<MyResumeViewProps> = ({ themeState = 'light' }) => {
+  const { triggerRefresh } = useProfileCompletionContext();
   const cardBg = themeState === 'light' ? '#FFFFFF' : '#1F2937';
   const textPrimary = themeState === 'light' ? '#000000' : '#f9fafb';
   const textSecondary = themeState === 'light' ? '#6b7280' : '#9ca3af';
   const borderColor = themeState === 'light' ? '#D1D5DB' : '#374151';
+  
+  // Trigger refresh when component mounts (in case resume was uploaded)
+  React.useEffect(() => {
+    triggerRefresh();
+  }, [triggerRefresh]);
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 pt-4">

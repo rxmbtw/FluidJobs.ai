@@ -9,10 +9,21 @@ passport.use(new GoogleStrategy({
   callbackURL: `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/auth/google/callback`
 }, async (accessToken, refreshToken, profile, done) => {
   try {
+    console.log('🔍 Google OAuth Strategy - Profile received:', {
+      id: profile.id,
+      displayName: profile.displayName,
+      emails: profile.emails
+    });
+    
+    if (!profile.emails || !profile.emails[0]) {
+      console.error('❌ No email in Google profile');
+      return done(new Error('No email provided by Google'), null);
+    }
+    
     const email = profile.emails[0].value;
     const name = profile.displayName;
     
-    console.log('🔍 Google OAuth - Email:', email);
+    console.log('🔍 Google OAuth - Email:', email, 'Name:', name);
     
     // Check if candidate exists by email
     const existingCandidate = await pool.query(
@@ -22,7 +33,12 @@ passport.use(new GoogleStrategy({
     
     if (existingCandidate.rows.length > 0) {
       console.log('✅ Existing user found:', existingCandidate.rows[0].candidate_id);
-      return done(null, existingCandidate.rows[0]);
+      // Update the name from Google account in case it changed
+      const updatedUser = await pool.query(
+        'UPDATE candidates SET full_name = $1, updated_at = CURRENT_TIMESTAMP WHERE candidate_id = $2 RETURNING *',
+        [name, existingCandidate.rows[0].candidate_id]
+      );
+      return done(null, updatedUser.rows[0]);
     }
     
     console.log('📝 Creating new user...');
@@ -37,7 +53,7 @@ passport.use(new GoogleStrategy({
     // Create new candidate
     const newCandidate = await pool.query(
       `INSERT INTO candidates (
-        candidate_id, full_name, email, phone, gender, marital_status, 
+        candidate_id, full_name, email, phone_number, gender, marital_status, 
         work_status, current_company, notice_period, current_ctc, 
         last_company, previous_ctc, city, work_mode, 
         created_at, updated_at

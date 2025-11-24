@@ -30,7 +30,7 @@ router.post('/check-username', async (req, res) => {
     
     // Check if username (email or phone) exists
     const result = await pool.query(
-      'SELECT candidate_id FROM candidates WHERE email = $1 OR phone = $1',
+      'SELECT candidate_id FROM candidates WHERE email = $1 OR phone_number = $1',
       [username]
     );
     
@@ -49,7 +49,7 @@ router.post('/signup', async (req, res) => {
     
     // Check if user already exists
     const existingUser = await pool.query(
-      'SELECT candidate_id FROM candidates WHERE email = $1 OR phone = $2',
+      'SELECT candidate_id FROM candidates WHERE email = $1 OR phone_number = $2',
       [email || username, phone || username]
     );
     
@@ -74,7 +74,7 @@ router.post('/signup', async (req, res) => {
     // Insert new candidate
     const newCandidate = await pool.query(
       `INSERT INTO candidates (
-        candidate_id, full_name, email, phone, gender, marital_status,
+        candidate_id, full_name, email, phone_number, gender, marital_status,
         current_company, notice_period, current_ctc,
         last_company, previous_ctc, city, work_mode, work_status, password_hash
       ) VALUES (
@@ -124,7 +124,7 @@ router.post('/login', async (req, res) => {
     
     // Check candidates table for both email and phone
     const result = await pool.query(
-      'SELECT candidate_id, full_name, email, password_hash, role FROM candidates WHERE email = $1 OR phone = $1',
+      'SELECT candidate_id, full_name, email, password_hash, role FROM candidates WHERE email = $1 OR phone_number = $1',
       [email]
     );
     
@@ -222,6 +222,14 @@ router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL}/login?error=auth_failed` }),
   async (req, res) => {
     try {
+      console.log('✅ Google auth callback hit');
+      console.log('User object:', req.user);
+      
+      if (!req.user) {
+        console.error('❌ No user object in request');
+        return res.redirect(`${process.env.FRONTEND_URL}/login?error=no_user`);
+      }
+      
       console.log('✅ Google auth successful for:', req.user.email);
       
       const sessionId = req.query.state || req.sessionID;
@@ -399,12 +407,12 @@ router.get('/linkedin/callback', async (req, res) => {
       
       const newCandidate = await pool.query(
         `INSERT INTO candidates (
-          candidate_id, full_name, email, phone, gender, marital_status, 
+          candidate_id, full_name, email, phone_number, gender, marital_status, 
           work_status, current_company, notice_period, current_ctc, 
           last_company, previous_ctc, city, work_mode, 
           created_at, updated_at
         ) VALUES (
-          $1, $2, $3, '', '', '', '', '', '', '', '', '', '', '', 
+          $1, $2, $3, '', '', '', '', '', '', NULL, '', NULL, '', '', 
           CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         ) RETURNING *`,
         [candidateId, name, email]

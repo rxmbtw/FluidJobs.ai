@@ -9,6 +9,7 @@ export interface Job {
   description: string;
   skills: string[];
   companyLogo?: string;
+  matchScore?: number;
 }
 
 export const jobsData: Job[] = [

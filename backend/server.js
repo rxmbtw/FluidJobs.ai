@@ -10,7 +10,17 @@ const app = express();
 const PORT = process.env.PORT || 8000;
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "http://localhost:8000", "https://storage.googleapis.com"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
 app.use(cors({
   origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
@@ -74,14 +84,16 @@ app.use('/api/gemini', require('./routes/geminiReviewer'));
 app.use('/api/test-candidates', require('./routes/testCandidates'));
 app.use('/api/job-attachments', require('./routes/jobAttachments'));
 app.use('/api/saved-jobs', require('./routes/savedJobs'));
+app.use('/api/forgot-password', require('./routes/forgotPassword'));
 
 // Serve uploaded files with proper headers
 app.use('/uploads', express.static('uploads', {
   setHeaders: (res, path) => {
-    // Set proper CORS headers for file access
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
   }
 }));
 

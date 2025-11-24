@@ -86,4 +86,26 @@ async function uploadJobPDF(file, jobId, jobTitle) {
   }
 }
 
-module.exports = { upload, uploadToGCS, uploadJobPDF };
+// Upload file locally
+async function uploadToLocal(file, folder = 'uploads') {
+  try {
+    const fs = require('fs').promises;
+    const uploadDir = path.join(__dirname, '..', 'uploads', folder);
+    
+    await fs.mkdir(uploadDir, { recursive: true });
+    
+    const fileName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const filePath = path.join(uploadDir, fileName);
+    
+    await fs.writeFile(filePath, file.buffer);
+    
+    const publicUrl = `/uploads/${folder}/${fileName}`;
+    console.log('✅ File uploaded locally:', publicUrl);
+    return publicUrl;
+  } catch (error) {
+    console.error('❌ Local Upload Error:', error);
+    throw error;
+  }
+}
+
+module.exports = { upload, uploadToGCS, uploadJobPDF, uploadToLocal };

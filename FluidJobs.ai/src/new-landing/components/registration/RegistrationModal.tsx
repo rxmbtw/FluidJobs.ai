@@ -8,9 +8,10 @@ import { useAuth } from '../../../contexts/AuthContext';
 interface RegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }) => {
+const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -20,6 +21,8 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
   const [statusMessage, setStatusMessage] = useState('');
   const [isError, setIsError] = useState(false);
   const [registrationData, setRegistrationData] = useState<any>({});
+  const [emailError, setEmailError] = useState('');
+  const [checkingEmail, setCheckingEmail] = useState(false);
   const { signup } = useAuth();
 
   if (!isOpen) return null;
@@ -30,11 +33,44 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
     setTimeout(() => setStatusMessage(''), 5000);
   };
 
+  const checkEmailExists = async (email: string) => {
+    if (!email || !email.includes('@')) {
+      setEmailError('');
+      return;
+    }
+
+    setCheckingEmail(true);
+    try {
+      const API_BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_BASE}/api/auth/check-username`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: email })
+      });
+      const data = await response.json();
+      
+      if (data.exists) {
+        setEmailError('This email is already registered. Please use a different email or login.');
+      } else {
+        setEmailError('');
+      }
+    } catch (error) {
+      console.error('Error checking email:', error);
+    } finally {
+      setCheckingEmail(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!username || !password || !confirmPassword) {
       showMessage('Please fill in all fields.', true);
+      return;
+    }
+
+    if (emailError) {
+      showMessage('Please use a different email address.', true);
       return;
     }
 
@@ -60,47 +96,50 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
       onClick={onClose}
     >
       <div 
-        className="bg-[#1a1a1a] w-full max-w-md sm:max-w-lg rounded-3xl shadow-2xl p-6 sm:p-8 relative border border-[#374151] max-h-[90vh] overflow-y-auto scrollbar-hide"
+        className="bg-white w-full max-w-md sm:max-w-lg rounded-3xl shadow-2xl p-6 sm:p-8 relative border border-gray-200 max-h-[90vh] overflow-y-auto scrollbar-hide"
         onClick={(e) => e.stopPropagation()}
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', overflowX: 'visible' }}
       >
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 text-[#9ca3af] hover:text-[#f9fafb] p-2 rounded-full transition hover:bg-[#374151]"
+          className="absolute top-4 right-4 text-gray-600 hover:text-black p-2 rounded-full transition hover:bg-gray-100"
         >
           <X className="w-6 h-6" />
         </button>
 
         <header className="flex justify-center mb-6">
-          <img src="/images/Fluid Live Icon.png" alt="FluidJobs.ai Logo" className="w-20 h-20" />
+          <img src="/images/FLuid Live Icon light theme.png" alt="FluidJobs.ai Logo" className="w-20 h-20" />
         </header>
 
         <main>
           {currentStep === 1 ? (
             <>
-              <h2 className="text-xl sm:text-2xl font-bold text-center text-[#f9fafb]">Create Your Account</h2>
-              <p className="text-sm font-semibold text-center text-[#9ca3af] mb-6">Set up your username and password</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-center text-black">Create Your Account</h2>
+              <p className="text-sm font-semibold text-center text-gray-600 mb-6">Set up your username and password</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="username" className="block text-sm font-semibold text-[#f9fafb] mb-2">Username</label>
+              <label htmlFor="username" className="block text-sm font-semibold text-black mb-2">Email Address</label>
               <div className="relative">
                 <input 
-                  type="text" 
+                  type="email" 
                   id="username" 
-                  placeholder="enter email address or phone no."
+                  placeholder="enter email address"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full p-3 pl-12 border border-[#374151] bg-[#1a1a1a] text-[#f9fafb] rounded-xl focus:ring-[#8B5CF6] focus:border-[#8B5CF6] outline-none text-sm font-medium placeholder:text-[#9ca3af]"
+                  onBlur={(e) => checkEmailExists(e.target.value)}
+                  className={`w-full p-3 pl-12 border bg-white text-black rounded-xl focus:ring-[#4285F4] focus:border-[#4285F4] outline-none text-sm font-medium placeholder:text-gray-400 ${emailError ? 'border-red-500' : 'border-gray-300'}`}
                 />
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#9ca3af]">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
                   <User className="w-5 h-5" />
                 </div>
               </div>
+              {checkingEmail && <p className="text-xs text-blue-500 mt-1">Checking email...</p>}
+              {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-[#f9fafb] mb-2">New Password</label>
+              <label htmlFor="password" className="block text-sm font-semibold text-black mb-2">New Password</label>
               <div className="relative">
                 <input 
                   type={showPassword ? 'text' : 'password'}
@@ -108,15 +147,15 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
                   placeholder="create a strong password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-3 pl-12 pr-12 border border-[#374151] bg-[#1a1a1a] text-[#f9fafb] rounded-xl focus:ring-[#8B5CF6] focus:border-[#8B5CF6] outline-none text-sm font-medium placeholder:text-[#9ca3af]"
+                  className="w-full p-3 pl-12 pr-12 border border-gray-300 bg-white text-black rounded-xl focus:ring-[#4285F4] focus:border-[#4285F4] outline-none text-sm font-medium placeholder:text-gray-400"
                 />
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#9ca3af]">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
                   <Lock className="w-5 h-5" />
                 </div>
                 <button 
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#9ca3af] p-1 rounded-full hover:bg-[#050505] transition"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 p-1 rounded-full hover:bg-gray-100 transition"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -124,7 +163,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
             </div>
 
             <div>
-              <label htmlFor="confirm-password" className="block text-sm font-semibold text-[#f9fafb] mb-2">Confirm Password</label>
+              <label htmlFor="confirm-password" className="block text-sm font-semibold text-black mb-2">Confirm Password</label>
               <div className="relative">
                 <input 
                   type={showConfirmPassword ? 'text' : 'password'}
@@ -132,15 +171,15 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
                   placeholder="confirm your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full p-3 pl-12 pr-12 border border-[#374151] bg-[#1a1a1a] text-[#f9fafb] rounded-xl focus:ring-[#8B5CF6] focus:border-[#8B5CF6] outline-none text-sm font-medium placeholder:text-[#9ca3af]"
+                  className="w-full p-3 pl-12 pr-12 border border-gray-300 bg-white text-black rounded-xl focus:ring-[#4285F4] focus:border-[#4285F4] outline-none text-sm font-medium placeholder:text-gray-400"
                 />
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#9ca3af]">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
                   <Lock className="w-5 h-5" />
                 </div>
                 <button 
                   type="button" 
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#9ca3af] p-1 rounded-full hover:bg-[#050505] transition"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 p-1 rounded-full hover:bg-gray-100 transition"
                 >
                   {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -149,7 +188,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
 
             <button 
               type="submit" 
-              className="w-full h-12 bg-[#8B5CF6] text-[#f9fafb] font-semibold text-lg rounded-xl shadow-lg hover:opacity-90 transition mt-6"
+              className="w-full h-12 bg-[#4285F4] text-white font-semibold text-lg rounded-xl shadow-lg hover:opacity-90 transition mt-6"
             >
               Next
             </button>
@@ -161,7 +200,8 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
                 setRegistrationData({ ...registrationData, ...data });
                 setCurrentStep(3);
               }} 
-              onBack={() => setCurrentStep(1)} 
+              onBack={() => setCurrentStep(1)}
+              initialEmail={username}
             />
           ) : currentStep === 3 ? (
             <ExperienceStep 
@@ -176,6 +216,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
               onBack={() => setCurrentStep(3)} 
               onComplete={async () => {
                 try {
+                  const API_BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
                   const signupPayload = {
                     username: registrationData.username,
                     password: registrationData.password,
@@ -193,9 +234,18 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
                     city: registrationData.city,
                     workMode: registrationData.workMode
                   };
-                  await signup(signupPayload);
-                  showMessage('Account created successfully!', false);
-                  setTimeout(() => onClose(), 1500);
+                  
+                  const response = await fetch(`${API_BASE}/api/auth/signup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(signupPayload)
+                  });
+                  
+                  const data = await response.json();
+                  if (!response.ok) throw new Error(data.error || 'Signup failed');
+                  
+                  onClose();
+                  if (onSuccess) onSuccess();
                 } catch (error: any) {
                   showMessage(error.message, true);
                 }
@@ -210,32 +260,32 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
           )}
 
           <div className="mt-8 pt-4 flex items-start justify-between relative w-full max-w-lg mx-auto">
-            <div className="absolute top-[24px] left-[10%] right-[10%] h-[2px] bg-[#374151]"></div>
+            <div className="absolute top-[24px] left-[10%] right-[10%] h-[2px] bg-gray-300"></div>
 
             <div className="flex flex-col items-center w-1/4 z-10 cursor-pointer" onClick={() => setCurrentStep(1)}>
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl mb-2 ${currentStep >= 1 ? 'bg-[#8B5CF6] text-[#f9fafb] shadow-md' : 'bg-[#374151] text-[#9ca3af]'}`}>1</div>
-              <span className={`text-xs font-medium ${currentStep >= 1 ? 'text-[#f9fafb]' : 'text-[#9ca3af]'}`}>Account</span>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl mb-2 ${currentStep >= 1 ? 'bg-[#4285F4] text-white shadow-md' : 'bg-gray-200 text-gray-500'}`}>1</div>
+              <span className={`text-xs font-medium ${currentStep >= 1 ? 'text-black' : 'text-gray-500'}`}>Account</span>
             </div>
 
             <div className="flex flex-col items-center w-1/4 z-10 cursor-pointer" onClick={() => currentStep >= 2 && setCurrentStep(2)}>
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl mb-2 ${currentStep >= 2 ? 'bg-[#8B5CF6] text-[#f9fafb] shadow-md' : 'bg-[#374151] text-[#9ca3af]'}`}>2</div>
-              <span className={`text-xs font-medium ${currentStep >= 2 ? 'text-[#f9fafb]' : 'text-[#9ca3af]'}`}>Personal</span>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl mb-2 ${currentStep >= 2 ? 'bg-[#4285F4] text-white shadow-md' : 'bg-gray-200 text-gray-500'}`}>2</div>
+              <span className={`text-xs font-medium ${currentStep >= 2 ? 'text-black' : 'text-gray-500'}`}>Personal</span>
             </div>
 
             <div className="flex flex-col items-center w-1/4 z-10 cursor-pointer" onClick={() => currentStep >= 3 && setCurrentStep(3)}>
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl mb-2 ${currentStep >= 3 ? 'bg-[#8B5CF6] text-[#f9fafb] shadow-md' : 'bg-[#374151] text-[#9ca3af]'}`}>3</div>
-              <span className={`text-xs font-medium ${currentStep >= 3 ? 'text-[#f9fafb]' : 'text-[#9ca3af]'}`}>Experience</span>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl mb-2 ${currentStep >= 3 ? 'bg-[#4285F4] text-white shadow-md' : 'bg-gray-200 text-gray-500'}`}>3</div>
+              <span className={`text-xs font-medium ${currentStep >= 3 ? 'text-black' : 'text-gray-500'}`}>Experience</span>
             </div>
 
             <div className="flex flex-col items-center w-1/4 z-10 cursor-pointer" onClick={() => currentStep >= 4 && setCurrentStep(4)}>
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl mb-2 ${currentStep >= 4 ? 'bg-[#8B5CF6] text-[#f9fafb] shadow-md' : 'bg-[#374151] text-[#9ca3af]'}`}>4</div>
-              <span className={`text-xs font-medium ${currentStep >= 4 ? 'text-[#f9fafb]' : 'text-[#9ca3af]'}`}>Documents</span>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl mb-2 ${currentStep >= 4 ? 'bg-[#4285F4] text-white shadow-md' : 'bg-gray-200 text-gray-500'}`}>4</div>
+              <span className={`text-xs font-medium ${currentStep >= 4 ? 'text-black' : 'text-gray-500'}`}>Documents</span>
             </div>
           </div>
         </main>
 
         <footer className="mt-6 pt-4 text-center">
-          <p className="text-xs font-medium text-[#9ca3af]">
+          <p className="text-xs font-medium text-gray-600">
             All Rights Reserved. 2025 FluidLive Solutions Pvt Ltd.
           </p>
         </footer>
