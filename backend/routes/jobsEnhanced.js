@@ -117,8 +117,13 @@ router.get('/:id', async (req, res) => {
       experience: `${job.min_experience}-${job.max_experience} years`,
       employmentType: job.job_type,
       salaryRange: job.min_salary && job.max_salary ? 
-        `₹${(job.min_salary/100000).toFixed(1)}L - ₹${(job.max_salary/100000).toFixed(1)}L` : 
+        `Rs.${(job.min_salary/100000).toFixed(1)}L-Rs.${(job.max_salary/100000).toFixed(1)}L` : 
         'Competitive',
+      postedDate: new Date(job.created_at).toLocaleDateString(),
+      about_organisation: job.about_organisation,
+      website: job.website,
+      registration_opening_date: job.registration_opening_date,
+      registration_closing_date: job.registration_closing_date,
       attachments: attachmentsResult.rows
     });
   } catch (error) {
@@ -246,6 +251,70 @@ router.post('/upload-jd', upload.single('jdFile'), async (req, res) => {
     stream.end(req.file.buffer);
   } catch (error) {
     console.error('Error uploading JD:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update job
+router.put('/update/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const jobData = req.body;
+    
+    // Convert skills to array if it's a string
+    const skillsArray = Array.isArray(jobData.skills) ? jobData.skills : [jobData.skills];
+    
+    // Convert locations to array if it's a string
+    let locationsArray;
+    if (Array.isArray(jobData.locations)) {
+      locationsArray = jobData.locations;
+    } else if (typeof jobData.locations === 'string') {
+      // Split by comma and trim whitespace
+      locationsArray = jobData.locations.split(',').map(loc => loc.trim());
+    } else {
+      locationsArray = [jobData.locations];
+    }
+    
+    const result = await pool.query(`
+      UPDATE jobs_enhanced SET
+        job_title = $1,
+        job_type = $2,
+        job_domain = $3,
+        locations = $4,
+        min_salary = $5,
+        max_salary = $6,
+        skills = $7,
+        job_description = $8,
+        about_organisation = $9,
+        website = $10,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE job_id = $11
+      RETURNING *;
+    `, [
+      jobData.job_title,
+      jobData.job_type,
+      jobData.job_domain,
+      locationsArray,
+      jobData.min_salary || 600000,
+      jobData.max_salary || 1500000,
+      skillsArray,
+      jobData.job_description,
+      jobData.about_organisation,
+      jobData.website,
+      id
+    ]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+    
+    res.json({ 
+      success: true, 
+      job: result.rows[0],
+      message: 'Job updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating job:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

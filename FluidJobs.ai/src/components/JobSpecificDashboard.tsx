@@ -1,13 +1,28 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Users, Zap, Settings, MessageCircle, TestTube } from 'lucide-react';
 import ManageCandidates from './ManageCandidates';
+import JobSettings from './JobSettings';
 
 interface JobSpecificDashboardProps {
   jobTitle: string;
+  jobId?: string;
   onBack: () => void;
+  onJobUpdate?: (updatedJob: any) => void;
 }
 
-const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, onBack }) => {
+const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, jobId, onBack, onJobUpdate }) => {
+  console.log('JobSpecificDashboard received props:', { jobTitle, jobId });
+  const [currentJobTitle, setCurrentJobTitle] = useState(jobTitle);
+  
+  // Debug: Log jobId to ensure it's being passed correctly
+  console.log('JobSpecificDashboard jobId for JobSettings:', jobId);
+
+  const handleJobUpdate = (updatedJob: any) => {
+    setCurrentJobTitle(updatedJob.title);
+    if (onJobUpdate) {
+      onJobUpdate(updatedJob);
+    }
+  };
   const [activeSection, setActiveSection] = useState('manage-candidates');
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -29,12 +44,8 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, o
           </div>
         );
       case 'job-settings':
-        return (
-          <div className="p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Job Settings</h2>
-            <p className="text-gray-600">Job configuration and settings.</p>
-          </div>
-        );
+        console.log('Passing jobId to JobSettings:', jobId);
+        return <JobSettings jobTitle={currentJobTitle} jobId={jobId} onJobUpdate={handleJobUpdate} />;
 
       case 'testing-environment':
         return (
@@ -49,8 +60,8 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, o
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="h-screen bg-gray-50 flex flex-col">
+      <div className="flex-1 flex flex-col">
         {/* Header with Back Button and Job Title */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">
           <button
@@ -60,7 +71,7 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, o
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm font-medium">Back to Openings</span>
           </button>
-          <h1 className="text-xl font-bold text-gray-900">{jobTitle}</h1>
+          <h1 className="text-xl font-bold text-gray-900">{currentJobTitle}</h1>
         </div>
 
         {/* Tabs Navigation */}
@@ -84,7 +95,7 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, o
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
           {renderContent()}
         </div>
       </div>

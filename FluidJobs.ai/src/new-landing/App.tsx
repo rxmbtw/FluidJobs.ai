@@ -23,7 +23,7 @@ const App: React.FC = () => {
     if (token && userStr && currentPage === 'landing') {
       try {
         const user = JSON.parse(userStr);
-        if (user.role === 'Admin' || user.role === 'HR') {
+        if (user.role === 'admin' || user.role === 'Admin' || user.role === 'HR') {
           setCurrentPage('company-dashboard');
         } else {
           setCurrentPage('dashboard');
@@ -48,7 +48,7 @@ const App: React.FC = () => {
         sessionStorage.setItem('fluidjobs_token', callbackToken);
         sessionStorage.setItem('fluidjobs_user', JSON.stringify(user));
         window.history.replaceState({}, document.title, window.location.pathname);
-        if (user.role === 'Admin' || user.role === 'HR') {
+        if (user.role === 'admin' || user.role === 'Admin' || user.role === 'HR') {
           setCurrentPage('company-dashboard');
         } else {
           setCurrentPage('dashboard');

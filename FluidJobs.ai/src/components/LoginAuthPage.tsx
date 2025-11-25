@@ -45,37 +45,24 @@ const LoginAuthPage = () => {
       return;
     }
     
-    // Auto-detect role based on email
-    const adminEmails = [
-      'ram@fluid.live',
-      'meetpandya@fluid.live',
-      'deepesh.sodhi@fluid.live',
-      'rohnit@fluid.live',
-      'shobhit@fluid.live'
-    ];
-    const detectedRole = adminEmails.includes(formData.email) ? 'Admin' : 'Candidate';
-    const updatedFormData = { ...formData, role: detectedRole };
-    
     try {
       if (isSignUp) {
-        await signup(formData.fullName, formData.email, formData.password, detectedRole);
+        await signup(formData.fullName, formData.email, formData.password, 'Candidate');
       } else {
-        console.log('Logging in with role:', detectedRole);
-        await login(formData.email, formData.password, detectedRole as UserRole);
+        await login(formData.email, formData.password, 'Candidate' as UserRole);
       }
       
-      // Check role first. Admin should always go to the unified admin dashboard.
-      // Use the saved user role when possible (authService stores session on login)
+      // Get role from saved user (backend determines role)
       const savedUser = authService.getCurrentUser();
-      const finalRole = savedUser?.role || detectedRole;
+      const finalRole = savedUser?.role || 'Candidate';
 
-      console.log('LoginAuthPage - Redirect debug', { detectedRole, savedUser, finalRole });
+      console.log('LoginAuthPage - User role from backend:', finalRole);
 
       if (finalRole === 'Admin') {
-        console.log('Redirecting Admin to company-dashboard (finalRole)', finalRole);
+        console.log('Redirecting Admin to company-dashboard');
         navigate('/company-dashboard');
       } else {
-        // Non-admins may have a returnTo or jobId from previous flow; honor those
+        // Non-admins may have a returnTo or jobId from previous flow
         const urlParams = new URLSearchParams(window.location.search);
         const returnTo = urlParams.get('returnTo');
         const jobId = urlParams.get('jobId');
@@ -95,42 +82,14 @@ const LoginAuthPage = () => {
   };
 
   const handleSocialLogin = async (provider: string) => {
-    // Auto-detect role based on email for social login
-    const adminEmails = [
-      'ram@fluid.live',
-      'meetpandya@fluid.live', 
-      'deepesh.sodhi@fluid.live',
-      'rohnit@fluid.live',
-      'shobhit@fluid.live'
-    ];
-    const detectedRole = adminEmails.includes(formData.email) ? 'Admin' : 'Candidate';
-    
     const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
     
     if (provider === 'google') {
-      console.log('🔄 Starting Google login with role:', detectedRole);
-      
-      if (detectedRole === 'Admin') {
-        const adminUrl = `${backendUrl}/api/auth/google?role=Admin&redirect=admin`;
-        console.log('✅ Redirecting to ADMIN Google OAuth');
-        window.location.href = adminUrl;
-      } else {
-        const candidateUrl = `${backendUrl}/api/auth/google?role=Candidate&redirect=candidate`;
-        console.log('ℹ️ Redirecting to CANDIDATE Google OAuth');
-        window.location.href = candidateUrl;
-      }
+      console.log('🔄 Starting Google login - role will be determined by backend');
+      window.location.href = `${backendUrl}/api/auth/google`;
     } else if (provider === 'linkedin') {
-      console.log('🔄 Starting LinkedIn login with role:', detectedRole);
-      
-      if (detectedRole === 'Admin') {
-        const adminUrl = `${backendUrl}/api/auth/linkedin?role=Admin&redirect=admin`;
-        console.log('✅ Redirecting to ADMIN LinkedIn OAuth');
-        window.location.href = adminUrl;
-      } else {
-        const candidateUrl = `${backendUrl}/api/auth/linkedin?role=Candidate&redirect=candidate`;
-        console.log('ℹ️ Redirecting to CANDIDATE LinkedIn OAuth');
-        window.location.href = candidateUrl;
-      }
+      console.log('🔄 Starting LinkedIn login - role will be determined by backend');
+      window.location.href = `${backendUrl}/api/auth/linkedin`;
     }
   };
 

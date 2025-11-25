@@ -133,6 +133,7 @@ const JobOpeningsViewNew: React.FC = () => {
     return (
       <JobSpecificDashboard 
         jobTitle={selectedJobForDashboard.title}
+        jobId={selectedJobForDashboard.jobId}
         onBack={() => {
           setShowJobDashboard(false);
           setSelectedJobForDashboard(null);
@@ -217,9 +218,8 @@ const JobOpeningsViewNew: React.FC = () => {
               <div className="p-5">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">{job.title}</h2>
                 
-                <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
+                <div className="mb-4 pb-4 border-b border-gray-200">
                   <span className="text-sm text-gray-600">Posted on: {formatDate(job.created_at)}</span>
-                  <span className="text-sm text-gray-500">Registrations closed</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-6 mb-6">

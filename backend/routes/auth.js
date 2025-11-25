@@ -117,6 +117,56 @@ router.post('/signup', async (req, res) => {
   }
 });
 
+// Admin login endpoint
+router.post('/admin/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Check admin table
+    const result = await pool.query(
+      'SELECT admin_id, username, password_hash, role FROM admin WHERE username = $1',
+      [email]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const admin = result.rows[0];
+    
+    // Verify password (using SHA256 hash)
+    const crypto = require('crypto');
+    const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+    
+    if (passwordHash !== admin.password_hash) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        adminId: admin.admin_id,
+        email: admin.username,
+        role: admin.role || 'admin'
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    res.json({
+      user: {
+        id: admin.admin_id,
+        email: admin.username,
+        role: admin.role || 'admin'
+      },
+      token
+    });
+  } catch (error) {
+    console.error('Admin login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
 // Login endpoint
 router.post('/login', async (req, res) => {
   try {
@@ -172,50 +222,12 @@ router.post('/login', async (req, res) => {
 
 // Google OAuth routes
 router.get('/google', async (req, res, next) => {
-  const role = req.query.role || 'Candidate';
-  const sessionId = req.sessionID;
+  console.log('🔵 Google OAuth initiated');
   
-  console.log('🔵 Google OAuth initiated - Role:', role, 'Session:', sessionId);
-  
-  try {
-    // Test database connection first
-    await pool.query('SELECT 1');
-    console.log('✅ Database connection OK');
-    
-    // Ensure table exists
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS pending_auth_roles (
-        id SERIAL PRIMARY KEY,
-        session_id VARCHAR(255) UNIQUE NOT NULL,
-        role VARCHAR(50) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        expires_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '10 minutes')
-      )
-    `);
-    
-    // Store role in database
-    await pool.query(
-      'INSERT INTO pending_auth_roles (session_id, role) VALUES ($1, $2) ON CONFLICT (session_id) DO UPDATE SET role = $2, created_at = CURRENT_TIMESTAMP',
-      [sessionId, role]
-    );
-    
-    console.log('✅ Stored role in DB:', role, 'for session:', sessionId);
-    
-    passport.authenticate('google', { 
-      scope: ['profile', 'email'],
-      state: sessionId
-    })(req, res, next);
-  } catch (error) {
-    console.error('❌ Database error storing role:', error.message);
-    // Continue with OAuth even if DB fails - store role in session as fallback
-    req.session.selectedRole = role;
-    console.log('⚠️  Using session fallback for role:', role);
-    
-    passport.authenticate('google', { 
-      scope: ['profile', 'email'],
-      state: sessionId
-    })(req, res, next);
-  }
+  passport.authenticate('google', { 
+    scope: ['profile', 'email'],
+    prompt: 'select_account'
+  })(req, res, next);
 });
 
 router.get('/google/callback',
@@ -224,33 +236,11 @@ router.get('/google/callback',
     try {
       console.log('✅ Google auth successful for:', req.user.email);
       
-      const sessionId = req.query.state || req.sessionID;
-      let finalRole = 'Candidate';
+      // Use role from passport (determined by database check)
+      const finalRole = req.user.role || 'Candidate';
+      console.log('🎭 Role from database:', finalRole);
       
-      try {
-        // Try to get role from database
-        const roleResult = await pool.query(
-          'SELECT role FROM pending_auth_roles WHERE session_id = $1 AND expires_at > CURRENT_TIMESTAMP',
-          [sessionId]
-        );
-        
-        if (roleResult.rows.length > 0) {
-          finalRole = roleResult.rows[0].role;
-          // Clean up the record
-          await pool.query('DELETE FROM pending_auth_roles WHERE session_id = $1', [sessionId]);
-          console.log('🎭 Final role from DB:', finalRole);
-        } else if (req.session.selectedRole) {
-          // Fallback to session
-          finalRole = req.session.selectedRole;
-          console.log('🎭 Final role from session fallback:', finalRole);
-        }
-      } catch (dbError) {
-        console.error('⚠️  Database error, using session fallback:', dbError.message);
-        finalRole = req.session.selectedRole || 'Candidate';
-        console.log('🎭 Final role from session fallback:', finalRole);
-      }
-      
-      // Generate JWT token with the determined role
+      // Generate JWT token with the database role
       const token = jwt.sign(
         { 
           candidateId: req.user.candidate_id,
@@ -264,11 +254,15 @@ router.get('/google/callback',
       
       console.log('🔑 JWT token created with role:', finalRole);
       
-      // Clear session data
-      if (req.session.selectedRole) delete req.session.selectedRole;
-      if (req.session.redirectType) delete req.session.redirectType;
+      // Clean up pending auth roles if any
+      const sessionId = req.query.state || req.sessionID;
+      try {
+        await pool.query('DELETE FROM pending_auth_roles WHERE session_id = $1', [sessionId]);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
       
-      // Redirect based on final role
+      // Redirect based on database role
       const redirectUrl = finalRole === 'Admin' 
         ? `${process.env.FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}&role=Admin`
         : `${process.env.FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}&role=Candidate`;
@@ -285,34 +279,20 @@ router.get('/google/callback',
 
 // LinkedIn OAuth routes
 router.get('/linkedin', async (req, res) => {
-  console.log('🔵 LinkedIn auth route hit with params:', req.query);
+  console.log('🔵 LinkedIn auth route hit');
   
-  const role = req.query.role || 'Candidate';
   const sessionId = req.sessionID;
   
-  try {
-    // Store role in database
-    await pool.query(
-      'INSERT INTO pending_auth_roles (session_id, role) VALUES ($1, $2) ON CONFLICT (session_id) DO UPDATE SET role = $2, created_at = CURRENT_TIMESTAMP',
-      [sessionId, role]
-    );
-    
-    console.log('✅ Stored LinkedIn role in DB:', role, 'for session:', sessionId);
-    
-    // Manual LinkedIn OAuth2 redirect
-    const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?` +
-      `response_type=code&` +
-      `client_id=${process.env.LINKEDIN_CLIENT_ID}&` +
-      `redirect_uri=${encodeURIComponent(`${process.env.BACKEND_URL}/api/auth/linkedin/callback`)}&` +
-      `state=${sessionId}&` +
-      `scope=openid%20profile%20email`;
-    
-    console.log('🔗 Redirecting to LinkedIn:', linkedinAuthUrl);
-    res.redirect(linkedinAuthUrl);
-  } catch (error) {
-    console.error('❌ Database error storing LinkedIn role:', error);
-    return res.redirect(`${process.env.FRONTEND_URL}/login?error=db_error`);
-  }
+  // Manual LinkedIn OAuth2 redirect
+  const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?` +
+    `response_type=code&` +
+    `client_id=${process.env.LINKEDIN_CLIENT_ID}&` +
+    `redirect_uri=${encodeURIComponent(`${process.env.BACKEND_URL}/api/auth/linkedin/callback`)}&` +
+    `state=${sessionId}&` +
+    `scope=openid%20profile%20email`;
+  
+  console.log('🔗 Redirecting to LinkedIn');
+  res.redirect(linkedinAuthUrl);
 });
 
 router.get('/linkedin/callback', async (req, res) => {
@@ -382,47 +362,54 @@ router.get('/linkedin/callback', async (req, res) => {
     console.log('📧 LinkedIn email:', email);
     console.log('👤 LinkedIn name:', name);
     
-    // Check if candidate exists
-    const existingCandidate = await pool.query(
-      'SELECT * FROM candidates WHERE email = $1',
+    let user;
+    let finalRole = 'Candidate';
+    
+    // FIRST: Check if user exists in admin table
+    const existingAdmin = await pool.query(
+      'SELECT admin_id, username, role FROM admin WHERE username = $1',
       [email]
     );
     
-    let user;
-    if (existingCandidate.rows.length > 0) {
-      user = existingCandidate.rows[0];
+    if (existingAdmin.rows.length > 0) {
+      console.log('✅ Admin user found:', existingAdmin.rows[0].admin_id);
+      user = {
+        candidate_id: existingAdmin.rows[0].admin_id,
+        email: existingAdmin.rows[0].username,
+        full_name: name
+      };
+      finalRole = 'Admin';
     } else {
-      // Create new candidate
-      const countResult = await pool.query('SELECT COUNT(*) FROM candidates');
-      const count = parseInt(countResult.rows[0].count) + 1;
-      const candidateId = `FLC${String(count).padStart(10, '0')}`;
-      
-      const newCandidate = await pool.query(
-        `INSERT INTO candidates (
-          candidate_id, full_name, email, phone, gender, marital_status, 
-          work_status, current_company, notice_period, current_ctc, 
-          last_company, previous_ctc, city, work_mode, 
-          created_at, updated_at
-        ) VALUES (
-          $1, $2, $3, '', '', '', '', '', '', '', '', '', '', '', 
-          CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-        ) RETURNING *`,
-        [candidateId, name, email]
+      // SECOND: Check if candidate exists
+      const existingCandidate = await pool.query(
+        'SELECT * FROM candidates WHERE email = $1',
+        [email]
       );
       
-      user = newCandidate.rows[0];
-    }
-    
-    // Get role from database
-    const roleResult = await pool.query(
-      'SELECT role FROM pending_auth_roles WHERE session_id = $1 AND expires_at > CURRENT_TIMESTAMP',
-      [state]
-    );
-    
-    let finalRole = 'Candidate';
-    if (roleResult.rows.length > 0) {
-      finalRole = roleResult.rows[0].role;
-      await pool.query('DELETE FROM pending_auth_roles WHERE session_id = $1', [state]);
+      if (existingCandidate.rows.length > 0) {
+        user = existingCandidate.rows[0];
+      } else {
+        // Create new candidate
+        const countResult = await pool.query('SELECT COUNT(*) FROM candidates');
+        const count = parseInt(countResult.rows[0].count) + 1;
+        const candidateId = `FLC${String(count).padStart(10, '0')}`;
+        
+        const newCandidate = await pool.query(
+          `INSERT INTO candidates (
+            candidate_id, full_name, email, phone, gender, marital_status, 
+            work_status, current_company, notice_period, current_ctc, 
+            last_company, previous_ctc, city, work_mode, 
+            created_at, updated_at
+          ) VALUES (
+            $1, $2, $3, '', '', '', '', '', '', '', '', '', '', '', 
+            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+          ) RETURNING *`,
+          [candidateId, name, email]
+        );
+        
+        user = newCandidate.rows[0];
+      }
+      finalRole = 'Candidate';
     }
     
     // Generate JWT token

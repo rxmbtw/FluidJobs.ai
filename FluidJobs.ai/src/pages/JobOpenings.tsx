@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Clock, Building, X, ExternalLink, ArrowLeft } from 'lucide-react';
 
-import { useJobs } from '../contexts/JobsProvider';
+
 import JobSpecificDashboard from '../components/JobSpecificDashboard';
 
 interface JobData {
@@ -20,236 +20,13 @@ interface JobData {
   };
 }
 
-const jobsData: JobData[] = [
-  {
-    "jobId": "15",
-    "title": "Business Analyst | Motor Insurance",
-    "experience": "4+ Years",
-    "location": "Remote, Hybrid",
-    "workplace": "Remote/Hybrid",
-    "tags": ["Insurance", "Business Analysis", "Technology"],
-    "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "We are seeking a skilled Business Analyst with strong domain expertise in Motor Insurance to join our team. View full job description in the attached PDF file.",
-      "responsibilities": [
-        "Gather, analyze, and document business requirements specific to motor insurance products.",
-        "Work with product, operations, and IT teams to design and enhance motor insurance workflows.",
-        "Translate business needs into functional and technical specifications.",
-        "Support product design for new insurance offerings."
-      ],
-      "qualifications": [
-        "4+ years' experience as a Business Analyst in Motor/General Insurance domain.",
-        "Strong knowledge of Motor Insurance Domain.",
-        "Experience in requirement gathering and business process mapping."
-      ]
-    }
-  },
-  {
-    "jobId": "16",
-    "title": "Content Analyst",
-    "experience": "0-3 Years",
-    "location": "Remote, Hybrid",
-    "workplace": "Remote/Hybrid",
-    "tags": ["Content", "Analysis", "Technology"],
-    "image": "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "Analyzing incoming data streams and monitoring for events. View full job description in the attached PDF file.",
-      "responsibilities": [
-        "Monitoring for events that can impact business operations.",
-        "Reporting time-sensitive alerts based on information from open source media.",
-        "Writing, editing and updating real-time reports."
-      ],
-      "qualifications": [
-        "0-3 Years relevant experience.",
-        "Excellent verbal and written communication skills in English.",
-        "Ability to work in a fast-paced environment."
-      ]
-    }
-  },
-  {
-    "jobId": "17",
-    "title": "Data Research Analyst",
-    "experience": "2+ Years",
-    "location": "Remote, Hybrid",
-    "workplace": "Remote/Hybrid",
-    "tags": ["Data Analysis", "Research", "Technology"],
-    "image": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "We are looking for a Data Research Analyst to analyze and interpret complex data. View full job description in the attached PDF file.",
-      "responsibilities": [
-        "Conduct data research and analysis.",
-        "Prepare detailed reports and presentations.",
-        "Collaborate with cross-functional teams."
-      ],
-      "qualifications": [
-        "2+ years of experience in data analysis.",
-        "Strong analytical and problem-solving skills.",
-        "Proficiency in data analysis tools."
-      ]
-    }
-  },
-  {
-    "jobId": "18",
-    "title": "Frontend Developer",
-    "experience": "4+ Years",
-    "location": "Remote, Hybrid",
-    "workplace": "Remote/Hybrid",
-    "tags": ["React", "JavaScript", "Technology"],
-    "image": "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "We are looking for an experienced Frontend Developer to design and develop web applications. View full job description in the attached PDF file.",
-      "responsibilities": [
-        "Designing and developing web applications.",
-        "Implementing UI design improvements.",
-        "Collaborating with backend developers."
-      ],
-      "qualifications": [
-        "4+ years of experience in frontend development.",
-        "Experience with React, HTML, CSS, JavaScript.",
-        "Strong understanding of responsive design."
-      ]
-    }
-  },
-  {
-    "jobId": "19",
-    "title": "Frontend Developer | Forex CFD Domain",
-    "experience": "3+ Years",
-    "location": "Remote, Hybrid",
-    "workplace": "Remote/Hybrid",
-    "tags": ["React", "Forex", "Technology"],
-    "image": "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "We are seeking a Frontend Developer with Forex CFD domain expertise. View full job description in the attached PDF file.",
-      "responsibilities": [
-        "Develop trading platforms and financial applications.",
-        "Implement real-time data visualization.",
-        "Work with financial APIs and data feeds."
-      ],
-      "qualifications": [
-        "3+ years of experience in frontend development.",
-        "Knowledge of Forex/CFD trading platforms.",
-        "Experience with real-time data handling."
-      ]
-    }
-  },
-  {
-    "jobId": "20",
-    "title": "Data Analyst - Fresher",
-    "experience": "0-1 Years",
-    "location": "Remote, Hybrid",
-    "workplace": "Remote/Hybrid",
-    "tags": ["Data Analysis", "Fresher", "Technology"],
-    "image": "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "We are looking for a fresher Data Analyst to join our team. View full job description in the attached PDF file.",
-      "responsibilities": [
-        "Analyze data and generate insights.",
-        "Create reports and dashboards.",
-        "Support data-driven decision making."
-      ],
-      "qualifications": [
-        "Bachelor's degree in relevant field.",
-        "Basic knowledge of data analysis tools.",
-        "Strong analytical skills."
-      ]
-    }
-  },
-  {
-    "jobId": "21",
-    "title": "Manager Talent Acquisition",
-    "experience": "6+ Years",
-    "location": "Remote, Hybrid",
-    "workplace": "Remote/Hybrid",
-    "tags": ["HR", "Recruitment", "Technology"],
-    "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "We are seeking an experienced Manager for Talent Acquisition. View full job description in the attached PDF file.",
-      "responsibilities": [
-        "Lead talent acquisition strategy.",
-        "Manage recruitment team.",
-        "Build strong candidate pipelines."
-      ],
-      "qualifications": [
-        "6+ years of experience in talent acquisition.",
-        "Strong leadership and management skills.",
-        "Experience in tech recruitment."
-      ]
-    }
-  },
-  {
-    "jobId": "22",
-    "title": "Python Fullstack Developer",
-    "experience": "5+ Years",
-    "location": "Remote, Hybrid",
-    "workplace": "Remote/Hybrid",
-    "tags": ["Python", "Fullstack", "Technology"],
-    "image": "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "We are looking for a Python Fullstack Developer with strong backend and frontend skills. View full job description in the attached PDF file.",
-      "responsibilities": [
-        "Develop and maintain fullstack applications.",
-        "Work with Python frameworks like Django/Flask.",
-        "Implement RESTful APIs and frontend interfaces."
-      ],
-      "qualifications": [
-        "5+ years of experience in fullstack development.",
-        "Strong Python programming skills.",
-        "Experience with modern frontend frameworks."
-      ]
-    }
-  },
-  {
-    "jobId": "23",
-    "title": "QA Automation Selenium",
-    "experience": "2+ Years",
-    "location": "Remote, Hybrid",
-    "workplace": "Remote/Hybrid",
-    "tags": ["QA", "Automation", "Selenium"],
-    "image": "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "We are looking for a QA Automation Engineer with Selenium expertise. View full job description in the attached PDF file.",
-      "responsibilities": [
-        "Write and execute automated test scripts.",
-        "Maintain automated regression suites.",
-        "Collaborate with development teams."
-      ],
-      "qualifications": [
-        "2+ years of experience in QA automation.",
-        "Strong hands-on experience with Selenium.",
-        "Knowledge of Java and testing frameworks."
-      ]
-    }
-  },
-  {
-    "jobId": "24",
-    "title": "QA Engineer | Insurance",
-    "experience": "2+ Years",
-    "location": "Remote, Hybrid",
-    "workplace": "Remote/Hybrid",
-    "tags": ["QA", "Insurance", "Technology"],
-    "image": "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop",
-    "description": {
-      "overview": "We are seeking a QA Engineer with insurance domain knowledge. View full job description in the attached PDF file.",
-      "responsibilities": [
-        "Develop and execute test scenarios.",
-        "Ensure quality of insurance software solutions.",
-        "Document test results and defects."
-      ],
-      "qualifications": [
-        "2+ years of software testing experience.",
-        "Experience in Insurance Domain.",
-        "Strong communication skills."
-      ]
-    }
-  }
-];
+
 
 interface JobOpeningsProps {
   onJobSelect?: (jobTitle: string) => void;
 }
 
 const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
-  const { jobs } = useJobs();
   
   const [dbJobs, setDbJobs] = useState<JobData[]>([]);
 
@@ -285,6 +62,7 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
             }
           }));
           setDbJobs(formattedJobs);
+          console.log('Available job IDs:', formattedJobs.map(job => job.jobId));
         }
       } catch (error) {
         console.error('Error fetching jobs from database:', error);
@@ -294,34 +72,8 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
     fetchDbJobs();
   }, []);
   
-  // Convert context jobs to JobData format
-  const contextJobs: JobData[] = jobs.map(job => ({
-    jobId: job.jobId || `JOB_${Date.now()}`,
-    title: job.title,
-    experience: job.experience || '0-2 Years',
-    location: job.location || 'Mumbai',
-    workplace: job.workplace || job.mode || 'Work from Office',
-    tags: job.tags || [job.domain || 'Technology'],
-    image: job.image || 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
-    description: {
-      overview: job.description || 'Join our team and contribute to exciting projects.',
-      responsibilities: [
-        'Work on innovative projects',
-        'Collaborate with cross-functional teams',
-        'Drive technical excellence',
-        'Contribute to product development'
-      ],
-      qualifications: [
-        job.experience || 'Relevant experience required',
-        ...(job.skills || []).map(skill => `Experience with ${skill}`),
-        'Strong communication skills',
-        'Team collaboration abilities'
-      ]
-    }
-  }));
-  
-  // Combine database jobs, context jobs, and static jobs (database jobs first)
-  const allJobs = [...dbJobs, ...contextJobs, ...jobsData];
+  // Only use database jobs - single source of truth
+  const allJobs = dbJobs;
   
   const [filteredJobs, setFilteredJobs] = useState<JobData[]>(allJobs);
   const [selectedLocation, setSelectedLocation] = useState('All');
@@ -352,7 +104,7 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
     }
     
     setFilteredJobs(filtered);
-  }, [selectedLocation, selectedDepartment, jobs]);
+  }, [selectedLocation, selectedDepartment, dbJobs]);
 
   // Listen for new job creation events
   useEffect(() => {
@@ -405,15 +157,47 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
     return 'Other';
   };
 
+  // Handle job updates from dashboard
+  const handleJobUpdate = (updatedJob: any) => {
+    // Create updated job object with all fields
+    const createUpdatedJob = (job: JobData) => ({
+      ...job,
+      title: updatedJob.title || job.title,
+      workplace: updatedJob.jobType || job.workplace,
+      location: updatedJob.location || job.location,
+      tags: updatedJob.skills ? [updatedJob.industry, ...updatedJob.skills.slice(0, 2)] : [updatedJob.industry || job.tags[0], ...job.tags.slice(1)],
+      description: {
+        ...job.description,
+        overview: updatedJob.description || job.description.overview
+      }
+    });
+    
+    // Update database jobs
+    if (selectedJobForATS) {
+      setDbJobs(prev => prev.map(job => 
+        job.jobId === selectedJobForATS.jobId ? createUpdatedJob(job) : job
+      ));
+    }
+    
+    // Update selected job for ATS
+    if (selectedJobForATS) {
+      setSelectedJobForATS(prev => prev ? createUpdatedJob(prev) : null);
+    }
+  };
+
   // Show Job Specific Dashboard if admin clicked on a job
   if (showATSDashboard && selectedJobForATS) {
+    console.log('Opening JobSpecificDashboard with jobId:', selectedJobForATS.jobId);
+    
     return (
       <JobSpecificDashboard 
         jobTitle={selectedJobForATS.title}
+        jobId={selectedJobForATS.jobId}
         onBack={() => {
           setShowATSDashboard(false);
           setSelectedJobForATS(null);
         }}
+        onJobUpdate={handleJobUpdate}
       />
     );
   }
@@ -484,10 +268,16 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
               }}
               whileHover={{ y: -4, boxShadow: "0 8px 25px rgba(0,0,0,0.1)" }}
               onClick={() => {
+                console.log('Clicked job:', job.jobId, job.title);
+                console.log('Full job object:', job);
+                console.log('Job jobId exists?', !!job.jobId);
                 if (onJobSelect) {
                   onJobSelect(job.title);
                 } else {
-                  setSelectedJob(job);
+                  // For admin users, open ATS dashboard instead of modal
+                  console.log('Setting selectedJobForATS with jobId:', job.jobId);
+                  setSelectedJobForATS(job);
+                  setShowATSDashboard(true);
                 }
               }}
               className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden cursor-pointer transition-all duration-300 hover:border-indigo-200"

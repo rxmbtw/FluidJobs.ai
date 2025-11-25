@@ -222,10 +222,27 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
         setError('');
         setLoading(true);
         try {
+            // Try admin login first
+            const adminResponse = await fetch(`${API_BASE}/api/auth/admin/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (adminResponse.ok) {
+                const data = await adminResponse.json();
+                sessionStorage.setItem('fluidjobs_token', data.token);
+                sessionStorage.setItem('fluidjobs_user', JSON.stringify(data.user));
+                // Force navigation to company dashboard
+                window.location.replace('/company-dashboard');
+                return;
+            }
+
+            // If not admin, try candidate login
             await login(email, password);
             if (onNavigateToDashboard) onNavigateToDashboard();
         } catch (err: any) {
-            setError(err.message);
+            setError(err.message || 'Login failed');
         } finally {
             setLoading(false);
         }

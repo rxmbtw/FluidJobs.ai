@@ -39,6 +39,39 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
   const [loading, setLoading] = useState(true);
   const [parsing, setParsing] = useState(false);
   const [sortOrder, setSortOrder] = useState('asc');
+  const [sendingInvite, setSendingInvite] = useState(false);
+
+  // Send Invite function
+  const sendInvite = async () => {
+    if (!selectedCandidate) return;
+    
+    try {
+      setSendingInvite(true);
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidates/send-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          candidateId: selectedCandidate.id,
+          email: selectedCandidate.email,
+          name: selectedCandidate.name
+        })
+      });
+      
+      if (response.ok) {
+        alert(`Invite sent successfully to ${selectedCandidate.name}!`);
+      } else {
+        const error = await response.json();
+        alert(`Failed to send invite: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error sending invite:', error);
+      alert('Failed to send invite. Please try again.');
+    } finally {
+      setSendingInvite(false);
+    }
+  };
 
   // AI Resume Review function
   const reviewResume = async (candidateId: string) => {
@@ -414,8 +447,12 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
                   <button className="px-6 py-2.5 bg-gray-300 text-gray-800 rounded-full hover:bg-gray-400 text-sm font-medium">
                     Send Job Notification
                   </button>
-                  <button className="px-6 py-2.5 bg-blue-500 text-white rounded-full hover:bg-blue-600 text-sm font-medium">
-                    Send Invite
+                  <button 
+                    onClick={sendInvite}
+                    disabled={sendingInvite}
+                    className="px-6 py-2.5 bg-blue-500 text-white rounded-full hover:bg-blue-600 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sendingInvite ? 'Sending...' : 'Send Invite'}
                   </button>
                 </div>
               </div>

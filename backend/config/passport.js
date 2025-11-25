@@ -14,18 +14,36 @@ passport.use(new GoogleStrategy({
     
     console.log('🔍 Google OAuth - Email:', email);
     
-    // Check if candidate exists by email
+    // FIRST: Check if user exists in admin table
+    const existingAdmin = await pool.query(
+      'SELECT admin_id as id, username as email, role FROM admin WHERE username = $1',
+      [email]
+    );
+    
+    if (existingAdmin.rows.length > 0) {
+      console.log('✅ Admin user found:', existingAdmin.rows[0].id);
+      const adminUser = {
+        candidate_id: existingAdmin.rows[0].id,
+        email: existingAdmin.rows[0].email,
+        full_name: name,
+        role: 'Admin'
+      };
+      return done(null, adminUser);
+    }
+    
+    // SECOND: Check if candidate exists by email
     const existingCandidate = await pool.query(
       'SELECT * FROM candidates WHERE email = $1',
       [email]
     );
     
     if (existingCandidate.rows.length > 0) {
-      console.log('✅ Existing user found:', existingCandidate.rows[0].candidate_id);
-      return done(null, existingCandidate.rows[0]);
+      console.log('✅ Existing candidate found:', existingCandidate.rows[0].candidate_id);
+      const candidateUser = { ...existingCandidate.rows[0], role: 'Candidate' };
+      return done(null, candidateUser);
     }
     
-    console.log('📝 Creating new user...');
+    console.log('📝 Creating new candidate...');
     
     // Generate unique candidate ID using timestamp + random
     const timestamp = Date.now().toString().slice(-8);
@@ -48,8 +66,9 @@ passport.use(new GoogleStrategy({
       [candidateId, name, email]
     );
     
-    console.log('✅ New user created:', newCandidate.rows[0].candidate_id);
-    return done(null, newCandidate.rows[0]);
+    console.log('✅ New candidate created:', newCandidate.rows[0].candidate_id);
+    const candidateUser = { ...newCandidate.rows[0], role: 'Candidate' };
+    return done(null, candidateUser);
   } catch (error) {
     console.error('❌ Google OAuth error:', error.message);
     return done(error, null);
@@ -59,13 +78,28 @@ passport.use(new GoogleStrategy({
 
 
 passport.serializeUser((user, done) => {
-  done(null, user.candidate_id);
+  done(null, { id: user.candidate_id, role: user.role });
 });
 
-passport.deserializeUser(async (id, done) => {
+passport.deserializeUser(async (obj, done) => {
   try {
-    const result = await pool.query('SELECT * FROM candidates WHERE candidate_id = $1', [id]);
-    done(null, result.rows[0]);
+    if (obj.role === 'Admin') {
+      // Check admin table
+      const result = await pool.query('SELECT admin_id as candidate_id, username as email, role FROM admin WHERE admin_id = $1', [obj.id]);
+      if (result.rows.length > 0) {
+        done(null, { ...result.rows[0], role: 'Admin' });
+      } else {
+        done(null, false);
+      }
+    } else {
+      // Check candidates table
+      const result = await pool.query('SELECT * FROM candidates WHERE candidate_id = $1', [obj.id]);
+      if (result.rows.length > 0) {
+        done(null, { ...result.rows[0], role: 'Candidate' });
+      } else {
+        done(null, false);
+      }
+    }
   } catch (error) {
     done(error, null);
   }

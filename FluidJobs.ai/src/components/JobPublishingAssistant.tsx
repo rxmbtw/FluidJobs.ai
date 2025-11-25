@@ -181,6 +181,13 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
 
   useEffect(() => {
     if (editorRef.current && currentStep === 4) {
+      // Enable design mode for rich text editing
+      try {
+        document.execCommand('styleWithCSS', false, 'true');
+      } catch (e) {
+        // Fallback for browsers that don't support styleWithCSS
+      }
+      
       if (formData.job_description) {
         editorRef.current.innerHTML = formData.job_description;
       } else {
@@ -1213,16 +1220,15 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
                     defaultValue="3"
                   >
                     <option value="1">8</option>
-                    <option value="1">9</option>
                     <option value="1">10</option>
-                    <option value="3">11</option>
+                    <option value="2">11</option>
                     <option value="3">12</option>
-                    <option value="4">14</option>
-                    <option value="5">16</option>
+                    <option value="3">14</option>
+                    <option value="4">16</option>
                     <option value="5">18</option>
-                    <option value="6">20</option>
+                    <option value="5">20</option>
                     <option value="6">22</option>
-                    <option value="7">24</option>
+                    <option value="6">24</option>
                     <option value="7">26</option>
                     <option value="7">28</option>
                     <option value="7">36</option>

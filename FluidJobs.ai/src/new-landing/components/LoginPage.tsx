@@ -21,14 +21,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigateHome, onNavigateToDashb
                     <LoginSignUpForm onNavigateToDashboard={onNavigateToDashboard} />
                     <LoginBrandingPanel onNavigateHome={onNavigateHome} />
                 </div>
-                {onNavigateToCompanyDashboard && (
-                    <button 
-                        onClick={onNavigateToCompanyDashboard}
-                        className="fixed bottom-4 right-4 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg shadow-lg transition z-50"
-                    >
-                        Company Dashboard (Temp)
-                    </button>
-                )}
+
             </div>
         </div>
     );

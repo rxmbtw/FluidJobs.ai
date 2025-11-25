@@ -17,6 +17,38 @@ const DashboardContent: React.FC = () => {
   const [currentView, setCurrentView] = useState('view_opening');
   const [showJobSpecificDashboard, setShowJobSpecificDashboard] = useState(false);
   const [selectedJobTitle, setSelectedJobTitle] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Check authentication on mount
+  React.useEffect(() => {
+    const token = sessionStorage.getItem('fluidjobs_token');
+    const userStr = sessionStorage.getItem('fluidjobs_user');
+    
+    if (!token || !userStr) {
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const user = JSON.parse(userStr);
+      if (user.role !== 'Admin') {
+        alert('Unauthorized: Admin access only');
+        window.location.href = '/login';
+        return;
+      }
+      setIsAuthenticated(true);
+    } catch (error) {
+      window.location.href = '/login';
+    }
+  }, []);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
 
   const handleLogout = () => {
     sessionStorage.clear();

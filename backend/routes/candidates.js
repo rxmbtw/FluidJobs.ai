@@ -188,6 +188,62 @@ router.get('/:id', async (req, res) => {
 
 
 
+// Send invite to candidate
+router.post('/send-invite', async (req, res) => {
+  try {
+    const { candidateId, email, name } = req.body;
+    
+    if (!email || !name) {
+      return res.status(400).json({ error: 'Email and name are required' });
+    }
+    
+    const nodemailer = require('nodemailer');
+    
+    // Check if email is configured
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      return res.status(500).json({ error: 'Email service not configured' });
+    }
+    
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+    
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Welcome to FluidJobs.ai - Your Profile is Ready!',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #4285F4;">Welcome to FluidJobs.ai!</h2>
+          <p>Hello ${name},</p>
+          <p>Great news! Your profile has been successfully created on FluidJobs.ai.</p>
+          <p>You can now login to your account and explore exciting job opportunities.</p>
+          <div style="margin: 30px 0; text-align: center;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" 
+               style="background-color: #4285F4; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              Login to Your Account
+            </a>
+          </div>
+          <p>If you have any questions, feel free to reach out to us.</p>
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #E5E7EB;">
+          <p style="color: #6B7280; font-size: 14px;">FluidJobs.ai - Your Career Partner</p>
+        </div>
+      `
+    };
+    
+    await transporter.sendMail(mailOptions);
+    
+    res.json({ message: 'Invite sent successfully' });
+  } catch (error) {
+    console.error('Error sending invite:', error);
+    res.status(500).json({ error: 'Failed to send invite' });
+  }
+});
+
 // Get candidate statistics
 router.get('/stats/overview', async (req, res) => {
   try {
