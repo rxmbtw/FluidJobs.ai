@@ -53,7 +53,8 @@ router.get('/', async (req, res) => {
       LEFT JOIN job_attachments ja ON j.job_id = ja.job_id
       WHERE j.status = 'Published'
       GROUP BY j.job_id
-      ORDER BY j.created_at DESC;
+      ORDER BY j.created_at DESC
+      LIMIT 10;
     `);
     
     const jobs = result.rows.map(job => ({

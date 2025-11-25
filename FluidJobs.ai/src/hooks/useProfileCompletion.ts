@@ -1,0 +1,142 @@
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useProfileCompletionContext } from '../contexts/ProfileCompletionContext';
+
+export interface ProfileCompletionItem {
+  id: string;
+  label: string;
+  completed: boolean;
+  required: boolean;
+}
+
+export interface ProfileCompletionData {
+  items: ProfileCompletionItem[];
+  completionPercentage: number;
+  completedCount: number;
+  totalCount: number;
+}
+
+export const useProfileCompletion = () => {
+  const { refreshTrigger } = useProfileCompletionContext();
+  const [profileCompletion, setProfileCompletion] = useState<ProfileCompletionData>({
+    items: [],
+    completionPercentage: 0,
+    completedCount: 0,
+    totalCount: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  const fetchProfileCompletion = async () => {
+    try {
+      const token = sessionStorage.getItem('fluidjobs_token');
+      const response = await axios.get('http://localhost:8000/api/profile/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const profile: any = response.data;
+
+      const items: ProfileCompletionItem[] = [
+        {
+          id: 'fullName',
+          label: 'Full Name',
+          completed: !!(profile.full_name?.trim() && profile.full_name.trim() !== ''),
+          required: true
+        },
+        {
+          id: 'email',
+          label: 'Email Address',
+          completed: !!(profile.email?.trim() && profile.email.trim() !== ''),
+          required: true
+        },
+        {
+          id: 'phone',
+          label: 'Phone Number',
+          completed: (() => {
+            const phone = profile.phone?.trim() || profile.phone_number?.trim() || '';
+            // Check if phone has both country code (+) and actual number (more than just country code)
+            return !!(phone && phone.includes('+') && phone.length > 4 && /\d{7,}/.test(phone));
+          })(),
+          required: true
+        },
+        {
+          id: 'profileImage',
+          label: 'Upload profile picture',
+          completed: !!(profile.profile_image_url?.trim() && profile.profile_image_url.trim() !== ''),
+          required: false
+        },
+        {
+          id: 'resume',
+          label: 'Upload resume',
+          completed: !!(profile.resume_files && Array.isArray(profile.resume_files) && profile.resume_files.length > 0),
+          required: false
+        },
+        {
+          id: 'address',
+          label: 'Add your address',
+          completed: !!(profile.city?.trim() && profile.city.trim() !== '') || !!(profile.location?.trim() && profile.location.trim() !== ''),
+          required: false
+        },
+        {
+          id: 'gender',
+          label: 'Gender',
+          completed: !!(profile.gender?.trim() && profile.gender.trim() !== '' && profile.gender !== 'Select Gender'),
+          required: false
+        },
+        {
+          id: 'maritalStatus',
+          label: 'Marital Status',
+          completed: !!(profile.marital_status?.trim() && profile.marital_status.trim() !== '' && profile.marital_status !== 'Select Status'),
+          required: false
+        },
+        {
+          id: 'workStatus',
+          label: 'Work Experience',
+          completed: !!(profile.work_status?.trim() && profile.work_status.trim() !== ''),
+          required: true
+        },
+        {
+          id: 'currentCompany',
+          label: 'Current/Last Company',
+          completed: !!(profile.current_company?.trim() && profile.current_company.trim() !== '') || !!(profile.last_company?.trim() && profile.last_company.trim() !== ''),
+          required: false
+        },
+        {
+          id: 'workMode',
+          label: 'Work Mode Preference',
+          completed: !!(profile.work_mode?.trim() && profile.work_mode.trim() !== '' && profile.work_mode !== 'Select Work Mode'),
+          required: false
+        }
+      ];
+
+      const completedCount = items.filter(item => item.completed).length;
+      const totalCount = items.length;
+      const completionPercentage = Math.round((completedCount / totalCount) * 100);
+
+      // Sort items: incomplete first, then completed
+      const sortedItems = items.sort((a, b) => {
+        if (a.completed === b.completed) return 0;
+        return a.completed ? 1 : -1;
+      });
+
+      setProfileCompletion({
+        items: sortedItems,
+        completionPercentage,
+        completedCount,
+        totalCount
+      });
+    } catch (error) {
+      console.error('Error fetching profile completion:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfileCompletion();
+  }, [refreshTrigger]);
+
+  return {
+    profileCompletion,
+    loading,
+    refreshProfileCompletion: fetchProfileCompletion
+  };
+};

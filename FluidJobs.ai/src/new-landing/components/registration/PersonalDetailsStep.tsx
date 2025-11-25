@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
+import CustomSelect from './CustomSelect';
 
 interface PersonalDetailsStepProps {
   onNext: (data: any) => void;
   onBack: () => void;
+  initialEmail?: string;
 }
 
-const PersonalDetailsStep: React.FC<PersonalDetailsStepProps> = ({ onNext, onBack }) => {
+const PersonalDetailsStep: React.FC<PersonalDetailsStepProps> = ({ onNext, onBack, initialEmail = '' }) => {
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [gender, setGender] = useState('');
   const [maritalStatus, setMaritalStatus] = useState('');
 
@@ -21,45 +23,45 @@ const PersonalDetailsStep: React.FC<PersonalDetailsStepProps> = ({ onNext, onBac
 
   return (
     <>
-      <h2 className="text-xl sm:text-2xl font-bold text-center text-[#f9fafb]">Personal Information</h2>
-      <p className="text-sm font-semibold text-center text-[#9ca3af] mb-6">Tell us about yourself</p>
+      <h2 className="text-xl sm:text-2xl font-bold text-center text-black">Personal Information</h2>
+      <p className="text-sm font-semibold text-center text-gray-600 mb-6">Tell us about yourself</p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="full-name" className="block text-xs font-semibold mb-1 text-[#f9fafb]">Full Name*</label>
+          <label htmlFor="full-name" className="block text-xs font-semibold mb-1 text-black">Full Name*</label>
           <input 
             type="text" 
             id="full-name" 
             placeholder="Enter your full name"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="w-full px-4 py-3 bg-[#1a1a1a] text-[#f9fafb] border border-[#374151] rounded-xl placeholder:text-[#9ca3af] focus:border-[#8B5CF6] focus:ring-1 focus:ring-[#8B5CF6] transition duration-150"
+            className="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl placeholder:text-gray-400 focus:border-[#4285F4] focus:ring-1 focus:ring-[#4285F4] transition duration-150"
             required
           />
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="sm:w-1/2">
-            <label htmlFor="phone-number" className="block text-xs font-semibold mb-1 text-[#f9fafb]">Phone Number*</label>
+            <label htmlFor="phone-number" className="block text-xs font-semibold mb-1 text-black">Phone Number*</label>
             <input 
               type="tel" 
               id="phone-number" 
               placeholder="+91 98765 XXXXX"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
-              className="w-full px-4 py-3 bg-[#1a1a1a] text-[#f9fafb] border border-[#374151] rounded-xl placeholder:text-[#9ca3af] focus:border-[#8B5CF6] focus:ring-1 focus:ring-[#8B5CF6] transition duration-150"
+              className="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl placeholder:text-gray-400 focus:border-[#4285F4] focus:ring-1 focus:ring-[#4285F4] transition duration-150"
               required
             />
           </div>
           <div className="sm:w-1/2">
-            <label htmlFor="email" className="block text-xs font-semibold mb-1 text-[#f9fafb]">Email Address*</label>
+            <label htmlFor="email" className="block text-xs font-semibold mb-1 text-black">Email Address*</label>
             <input 
               type="email" 
               id="email" 
               placeholder="yourname@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-[#1a1a1a] text-[#f9fafb] border border-[#374151] rounded-xl placeholder:text-[#9ca3af] focus:border-[#8B5CF6] focus:ring-1 focus:ring-[#8B5CF6] transition duration-150"
+              className="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl placeholder:text-gray-400 focus:border-[#4285F4] focus:ring-1 focus:ring-[#4285F4] transition duration-150"
               required
             />
           </div>
@@ -67,36 +69,32 @@ const PersonalDetailsStep: React.FC<PersonalDetailsStepProps> = ({ onNext, onBac
 
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="sm:w-1/2">
-            <label htmlFor="gender" className="block text-xs font-semibold mb-1 text-[#f9fafb]">Gender*</label>
-            <select 
-              id="gender"
+            <label className="block text-xs font-semibold mb-1 text-black">Gender*</label>
+            <CustomSelect
               value={gender}
-              onChange={(e) => setGender(e.target.value)}
-              className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#374151] rounded-xl text-[#9ca3af] focus:border-[#8B5CF6] focus:ring-1 focus:ring-[#8B5CF6] transition duration-150 appearance-none"
-              style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1.5em', paddingRight: '3rem' }}
+              onChange={setGender}
+              options={[
+                { value: 'male', label: 'Male' },
+                { value: 'female', label: 'Female' },
+                { value: 'other', label: 'Other' }
+              ]}
+              placeholder="select gender"
               required
-            >
-              <option value="" disabled>select gender</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-            </select>
+            />
           </div>
           <div className="sm:w-1/2">
-            <label htmlFor="marital-status" className="block text-xs font-semibold mb-1 text-[#f9fafb]">Marital Status*</label>
-            <select 
-              id="marital-status"
+            <label className="block text-xs font-semibold mb-1 text-black">Marital Status*</label>
+            <CustomSelect
               value={maritalStatus}
-              onChange={(e) => setMaritalStatus(e.target.value)}
-              className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#374151] rounded-xl text-[#9ca3af] focus:border-[#8B5CF6] focus:ring-1 focus:ring-[#8B5CF6] transition duration-150 appearance-none"
-              style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1.5em', paddingRight: '3rem' }}
+              onChange={setMaritalStatus}
+              options={[
+                { value: 'single', label: 'Single' },
+                { value: 'married', label: 'Married' },
+                { value: 'divorced', label: 'Divorced' }
+              ]}
+              placeholder="select status"
               required
-            >
-              <option value="" disabled>select status</option>
-              <option value="single">Single</option>
-              <option value="married">Married</option>
-              <option value="divorced">Divorced</option>
-            </select>
+            />
           </div>
         </div>
 
@@ -104,13 +102,13 @@ const PersonalDetailsStep: React.FC<PersonalDetailsStepProps> = ({ onNext, onBac
           <button 
             type="button"
             onClick={onBack}
-            className="w-full sm:w-1/2 bg-gray-700/50 hover:bg-gray-700 text-[#f9fafb] font-semibold py-3 rounded-xl transition duration-200"
+            className="w-full sm:w-1/2 bg-gray-200 hover:bg-gray-300 text-black font-semibold py-3 rounded-xl transition duration-200"
           >
             Back
           </button>
           <button 
             type="submit"
-            className="w-full sm:w-1/2 bg-[#8B5CF6] hover:bg-[#7c4ce4] text-white font-semibold py-3 rounded-xl shadow-lg shadow-[#8B5CF6]/50 transition duration-200"
+            className="w-full sm:w-1/2 bg-[#4285F4] hover:bg-[#3367d6] text-white font-semibold py-3 rounded-xl shadow-lg transition duration-200"
           >
             Next
           </button>

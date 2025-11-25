@@ -20,19 +20,19 @@ const JobDetailView: React.FC<JobDetailViewProps> = ({ job, isSaved, onToggleSav
   const backBtnHover = themeState === 'light' ? '#D1D5DB' : '#4B5563';
   
   return (
-    <div className="rounded-3xl shadow-xl w-full max-w-5xl mx-auto p-6 md:p-10" style={{ backgroundColor: cardBg }}>
+    <div className="rounded-2xl sm:rounded-3xl shadow-xl w-full max-w-5xl mx-auto p-4 sm:p-6 md:p-10" style={{ backgroundColor: cardBg }}>
       {/* Company Logo and Header */}
-      <div className="flex items-start space-x-4 mb-6">
-        <div className="w-16 h-16 bg-blue-500 rounded-lg flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
+      <div className="flex flex-col sm:flex-row items-start space-y-3 sm:space-y-0 sm:space-x-4 mb-4 sm:mb-6">
+        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xl sm:text-2xl font-bold flex-shrink-0">
           FL
         </div>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold mb-1" style={{ color: textPrimary }}>{job.title}</h1>
-          <p className="text-sm font-semibold" style={{ color: textSecondary }}>Posted on: {job.postedDate}</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-1" style={{ color: textPrimary }}>{job.title}</h1>
+          <p className="text-xs sm:text-sm font-semibold" style={{ color: textSecondary }}>Posted on: {job.postedDate}</p>
         </div>
-        <div className="flex items-center space-x-2">
-          <button className="flex items-center space-x-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
-            <UserPlus className="w-4 h-4" />
+        <div className="flex items-center space-x-2 w-full sm:w-auto">
+          <button className="flex items-center justify-center space-x-1 sm:space-x-2 px-4 sm:px-6 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base font-semibold rounded-lg transition flex-1 sm:flex-initial">
+            <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>Apply Now</span>
           </button>
           <button 
@@ -42,48 +42,48 @@ const JobDetailView: React.FC<JobDetailViewProps> = ({ job, isSaved, onToggleSav
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
-            <Bookmark className={`w-5 h-5 ${isSaved ? 'fill-blue-600 text-blue-600' : ''}`} style={{ color: isSaved ? '#2563EB' : textSecondary }} />
+            <Bookmark className={`w-4 h-4 sm:w-5 sm:h-5 ${isSaved ? 'fill-blue-600 text-blue-600' : ''}`} style={{ color: isSaved ? '#2563EB' : textSecondary }} />
           </button>
         </div>
       </div>
 
       {/* Job Metadata */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div>
-          <p className="text-xs font-bold uppercase" style={{ color: textSecondary }}>Job Type</p>
-          <p className="text-sm font-semibold mt-1" style={{ color: textPrimary }}>{job.jobType}</p>
+          <p className="text-[10px] sm:text-xs font-bold uppercase" style={{ color: textSecondary }}>Job Type</p>
+          <p className="text-xs sm:text-sm font-semibold mt-1" style={{ color: textPrimary }}>{job.jobType}</p>
         </div>
         <div>
-          <p className="text-xs font-bold uppercase" style={{ color: textSecondary }}>Industry</p>
-          <p className="text-sm font-semibold mt-1" style={{ color: textPrimary }}>{job.industry}</p>
+          <p className="text-[10px] sm:text-xs font-bold uppercase" style={{ color: textSecondary }}>Industry</p>
+          <p className="text-xs sm:text-sm font-semibold mt-1" style={{ color: textPrimary }}>{job.industry}</p>
         </div>
         <div>
-          <p className="text-xs font-bold uppercase" style={{ color: textSecondary }}>CTC</p>
-          <p className="text-sm font-semibold mt-1" style={{ color: textPrimary }}>{job.ctc}</p>
+          <p className="text-[10px] sm:text-xs font-bold uppercase" style={{ color: textSecondary }}>CTC</p>
+          <p className="text-xs sm:text-sm font-semibold mt-1" style={{ color: textPrimary }}>{job.ctc}</p>
         </div>
         <div>
-          <p className="text-xs font-bold uppercase" style={{ color: textSecondary }}>Location</p>
-          <p className="text-sm font-semibold mt-1" style={{ color: textPrimary }}>{job.location}</p>
+          <p className="text-[10px] sm:text-xs font-bold uppercase" style={{ color: textSecondary }}>Location</p>
+          <p className="text-xs sm:text-sm font-semibold mt-1" style={{ color: textPrimary }}>{job.location}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Left Column - Description and Skills */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {/* Description */}
           <div>
-            <h3 className="text-base font-bold uppercase mb-3" style={{ color: textPrimary }}>Description</h3>
-            <p className="text-sm font-medium leading-relaxed" style={{ color: textSecondary }}>
+            <h3 className="text-sm sm:text-base font-bold uppercase mb-2 sm:mb-3" style={{ color: textPrimary }}>Description</h3>
+            <p className="text-xs sm:text-sm font-medium leading-relaxed" style={{ color: textSecondary }}>
               {job.description}
             </p>
           </div>
 
           {/* Eligible Skills */}
           <div>
-            <h3 className="text-base font-bold uppercase mb-3" style={{ color: textPrimary }}>Eligible Skills</h3>
-            <div className="flex flex-wrap gap-3">
+            <h3 className="text-sm sm:text-base font-bold uppercase mb-2 sm:mb-3" style={{ color: textPrimary }}>Eligible Skills</h3>
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {job.skills.map((skill, index) => (
-                <span key={index} className="px-4 py-1.5 text-sm font-medium text-blue-600 border border-blue-400 rounded-md">
+                <span key={index} className="px-2.5 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium text-blue-600 border border-blue-400 rounded-md">
                   {skill}
                 </span>
               ))}
@@ -92,47 +92,54 @@ const JobDetailView: React.FC<JobDetailViewProps> = ({ job, isSaved, onToggleSav
         </div>
 
         {/* Right Column - Registration Schedule and About */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Registration Schedule */}
-          <div className="p-4 rounded-xl" style={{ backgroundColor: sectionBg }}>
-            <h3 className="text-base font-bold uppercase mb-3" style={{ color: textPrimary }}>Registration Schedule</h3>
+          <div className="p-3 sm:p-4 rounded-xl" style={{ backgroundColor: sectionBg }}>
+            <h3 className="text-sm sm:text-base font-bold uppercase mb-2 sm:mb-3" style={{ color: textPrimary }}>Registration Schedule</h3>
             <div className="space-y-3">
               <div className="flex items-start space-x-2">
-                <Calendar className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs font-semibold" style={{ color: textSecondary }}>Opens:</p>
-                  <p className="text-sm font-semibold" style={{ color: textPrimary }}>11:00AM, 26 Oct 2025</p>
+                  <p className="text-[10px] sm:text-xs font-semibold" style={{ color: textSecondary }}>Opens:</p>
+                  <p className="text-xs sm:text-sm font-semibold" style={{ color: textPrimary }}>11:00AM, 26 Oct 2025</p>
                 </div>
               </div>
               <div className="flex items-start space-x-2">
-                <Calendar className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-600 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs font-semibold" style={{ color: textSecondary }}>Closes:</p>
-                  <p className="text-sm font-semibold" style={{ color: textPrimary }}>11:00AM, 28 Oct 2025</p>
+                  <p className="text-[10px] sm:text-xs font-semibold" style={{ color: textSecondary }}>Closes:</p>
+                  <p className="text-xs sm:text-sm font-semibold" style={{ color: textPrimary }}>11:00AM, 28 Oct 2025</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* About the Organization */}
-          <div className="p-4 rounded-xl" style={{ backgroundColor: sectionBg }}>
-            <h3 className="text-base font-bold uppercase mb-3" style={{ color: textPrimary }}>About the Organization</h3>
-            <p className="text-sm font-medium leading-relaxed mb-3" style={{ color: textSecondary }}>
-              FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable.
+          <div className="p-3 sm:p-4 rounded-xl" style={{ backgroundColor: sectionBg }}>
+            <h3 className="text-sm sm:text-base font-bold uppercase mb-2 sm:mb-3" style={{ color: textPrimary }}>About the Organization</h3>
+            <p className="text-xs sm:text-sm font-medium leading-relaxed mb-2 sm:mb-3" style={{ color: textSecondary }}>
+              FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable, <span className="text-blue-600 font-semibold cursor-pointer">more</span>
             </p>
-            <button className="flex items-center space-x-1 text-blue-600 font-semibold text-sm hover:underline">
+            <a href="https://fluid.live/" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1 text-blue-600 font-semibold text-xs sm:text-sm hover:underline">
               <span>View Website</span>
-              <ExternalLink className="w-4 h-4" />
-            </button>
+              <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </a>
+          </div>
+
+          {/* Organization Image */}
+          <div className="p-3 sm:p-4 rounded-xl" style={{ backgroundColor: sectionBg }}>
+            <div className="w-full h-24 sm:h-32 rounded-lg flex items-center justify-center" style={{ backgroundColor: themeState === 'light' ? '#D1D5DB' : '#4B5563' }}>
+              <span className="text-[10px] sm:text-xs font-medium" style={{ color: textSecondary }}>Organization Image</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Back Button */}
-      <div className="mt-8">
+      <div className="mt-6 sm:mt-8">
         <button 
           onClick={onBack} 
-          className="px-6 py-2 font-semibold rounded-lg transition"
+          className="w-full sm:w-auto px-4 sm:px-6 py-2 text-sm sm:text-base font-semibold rounded-lg transition"
           style={{ backgroundColor: backBtnBg, color: textPrimary }}
           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = backBtnHover}
           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = backBtnBg}

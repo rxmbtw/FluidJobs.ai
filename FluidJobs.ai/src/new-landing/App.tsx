@@ -12,6 +12,8 @@ import Navbar from './components/Navbar';
 import LoginPage from './components/LoginPage';
 import CandidateDashboard from './candidate-dashboard/CandidateDashboard';
 import CompanyDashboard from './company-dashboard/CompanyDashboard';
+import ComingSoon from './components/ComingSoon';
+import RegistrationSuccess from './components/RegistrationSuccess';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('landing');
@@ -20,6 +22,7 @@ const App: React.FC = () => {
     // Check if user is already authenticated
     const token = sessionStorage.getItem('fluidjobs_token');
     const userStr = sessionStorage.getItem('fluidjobs_user');
+    
     if (token && userStr && currentPage === 'landing') {
       try {
         const user = JSON.parse(userStr);
@@ -31,6 +34,9 @@ const App: React.FC = () => {
       } catch (error) {
         console.error('Error parsing user:', error);
       }
+    } else if (!token && currentPage === 'landing') {
+      // If no token and on landing, redirect to login
+      setCurrentPage('login');
     }
 
     // Handle OAuth callback
@@ -75,8 +81,24 @@ const App: React.FC = () => {
     setCurrentPage('company-dashboard');
   };
 
+  const navigateToComingSoon = () => {
+    setCurrentPage('coming-soon');
+  };
+
+  const navigateToRegistrationSuccess = () => {
+    setCurrentPage('registration-success');
+  };
+
   if (currentPage === 'login') {
-    return <LoginPage onNavigateHome={navigateToLanding} onNavigateToDashboard={navigateToDashboard} onNavigateToCompanyDashboard={navigateToCompanyDashboard} />;
+    return <LoginPage onNavigateHome={navigateToLanding} onNavigateToDashboard={navigateToDashboard} onNavigateToCompanyDashboard={navigateToCompanyDashboard} onNavigateToComingSoon={navigateToComingSoon} onNavigateToRegistrationSuccess={navigateToRegistrationSuccess} />;
+  }
+
+  if (currentPage === 'coming-soon') {
+    return <ComingSoon onNavigateToLogin={navigateToLogin} />;
+  }
+
+  if (currentPage === 'registration-success') {
+    return <RegistrationSuccess onNavigateToLogin={navigateToLogin} />;
   }
 
   if (currentPage === 'dashboard') {

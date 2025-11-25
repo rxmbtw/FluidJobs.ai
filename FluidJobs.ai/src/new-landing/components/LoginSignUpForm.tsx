@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import UiverseButton from './UiverseButton';
 import RegistrationModal from './registration/RegistrationModal';
+import ForgotPasswordModal from '../../components/ForgotPasswordModal';
 import { useAuth } from '../../contexts/AuthContext';
+import Loader from '../../components/Loader';
 
 // This is a global declaration to inform TypeScript about the 'google' object from the GSI script
 declare global {
@@ -187,10 +189,13 @@ const LoginForm: React.FC<{ onNavigateToDashboard?: () => void }> = ({ onNavigat
 
 interface LoginSignUpFormProps {
     onNavigateToDashboard?: () => void;
+    onNavigateToComingSoon?: () => void;
+    onNavigateToRegistrationSuccess?: () => void;
 }
 
-const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard }) => {
+const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard, onNavigateToComingSoon, onNavigateToRegistrationSuccess }) => {
     const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
+    const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -305,7 +310,14 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
                             </button>
                         </div>
                         <div className="flex justify-end mt-2">
-                            <a href="#" className="text-sm hover:underline" style={{ color: 'rgba(66, 133, 244, 1)' }}>Forgot Your Password?</a>
+                            <button 
+                                type="button"
+                                onClick={() => setIsForgotPasswordOpen(true)}
+                                className="text-sm hover:underline" 
+                                style={{ color: 'rgba(66, 133, 244, 1)' }}
+                            >
+                                Forgot Your Password?
+                            </button>
                         </div>
                     </div>
                     <button 
@@ -316,7 +328,7 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(66, 133, 244, 0.9)'}
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(66, 133, 244, 1)'}
                     >
-                        {loading ? 'Logging in...' : 'Log In'}
+                        {loading ? <Loader themeState="light" /> : 'Log In'}
                     </button>
                 </form>
 
@@ -340,10 +352,11 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
                     <button onClick={() => setIsRegistrationOpen(true)} className="hover:underline font-medium" style={{ color: 'rgba(66, 133, 244, 1)' }}>Register as a Candidate</button>
                     <br />
                     <span style={{ color: 'rgba(96, 96, 96, 1)' }}>Or, </span>
-                    <a href="#" className="hover:underline font-medium" style={{ color: 'rgba(66, 133, 244, 1)' }}>Register as a Company.</a>
+                    <button onClick={onNavigateToComingSoon} className="hover:underline font-medium" style={{ color: 'rgba(66, 133, 244, 1)' }}>Register as a Company.</button>
                 </div>
             </div>
-            <RegistrationModal isOpen={isRegistrationOpen} onClose={() => setIsRegistrationOpen(false)} />
+            <RegistrationModal isOpen={isRegistrationOpen} onClose={() => setIsRegistrationOpen(false)} onSuccess={onNavigateToRegistrationSuccess} />
+            <ForgotPasswordModal isOpen={isForgotPasswordOpen} onClose={() => setIsForgotPasswordOpen(false)} />
         </div>
     );
 };

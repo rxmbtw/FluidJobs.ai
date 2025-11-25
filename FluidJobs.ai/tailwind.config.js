@@ -7,9 +7,9 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        heading: ['Poppins', 'Inter', 'sans-serif'],
-        inter: ["Inter", "Roboto", "sans-serif"],
+        sans: ['Poppins', 'sans-serif'],
+        heading: ['Poppins', 'sans-serif'],
+        inter: ['Poppins', 'sans-serif'],
         poppins: ['Poppins', 'sans-serif'],
       },
       spacing: {
