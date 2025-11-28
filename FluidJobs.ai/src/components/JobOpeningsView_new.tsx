@@ -167,7 +167,7 @@ const JobOpeningsViewNew: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4">
         {/* Header */}
         <div className="bg-white rounded-xl p-6 mb-4 text-center shadow-sm border border-gray-200">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">View Openings</h1>
+          <h1 className="text-3xl font-semibold text-gray-900 mb-2">View Openings</h1>
           <p className="text-gray-500">View and Manage all the openings created under your organization</p>
         </div>
 
@@ -216,7 +216,7 @@ const JobOpeningsViewNew: React.FC = () => {
 
               {/* Job Content */}
               <div className="p-5">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">{job.title}</h2>
+                <h2 className="text-2xl font-medium text-gray-900 mb-4">{job.title}</h2>
                 
                 <div className="mb-4 pb-4 border-b border-gray-200">
                   <span className="text-sm text-gray-600">Posted on: {formatDate(job.created_at)}</span>
@@ -225,19 +225,19 @@ const JobOpeningsViewNew: React.FC = () => {
                 <div className="grid grid-cols-2 gap-6 mb-6">
                   <div>
                     <div className="text-xs text-gray-500 uppercase mb-1">JOB TYPE</div>
-                    <div className="text-base font-semibold text-gray-900">{job.workplace}</div>
+                    <div className="text-base font-medium text-gray-900">{job.workplace}</div>
                   </div>
                   <div>
                     <div className="text-xs text-gray-500 uppercase mb-1">Annual CTC</div>
-                    <div className="text-base font-semibold text-gray-900">{formatSalary(job.min_salary, job.max_salary)}</div>
+                    <div className="text-base font-medium text-gray-900">{formatSalary(job.min_salary, job.max_salary)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-gray-500 uppercase mb-1">INDUSTRY</div>
-                    <div className="text-base font-semibold text-gray-900">{job.job_domain || 'Technology'}</div>
+                    <div className="text-base font-medium text-gray-900">{job.job_domain || 'Technology'}</div>
                   </div>
                   <div>
                     <div className="text-xs text-gray-500 uppercase mb-1">LOCATION</div>
-                    <div className="text-base font-semibold text-gray-900">{job.location}</div>
+                    <div className="text-base font-medium text-gray-900">{job.location}</div>
                   </div>
                 </div>
 

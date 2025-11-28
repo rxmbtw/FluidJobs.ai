@@ -29,8 +29,7 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
   const menuItems = [
     { id: 'manage-candidates', label: 'Manage Candidates', icon: Users },
     { id: 'hiring-automation', label: 'Hiring Automation', icon: Zap },
-    { id: 'job-settings', label: 'Job Settings', icon: Settings },
-    { id: 'testing-environment', label: 'Testing Environment', icon: TestTube }
+    { id: 'job-settings', label: 'Job Settings', icon: Settings }
   ];
 
   const renderContent = () => {
@@ -46,14 +45,6 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
       case 'job-settings':
         console.log('Passing jobId to JobSettings:', jobId);
         return <JobSettings jobTitle={currentJobTitle} jobId={jobId} onJobUpdate={handleJobUpdate} />;
-
-      case 'testing-environment':
-        return (
-          <div className="p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Testing Environment</h2>
-            <p className="text-gray-600">Testing tools and environment setup.</p>
-          </div>
-        );
       default:
         return null;
     }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
-import { Plus, Eye, Users, Upload, LogOut, User, Mail, X } from 'lucide-react';
+import { Plus, Eye, Users, Upload, LogOut, User, Mail, X, Globe } from 'lucide-react';
 import { useTheme, getThemeColors } from '../candidate-dashboard/ThemeContext';
 
 interface SidebarProps {
@@ -134,9 +134,19 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
     }
   };
 
+  const ChartIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <rect x="2" y="2" width="20" height="20" rx="4" fill="currentColor" opacity="0.4"/>
+      <rect x="6.5" y="9.5" width="2" height="8.5" fill="currentColor"/>
+      <rect x="11" y="6" width="2" height="12" fill="currentColor"/>
+      <rect x="15.5" y="13" width="2" height="5" fill="currentColor"/>
+    </svg>
+  );
+
   const menuItems = [
-    { id: 'view_opening', label: 'View Openings', icon: Eye },
-    { id: 'manage_candidates', label: 'Manage Candidates', icon: Users }
+    { id: 'view_opening', label: 'View Openings', icon: Globe },
+    { id: 'manage_candidates', label: 'Manage Candidates', icon: Users },
+    { id: 'my_accounts', label: 'My Accounts', icon: ChartIcon }
   ];
 
   const newMenuItems = [
@@ -211,11 +221,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
               key={item.id}
               href="#" 
               onClick={(e) => { e.preventDefault(); onNavigate(item.id); }}
-              className="flex items-center space-x-4 p-3 font-semibold text-lg transition duration-200" 
+              className="flex items-center space-x-3 p-3 transition duration-200" 
               style={{ 
                 borderRadius: '40px', 
                 backgroundColor: currentView === item.id ? colors.activeItemBg : 'transparent', 
-                color: currentView === item.id ? colors.accent : colors.iconColor
+                color: currentView === item.id ? colors.accent : colors.iconColor,
+                justifyContent: isCollapsed ? 'center' : 'flex-start'
               }}
               onMouseEnter={(e) => {
                 if (currentView !== item.id) {
@@ -230,7 +241,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
                 }
               }}
             >
-              <item.icon className="w-6 h-6" />
+              <item.icon className="w-5 h-5 flex-shrink-0" />
               {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
             </a>
           ))}

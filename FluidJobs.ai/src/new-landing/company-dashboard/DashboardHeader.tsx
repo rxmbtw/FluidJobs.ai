@@ -16,7 +16,7 @@ const DashboardHeader: React.FC = () => {
             className="object-contain" 
             style={{ width: theme === 'dark' ? '3.5rem' : '3rem', height: theme === 'dark' ? '3.5rem' : '3rem' }}
           />
-          <h1 className="text-xl md:text-3xl font-extrabold" style={{ color: colors.accent, marginLeft: theme === 'dark' ? '-0.5rem' : '0rem' }}>FluidJobs.ai</h1>
+          <h1 className="text-xl md:text-3xl font-medium" style={{ color: colors.accent, marginLeft: theme === 'dark' ? '-0.5rem' : '0rem' }}>FluidJobs.ai</h1>
         </div>
 
         <button 

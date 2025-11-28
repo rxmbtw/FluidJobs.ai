@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Users, FileText, Eye, MoreVertical, Download, Mail, Phone, MapPin, Calendar, Building, DollarSign, Linkedin, User, Clock, Briefcase, Plus, Trash2 } from 'lucide-react';
+import { Search, Filter, Users, FileText, Eye, MoreVertical, Download, Mail, Phone, MapPin, Calendar, Building, DollarSign, Linkedin, User, Clock, Briefcase, Plus, Trash2, Ban, Check } from 'lucide-react';
 
 interface Candidate {
   id: string;
@@ -40,6 +40,7 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
   const [parsing, setParsing] = useState(false);
   const [sortOrder, setSortOrder] = useState('asc');
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [isRestricted, setIsRestricted] = useState(false);
 
   // Send Invite function
   const sendInvite = async () => {
@@ -440,19 +441,50 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
             <div className="bg-white border-b border-gray-100 p-3">
               {/* Action Buttons */}
               <div className="flex justify-between items-center mb-6">
-                <button className="p-2.5 hover:opacity-80">
-                  <Trash2 className="w-5 h-5 text-red-500" />
+                <button 
+                  onClick={() => setIsRestricted(!isRestricted)}
+                  className={`flex items-center space-x-2 px-6 py-2.5 text-sm font-medium transition ${
+                    isRestricted ? 'text-red-600' : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  <svg width="20" height="20" viewBox="0 0 26 26" fill="none" className="flex-shrink-0">
+                    <path d="M3 3L23 23" stroke={isRestricted ? '#FF0004' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M10.9 10.9C10.4 11.4 10 12.1 10 13C10 14.7 11.3 16 13 16C13.9 16 14.6 15.6 15.1 15.1" stroke={isRestricted ? '#FF0004' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M7.5 7.5C5.5 9 4 11 4 13C4 14.5 7 19 13 19C15 19 16.5 18.5 18 17.5" stroke={isRestricted ? '#FF0004' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M20 14C21 12.5 22 11.5 22 13C22 14.5 19 19 13 19" stroke={isRestricted ? '#FF0004' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M13 7C17 7 20 10 22 13" stroke={isRestricted ? '#FF0004' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                  <span>Restrict</span>
                 </button>
                 <div className="flex space-x-3">
-                  <button className="px-6 py-2.5 bg-gray-300 text-gray-800 rounded-full hover:bg-gray-400 text-sm font-medium">
-                    Send Job Notification
+                  <button 
+                    className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-medium ${
+                      isRestricted ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                    }`}
+                  >
+                    {isRestricted ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="3" width="18" height="18" rx="3" stroke="#FF0004" strokeWidth="1.5"/>
+                        <circle cx="12" cy="8" r="0.75" fill="#FF0004"/>
+                        <line x1="12" y1="12" x2="12" y2="16" stroke="#FF0004" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="3" width="18" height="18" rx="3" stroke="#28860B" strokeWidth="1.5"/>
+                        <polyline points="8,12 11,15 16,9" stroke="#28860B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                      </svg>
+                    )}
+                    <span>{isRestricted ? 'Inactive' : 'Active'}</span>
                   </button>
                   <button 
-                    onClick={sendInvite}
-                    disabled={sendingInvite}
-                    className="px-6 py-2.5 bg-blue-500 text-white rounded-full hover:bg-blue-600 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isRestricted}
+                    className={`px-6 py-2.5 rounded-full text-sm font-medium transition ${
+                      isRestricted 
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    }`}
                   >
-                    {sendingInvite ? 'Sending...' : 'Send Invite'}
+                    Send Job Notification
                   </button>
                 </div>
               </div>

@@ -12,6 +12,7 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isPublished, setIsPublished] = useState(true);
+  const [showUnpublishModal, setShowUnpublishModal] = useState(false);
   const [formData, setFormData] = useState<any>({
     job_title: '',
     job_domain: '',
@@ -127,7 +128,14 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
   };
 
   const handlePublishToggle = async () => {
-    const newStatus = !isPublished;
+    // If currently published, show warning modal
+    if (isPublished) {
+      setShowUnpublishModal(true);
+      return;
+    }
+    
+    // If unpublished, publish directly
+    const newStatus = true;
     setIsPublished(newStatus);
     
     if (jobId) {
@@ -136,6 +144,23 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ is_published: newStatus })
+        });
+      } catch (error) {
+        console.error('Error updating publish status:', error);
+      }
+    }
+  };
+
+  const confirmUnpublish = async () => {
+    setIsPublished(false);
+    setShowUnpublishModal(false);
+    
+    if (jobId) {
+      try {
+        await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/update/${jobId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_published: false })
         });
       } catch (error) {
         console.error('Error updating publish status:', error);
@@ -202,6 +227,7 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
   }
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Job Settings</h1>
@@ -220,7 +246,7 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold text-gray-700">Job Publish Status</h3>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Published</span>
+                    <span className="text-sm text-gray-600">{isPublished ? 'Published' : 'Unpublished'}</span>
                     <button
                       onClick={handlePublishToggle}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
@@ -567,6 +593,31 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
         </div>
       </div>
     </div>
+
+    {/* Unpublish Confirmation Modal */}
+    {showUnpublishModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Unpublish Job Opening</h3>
+          <p className="text-gray-600 mb-6">Do you want to Unpublish this Job Opening?</p>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setShowUnpublishModal(false)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmUnpublish}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

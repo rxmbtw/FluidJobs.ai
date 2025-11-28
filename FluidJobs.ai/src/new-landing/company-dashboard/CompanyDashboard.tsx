@@ -10,6 +10,7 @@ import ThemedBulkImport from './ThemedBulkImport';
 import ThemedJobSpecificDashboard from './ThemedJobSpecificDashboard';
 import BulkImportSection from '../../components/BulkImportSection';
 import ManageCandidatesWrapper from '../../components/ManageCandidatesWrapper';
+import MyAccounts from '../../components/MyAccounts';
 
 const DashboardContent: React.FC = () => {
   const { theme } = useTheme();
@@ -76,13 +77,13 @@ const DashboardContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen antialiased" style={{ backgroundColor: colors.bgMain, color: colors.textPrimary, width: '100%' }}>
+    <div className="min-h-screen antialiased" style={{ backgroundColor: colors.bgMain, color: colors.textPrimary, width: '100%', fontFamily: 'Poppins' }}>
       <DashboardHeader />
       
       <div className="flex" style={{ minHeight: 'calc(100vh - 4rem)' }}>
         <Sidebar currentView={currentView} onNavigate={setCurrentView} onLogout={handleLogout} />
         
-        <main className="flex-1 overflow-y-auto" style={{ backgroundColor: colors.bgMain }}>
+        <main className="flex-1 overflow-y-auto" style={{ backgroundColor: colors.bgMain, fontFamily: 'Poppins' }}>
           {currentView === 'view_opening' && (
             <JobOpeningsViewNew />
           )}
@@ -97,6 +98,10 @@ const DashboardContent: React.FC = () => {
           
           {currentView === 'bulk_import' && (
             <ThemedBulkImport />
+          )}
+          
+          {currentView === 'my_accounts' && (
+            <MyAccounts />
           )}
         </main>
       </div>
