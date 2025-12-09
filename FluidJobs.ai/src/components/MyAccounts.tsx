@@ -1,53 +1,204 @@
-import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import React from 'react';
 
 const MyAccounts: React.FC = () => {
-  const [selectedAccount, setSelectedAccount] = useState('');
+  const accounts = [
+    {
+      name: 'BGIC - Bajaj General Insurance',
+      created: 'October 2025',
+      locations: 'Pune',
+      openings: 5,
+      completed: 2,
+      status: 'Active',
+      users: 3,
+      lastActivity: '20/11/2025 : 01:45PM'
+    },
+    {
+      name: 'BGIC - Bajaj General Insurance',
+      created: 'October 2025',
+      locations: 'Pune | Mumbai | Delhi',
+      openings: 5,
+      completed: 2,
+      status: 'Inactive',
+      users: 3,
+      lastActivity: '20/11/2025 : 01:45PM'
+    }
+  ];
 
   return (
-    <div className="flex items-start justify-center min-h-screen bg-gray-50 pt-20">
-      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-lg">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Select Account</h1>
-          <p className="text-sm text-gray-500">Step 1 of 6</p>
-        </div>
+    <div style={{ padding: '40px', fontFamily: 'Poppins', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '30px' }}>
+        {accounts.map((account, index) => (
+          <div key={index} style={{
+            background: '#FFFFFF',
+            border: '1px solid rgba(0, 0, 0, 0.2)',
+            borderRadius: '10px',
+            padding: '30px 34px',
+            position: 'relative'
+          }}>
+            <h2 style={{
+              fontFamily: 'Poppins',
+              fontWeight: 600,
+              fontSize: '23px',
+              lineHeight: '34px',
+              color: '#000000',
+              margin: '0 0 10px 0'
+            }}>
+              {account.name}
+            </h2>
 
-        {/* Form */}
-        <div className="mb-8">
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            Select your account
-          </label>
-          <div className="relative">
-            <select
-              value={selectedAccount}
-              onChange={(e) => setSelectedAccount(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white text-gray-700"
-            >
-              <option value="">e.g., BGIC</option>
-              <option value="bgic">BGIC</option>
-              <option value="account2">Account 2</option>
-              <option value="account3">Account 3</option>
-            </select>
-            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+            <p style={{
+              fontFamily: 'Poppins',
+              fontWeight: 500,
+              fontSize: '13px',
+              lineHeight: '20px',
+              color: '#363636',
+              margin: '0 0 30px 0'
+            }}>
+              Account Created: {account.created}
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
+                  <span style={{
+                    fontFamily: 'Poppins',
+                    fontWeight: 600,
+                    fontSize: '18px',
+                    lineHeight: '27px',
+                    color: '#363636',
+                    marginRight: '10px'
+                  }}>
+                    Locations:
+                  </span>
+                  <span style={{
+                    fontFamily: 'Poppins',
+                    fontWeight: 500,
+                    fontSize: '18px',
+                    lineHeight: '27px',
+                    color: '#363636'
+                  }}>
+                    {account.locations}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
+                  <span style={{
+                    fontFamily: 'Poppins',
+                    fontWeight: 600,
+                    fontSize: '18px',
+                    lineHeight: '27px',
+                    color: '#363636',
+                    marginRight: '10px'
+                  }}>
+                    No. of Openings:
+                  </span>
+                  <span style={{
+                    fontFamily: 'Poppins',
+                    fontWeight: 500,
+                    fontSize: '18px',
+                    lineHeight: '27px',
+                    color: '#363636'
+                  }}>
+                    {account.openings}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{
+                    fontFamily: 'Poppins',
+                    fontWeight: 600,
+                    fontSize: '18px',
+                    lineHeight: '27px',
+                    color: '#363636',
+                    marginRight: '10px'
+                  }}>
+                    No. of Completed Openings:
+                  </span>
+                  <span style={{
+                    fontFamily: 'Poppins',
+                    fontWeight: 500,
+                    fontSize: '18px',
+                    lineHeight: '27px',
+                    color: '#363636'
+                  }}>
+                    {account.completed}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
+                  <span style={{
+                    fontFamily: 'Poppins',
+                    fontWeight: 600,
+                    fontSize: '18px',
+                    lineHeight: '27px',
+                    color: '#363636',
+                    marginRight: '10px'
+                  }}>
+                    Account Status:
+                  </span>
+                  <span style={{
+                    fontFamily: 'Poppins',
+                    fontWeight: 500,
+                    fontSize: '18px',
+                    lineHeight: '27px',
+                    color: account.status === 'Active' ? '#28860B' : '#FF0000',
+                    background: account.status === 'Active' ? 'rgba(59, 255, 0, 0.2)' : 'rgba(255, 0, 0, 0.1)',
+                    borderRadius: '20px',
+                    padding: '6px 23px'
+                  }}>
+                    {account.status}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
+                  <span style={{
+                    fontFamily: 'Poppins',
+                    fontWeight: 600,
+                    fontSize: '18px',
+                    lineHeight: '27px',
+                    color: '#363636',
+                    marginRight: '10px'
+                  }}>
+                    User Assigned:
+                  </span>
+                  <span style={{
+                    fontFamily: 'Poppins',
+                    fontWeight: 500,
+                    fontSize: '18px',
+                    lineHeight: '27px',
+                    color: '#363636'
+                  }}>
+                    {account.users}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{
+                    fontFamily: 'Poppins',
+                    fontWeight: 600,
+                    fontSize: '18px',
+                    lineHeight: '27px',
+                    color: '#363636',
+                    marginRight: '10px'
+                  }}>
+                    Last Activity:
+                  </span>
+                  <span style={{
+                    fontFamily: 'Poppins',
+                    fontWeight: 500,
+                    fontSize: '18px',
+                    lineHeight: '27px',
+                    color: '#363636'
+                  }}>
+                    {account.lastActivity}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Buttons */}
-        <div className="flex justify-center space-x-4">
-          <button className="flex items-center space-x-2 px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
-            <ArrowLeft className="w-4 h-4" />
-            <span>Cancel</span>
-          </button>
-          <button className="flex items-center space-x-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-            <span>Next</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
+        ))}
       </div>
     </div>
   );

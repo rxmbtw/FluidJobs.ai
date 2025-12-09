@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import UiverseButton from './UiverseButton';
 import RegistrationModal from './registration/RegistrationModal';
 import ForgotPasswordModal from '../../components/ForgotPasswordModal';
@@ -12,7 +12,7 @@ declare global {
     }
 }
 
-const CLIENT_ID = '619325207297-2gv3tps9butidjos0phet2q1q55kmq7p.apps.googleusercontent.com';
+
 const API_BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 
 const GoogleIcon: React.FC = () => (
@@ -203,31 +203,41 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
 
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get('token');
-        
-        if (token) {
-            const decodedToken = JSON.parse(atob(token.split('.')[1]));
-            const user = {
-                id: decodedToken.candidateId,
-                email: decodedToken.email,
-                name: decodedToken.name,
-                role: decodedToken.role
-            };
-            sessionStorage.setItem('fluidjobs_token', token);
-            sessionStorage.setItem('fluidjobs_user', JSON.stringify(user));
-            window.history.replaceState({}, document.title, window.location.pathname);
-            if (onNavigateToDashboard) onNavigateToDashboard();
+    // Auto-open registration modal if URL has register=true parameter
+    React.useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('register') === 'true') {
+            setIsRegistrationOpen(true);
         }
-    }, [onNavigateToDashboard]);
+    }, []);
+
+    // OAuth callback is now handled in the main App component
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setLoading(true);
         try {
-            // Try admin login first
+            // Try superadmin login first
+            try {
+                const superadminResponse = await fetch(`${API_BASE}/api/superadmin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (superadminResponse.ok) {
+                    const data = await superadminResponse.json();
+                    localStorage.setItem('superadmin_token', data.token);
+                    localStorage.setItem('superadmin', JSON.stringify(data.admin));
+                    window.location.href = '/superadmin/dashboard';
+                    return;
+                }
+            } catch (superadminError) {
+                console.log('Not a superadmin, trying other logins...');
+            }
+
+            // Try admin login
             const adminResponse = await fetch(`${API_BASE}/api/auth/admin/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -238,7 +248,6 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
                 const data = await adminResponse.json();
                 sessionStorage.setItem('fluidjobs_token', data.token);
                 sessionStorage.setItem('fluidjobs_user', JSON.stringify(data.user));
-                // Force navigation to company dashboard
                 window.location.replace('/company-dashboard');
                 return;
             }

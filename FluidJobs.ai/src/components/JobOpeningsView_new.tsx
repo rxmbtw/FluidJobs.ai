@@ -24,7 +24,11 @@ interface JobData {
 
 
 
-const JobOpeningsViewNew: React.FC = () => {
+interface JobOpeningsViewNewProps {
+  hideHeader?: boolean;
+}
+
+const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = false }) => {
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleJobs, setVisibleJobs] = useState(10);
@@ -166,44 +170,48 @@ const JobOpeningsViewNew: React.FC = () => {
     <div className="min-h-screen bg-gray-50 py-6">
       <div className="max-w-6xl mx-auto px-4">
         {/* Header */}
-        <div className="bg-white rounded-xl p-6 mb-4 text-center shadow-sm border border-gray-200">
-          <h1 className="text-3xl font-semibold text-gray-900 mb-2">View Openings</h1>
-          <p className="text-gray-500">View and Manage all the openings created under your organization</p>
-        </div>
-
-        {/* Search Bar */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="relative" style={{ width: '400px' }}>
-            <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+        {!hideHeader && (
+          <>
+            <div className="bg-white rounded-xl p-6 mb-4 text-center shadow-sm border border-gray-200">
+              <h1 className="text-3xl font-semibold text-gray-900 mb-2">View Openings</h1>
+              <p className="text-gray-500">View and Manage all the openings created under your organization</p>
             </div>
-            <input
-              type="text"
-              placeholder="Search job openings..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={fetchJobs}
-              className="p-3 hover:bg-gray-100 rounded-lg" 
-              title="Refresh jobs"
-            >
-              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <button className="p-3 hover:bg-gray-100 rounded-lg">
-              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-            </button>
-          </div>
-        </div>
+
+            {/* Search Bar */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="relative" style={{ width: '400px' }}>
+                <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search job openings..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={fetchJobs}
+                  className="p-3 hover:bg-gray-100 rounded-lg" 
+                  title="Refresh jobs"
+                >
+                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+                <button className="p-3 hover:bg-gray-100 rounded-lg">
+                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Job Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -98,7 +98,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
         },
         body: JSON.stringify({
           email: inviteEmail,
-          name: inviteName
+          name: inviteName,
+          jobId: selectedJobId || null
         })
       });
 

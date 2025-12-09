@@ -21,7 +21,10 @@ interface JobCreationFormProps {
 const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [selectedAccount, setSelectedAccount] = useState('');
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [currentAdmin, setCurrentAdmin] = useState<any>(null);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [isCurrentStepValid, setIsCurrentStepValid] = useState(false);
   const [formData, setFormData] = useState({
@@ -62,6 +65,35 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
   const [uploadedPdfUrl, setUploadedPdfUrl] = useState('');
   const [pdfFileName, setPdfFileName] = useState('');
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [uploadedPdfFile, setUploadedPdfFile] = useState<File | null>(null);
+  const [isGeneratingFromPdf, setIsGeneratingFromPdf] = useState(false);
+
+  // Fetch accounts and current admin on mount
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/jobs-enhanced/accounts');
+        const data = await response.json();
+        if (data.success) {
+          setAccounts(data.accounts);
+        }
+      } catch (error) {
+        console.error('Error fetching accounts:', error);
+      }
+    };
+
+    const userStr = sessionStorage.getItem('fluidjobs_user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setCurrentAdmin(user);
+      } catch (error) {
+        console.error('Error parsing user:', error);
+      }
+    }
+
+    fetchAccounts();
+  }, []);
 
   const jobImages = [
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=250&fit=crop',
@@ -134,7 +166,7 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
 
   useEffect(() => {
     setIsCurrentStepValid(isStepValid(currentStep));
-  }, [formData, currentStep]);
+  }, [formData, currentStep, selectedAccount]);
 
   const handleSkillsInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -195,7 +227,9 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
   const validateStep = (step: number): boolean => {
     const newErrors: {[key: string]: string} = {};
     
-    if (step === 1) {
+    if (step === 0) {
+      if (!selectedAccount) newErrors.selectedAccount = 'Please select an account';
+    } else if (step === 1) {
       if (!formData.job_title.trim()) newErrors.job_title = 'Job title is required';
       if (!formData.job_domain.trim()) newErrors.job_domain = 'Job domain is required';
       if (!formData.min_experience.trim()) newErrors.min_experience = 'Min experience is required';
@@ -220,7 +254,9 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
   };
 
   const isStepValid = (step: number): boolean => {
-    if (step === 1) {
+    if (step === 0) {
+      return selectedAccount.length > 0;
+    } else if (step === 1) {
       return formData.job_title.trim().length > 0 && 
              formData.job_domain.trim().length > 0 && 
              formData.min_experience.trim().length > 0 && 
@@ -249,7 +285,7 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
   };
 
   const handlePrevious = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+    setCurrentStep(prev => Math.max(prev - 1, 0));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -273,7 +309,9 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
           jd_attachment_name: uploadedPdfUrl,
           registration_opening_date: formData.registration_opening_date,
           registration_closing_date: formData.registration_closing_date,
-          job_close_days: 30
+          job_close_days: 30,
+          account_id: parseInt(selectedAccount),
+          created_by_admin_id: currentAdmin?.id
         };
 
         const response = await fetch('http://localhost:8000/api/jobs-enhanced/create', {
@@ -306,8 +344,38 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
     }
   };
 
-  const generateDescription = () => {
-    const description = `We are looking for a talented ${formData.job_title} to join our dynamic team. 
+  const generateDescription = async () => {
+    // If PDF is uploaded, generate from PDF
+    if (uploadedPdfFile) {
+      setIsGeneratingFromPdf(true);
+      try {
+        const formDataGenerate = new FormData();
+        formDataGenerate.append('jdFile', uploadedPdfFile);
+        
+        const generateResponse = await fetch('http://localhost:8000/api/jobs-enhanced/generate-jd-from-pdf', {
+          method: 'POST',
+          body: formDataGenerate
+        });
+        const generateData = await generateResponse.json();
+        
+        if (generateData.success && generateData.jobDescription) {
+          setFormData(prev => ({ ...prev, job_description: generateData.jobDescription }));
+          if (textareaRef.current) {
+            textareaRef.current.value = generateData.jobDescription;
+          }
+          alert('✅ Job description generated from PDF!');
+        } else {
+          alert('Failed to generate description from PDF');
+        }
+      } catch (error) {
+        console.error('Error generating from PDF:', error);
+        alert('Failed to generate description from PDF');
+      } finally {
+        setIsGeneratingFromPdf(false);
+      }
+    } else {
+      // Generate template description
+      const description = `We are looking for a talented ${formData.job_title} to join our dynamic team. 
 
 Key Responsibilities:
 • Develop and maintain high-quality software solutions
@@ -326,7 +394,8 @@ What We Offer:
 • Growth opportunities
 • Collaborative work environment`;
 
-    setFormData(prev => ({ ...prev, job_description: description }));
+      setFormData(prev => ({ ...prev, job_description: description }));
+    }
   };
 
   const applyFormat = (format: string) => {
@@ -461,8 +530,9 @@ What We Offer:
           <div ref={formRef} className="bg-white rounded-lg p-8 shadow-md">
             {/* Header */}
             <div className="mb-6 pb-6 border-b border-gray-200">
-              <h1 className="text-xl font-bold mb-2">Job Creation Form - Step {currentStep} of 4</h1>
+              <h1 className="text-xl font-bold mb-2">Job Creation Form - Step {currentStep === 0 ? 1 : currentStep + 1} of 5</h1>
               <p className="text-gray-600">
+                {currentStep === 0 && 'Select your account'}
                 {currentStep === 1 && 'Basic job information'}
                 {currentStep === 2 && 'Salary and timeline details'}
                 {currentStep === 3 && 'Location and work mode'}
@@ -470,24 +540,54 @@ What We Offer:
               </p>
               
               {/* Progress Bar */}
-              <div className="mt-4">
-                <div className="flex justify-between text-xs text-gray-500 mb-2">
-                  <span>Basic Info</span>
-                  <span>Compensation</span>
-                  <span>Location</span>
-                  <span>Skills & Description</span>
+              {currentStep > 0 && (
+                <div className="mt-4">
+                  <div className="flex justify-between text-xs text-gray-500 mb-2">
+                    <span>Basic Info</span>
+                    <span>Compensation</span>
+                    <span>Location</span>
+                    <span>Skills & Description</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${(currentStep / 4) * 100}%` }}
+                    ></div>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(currentStep / 4) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-7">
+              {/* Step 0: Account Selection */}
+              {currentStep === 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Select your account <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedAccount}
+                      onChange={(e) => setSelectedAccount(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none bg-white text-gray-700"
+                    >
+                      <option value="">Select an account</option>
+                      {accounts.map(account => (
+                        <option key={account.account_id} value={account.account_id}>
+                          {account.account_name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Step 1: Basic Job Info */}
               {currentStep === 1 && (
                 <>
@@ -913,19 +1013,20 @@ What We Offer:
                         const file = e.target.files?.[0];
                         if (file) {
                           setIsUploadingPdf(true);
-                          const formData = new FormData();
-                          formData.append('jdFile', file);
+                          const formDataUpload = new FormData();
+                          formDataUpload.append('jdFile', file);
                           
                           try {
-                            const response = await fetch('http://localhost:8000/api/jobs-enhanced/upload-jd', {
+                            const uploadResponse = await fetch('http://localhost:8000/api/jobs-enhanced/upload-jd', {
                               method: 'POST',
-                              body: formData
+                              body: formDataUpload
                             });
-                            const data = await response.json();
+                            const uploadData = await uploadResponse.json();
                             
-                            if (data.success) {
-                              setUploadedPdfUrl(data.filename);
-                              setPdfFileName(data.originalName);
+                            if (uploadData.success) {
+                              setUploadedPdfUrl(uploadData.filename);
+                              setPdfFileName(uploadData.originalName);
+                              setUploadedPdfFile(file);
                             } else {
                               alert('Failed to upload PDF');
                             }
@@ -939,8 +1040,8 @@ What We Offer:
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
-                    {isUploadingPdf && <p className="text-sm text-gray-500 mt-1">Uploading PDF...</p>}
-                    {pdfFileName && <p className="text-sm text-green-600 mt-1">✓ {pdfFileName} uploaded</p>}
+                    {isUploadingPdf && <p className="text-sm text-gray-500 mt-1">🔄 Uploading PDF...</p>}
+                    {pdfFileName && <p className="text-sm text-green-600 mt-1">✓ {pdfFileName} uploaded. Click "Generate Description" to extract text.</p>}
                   </div>
 
                   {/* Skills */}
@@ -1008,10 +1109,15 @@ What We Offer:
                         <button
                           type="button"
                           onClick={generateDescription}
-                          className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors text-sm"
+                          disabled={isGeneratingFromPdf}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors text-sm ${
+                            isGeneratingFromPdf
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                          }`}
                         >
                           <Sparkles className="w-4 h-4" />
-                          Generate Description
+                          {isGeneratingFromPdf ? 'Generating...' : uploadedPdfFile ? 'Generate from PDF' : 'Generate Description'}
                         </button>
                       </div>
                   
@@ -1183,18 +1289,23 @@ What We Offer:
 
               {/* Navigation Buttons */}
               <div className="flex justify-between mt-8">
-                <button
-                  type="button"
-                  onClick={handlePrevious}
-                  disabled={currentStep === 1}
-                  className={`px-6 py-2 rounded-md font-medium ${
-                    currentStep === 1
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
-                  }`}
-                >
-                  Previous
-                </button>
+                {currentStep === 0 ? (
+                  <button
+                    type="button"
+                    onClick={onBack}
+                    className="px-6 py-2 rounded-md font-medium bg-gray-300 text-gray-700 hover:bg-gray-400"
+                  >
+                    Cancel
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handlePrevious}
+                    className="px-6 py-2 rounded-md font-medium bg-gray-300 text-gray-700 hover:bg-gray-400"
+                  >
+                    Previous
+                  </button>
+                )}
                 
                 {currentStep < 4 ? (
                   <button

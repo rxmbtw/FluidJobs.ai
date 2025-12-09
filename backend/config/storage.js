@@ -1,20 +1,28 @@
 const multer = require('multer');
-const { Storage } = require('@google-cloud/storage');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
-// Google Cloud Storage setup
-const storage = new Storage({
-  projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-  keyFilename: path.join(__dirname, '../service-account-key.json')
+// Create uploads directories
+const uploadsDir = path.join(__dirname, '../uploads');
+const jobAttachmentsDir = path.join(uploadsDir, 'job-attachments');
+
+if (!fs.existsSync(jobAttachmentsDir)) {
+  fs.mkdirSync(jobAttachmentsDir, { recursive: true });
+}
+
+console.log('✅ VPS filesystem storage initialized');
+
+// Multer disk storage for VPS
+const multerStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, jobAttachmentsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    cb(null, uniqueName);
+  }
 });
-
-const bucket = storage.bucket(process.env.GOOGLE_CLOUD_STORAGE_BUCKET);
-
-console.log('✅ Google Cloud Storage initialized');
-
-// Multer memory storage for Google Cloud
-const multerStorage = multer.memoryStorage();
 
 const upload = multer({
   storage: multerStorage,
@@ -28,31 +36,29 @@ const upload = multer({
   }
 });
 
-// Upload file to Google Cloud Storage
+// Upload file to VPS filesystem
 async function uploadToGCS(file, folder = 'uploads') {
   try {
-    const fileName = `${folder}/${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const uploadDir = path.join(__dirname, '..', 'uploads', folder);
     
-    const fileUpload = bucket.file(fileName);
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
     
-    const stream = fileUpload.createWriteStream({
-      metadata: {
-        contentType: file.mimetype,
-      },
-    });
+    const fileName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const filePath = path.join(uploadDir, fileName);
     
-    return new Promise((resolve, reject) => {
-      stream.on('error', reject);
-      stream.on('finish', () => {
-        const publicUrl = `https://storage.googleapis.com/${process.env.GOOGLE_CLOUD_STORAGE_BUCKET}/${fileName}`;
-        console.log('✅ File uploaded to GCS:', publicUrl);
-        resolve(publicUrl);
-      });
-      stream.end(file.buffer);
-    });
+    // Write file if buffer exists (for memory storage), otherwise file already saved by diskStorage
+    if (file.buffer) {
+      fs.writeFileSync(filePath, file.buffer);
+    }
+    
+    const publicUrl = `/uploads/${folder}/${fileName}`;
+    console.log('✅ File uploaded to VPS:', publicUrl);
+    return publicUrl;
     
   } catch (error) {
-    console.error('❌ GCS Upload Error:', error);
+    console.error('❌ VPS Upload Error:', error);
     throw error;
   }
 }
@@ -60,25 +66,20 @@ async function uploadToGCS(file, folder = 'uploads') {
 // Upload job description PDF
 async function uploadJobPDF(file, jobId, jobTitle) {
   try {
-    const fileName = `job-descriptions/JD_${jobTitle.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+    const fileName = `JD_${jobTitle.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+    const filePath = path.join(jobAttachmentsDir, fileName);
     
-    const fileUpload = bucket.file(fileName);
+    // Write file if buffer exists (for memory storage), otherwise file already saved by diskStorage
+    if (file.buffer) {
+      fs.writeFileSync(filePath, file.buffer);
+    } else if (file.path) {
+      // If file was saved by multer, move it to correct location with correct name
+      fs.renameSync(file.path, filePath);
+    }
     
-    const stream = fileUpload.createWriteStream({
-      metadata: {
-        contentType: 'application/pdf',
-      },
-    });
-    
-    return new Promise((resolve, reject) => {
-      stream.on('error', reject);
-      stream.on('finish', () => {
-        const publicUrl = `https://storage.googleapis.com/${process.env.GOOGLE_CLOUD_STORAGE_BUCKET}/${fileName}`;
-        console.log('✅ Job PDF uploaded to GCS:', publicUrl);
-        resolve({ publicUrl, fileName });
-      });
-      stream.end(file.buffer);
-    });
+    const publicUrl = `/uploads/job-attachments/${fileName}`;
+    console.log('✅ Job PDF uploaded to VPS:', publicUrl);
+    return { publicUrl, fileName };
     
   } catch (error) {
     console.error('❌ Job PDF Upload Error:', error);

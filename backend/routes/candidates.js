@@ -215,22 +215,48 @@ router.post('/send-invite', async (req, res) => {
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
-      subject: 'Welcome to FluidJobs.ai - Your Profile is Ready!',
+      subject: 'Welcome to FluidJobs.ai - Join the Premier Job Platform',
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #4285F4;">Welcome to FluidJobs.ai!</h2>
-          <p>Hello ${name},</p>
-          <p>Great news! Your profile has been successfully created on FluidJobs.ai.</p>
-          <p>You can now login to your account and explore exciting job opportunities.</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <p style="font-size: 16px; color: #333; line-height: 1.6;">Hello ${name},</p>
+          
+          <p style="font-size: 16px; color: #333; line-height: 1.6;">
+            We are excited to invite you to join <strong>FluidJobs.ai</strong>, the premier platform connecting talented professionals like you with leading companies.
+          </p>
+          
+          <p style="font-size: 16px; color: #333; line-height: 1.6; margin-top: 20px;">
+            By creating your profile, you will gain access to:
+          </p>
+          
+          <ul style="font-size: 16px; color: #333; line-height: 1.8; margin-left: 20px;">
+            <li>A curated selection of job openings not found elsewhere.</li>
+            <li>Intelligent tools that simplify and accelerate your job search.</li>
+            <li>A user-friendly interface designed for your success.</li>
+          </ul>
+          
+          <p style="font-size: 16px; color: #333; line-height: 1.6; margin-top: 20px;">
+            Ready to take the next step in your career?
+          </p>
+          
+          <p style="font-size: 16px; color: #333; line-height: 1.6; font-weight: bold;">
+            Create Your Account Here:
+          </p>
+          
           <div style="margin: 30px 0; text-align: center;">
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" 
-               style="background-color: #4285F4; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
-              Login to Your Account
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?register=true" 
+               style="background-color: #4285F4; color: white; padding: 14px 40px; text-decoration: none; border-radius: 5px; display: inline-block; font-size: 16px; font-weight: bold;">
+              Get Started Now
             </a>
           </div>
-          <p>If you have any questions, feel free to reach out to us.</p>
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #E5E7EB;">
-          <p style="color: #6B7280; font-size: 14px;">FluidJobs.ai - Your Career Partner</p>
+          
+          <p style="font-size: 16px; color: #333; line-height: 1.6; margin-top: 30px;">
+            If you have any questions during the sign-up process, please don't hesitate to contact us.
+          </p>
+          
+          <p style="font-size: 16px; color: #333; line-height: 1.6; margin-top: 30px;">
+            Best regards,<br>
+            <strong>Team FluidJobs.ai</strong>
+          </p>
         </div>
       `
     };
@@ -241,6 +267,89 @@ router.post('/send-invite', async (req, res) => {
   } catch (error) {
     console.error('Error sending invite:', error);
     res.status(500).json({ error: 'Failed to send invite' });
+  }
+});
+
+// Send job notification to existing candidate
+router.post('/send-job-notification', async (req, res) => {
+  try {
+    const { candidateId, email, name, jobId } = req.body;
+    
+    if (!email || !name || !jobId) {
+      return res.status(400).json({ error: 'Email, name, and jobId are required' });
+    }
+    
+    const nodemailer = require('nodemailer');
+    
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      return res.status(500).json({ error: 'Email service not configured' });
+    }
+    
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+    
+    // Fetch job details
+    const jobResult = await pool.query(
+      'SELECT job_title, job_type, locations, min_salary, max_salary, job_description FROM public.jobs_enhanced WHERE job_id = $1',
+      [jobId]
+    );
+    
+    if (jobResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    
+    const job = jobResult.rows[0];
+    
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: `New Job Opportunity: ${job.job_title}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <p style="font-size: 16px; color: #333; line-height: 1.6;">Hello ${name},</p>
+          
+          <p style="font-size: 16px; color: #333; line-height: 1.6;">
+            We have an exciting new job opportunity that matches your profile!
+          </p>
+          
+          <div style="background-color: #f8f9fa; border-left: 4px solid #4285F4; padding: 20px; margin: 20px 0; border-radius: 5px;">
+            <h3 style="margin: 0 0 15px 0; color: #4285F4; font-size: 20px;">${job.job_title}</h3>
+            <p style="margin: 8px 0; color: #555; font-size: 14px;"><strong>Type:</strong> ${job.job_type}</p>
+            <p style="margin: 8px 0; color: #555; font-size: 14px;"><strong>Location:</strong> ${Array.isArray(job.locations) ? job.locations.join(', ') : job.locations}</p>
+            ${job.min_salary && job.max_salary ? `<p style="margin: 8px 0; color: #555; font-size: 14px;"><strong>Salary:</strong> ₹${(job.min_salary/100000).toFixed(1)} - ₹${(job.max_salary/100000).toFixed(1)} LPA</p>` : ''}
+          </div>
+          
+          <p style="font-size: 16px; color: #333; line-height: 1.6; margin-top: 20px;">
+            Login to your FluidJobs.ai account to view full details and apply:
+          </p>
+          
+          <div style="margin: 30px 0; text-align: center;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" 
+               style="background-color: #4285F4; color: white; padding: 14px 40px; text-decoration: none; border-radius: 5px; display: inline-block; font-size: 16px; font-weight: bold;">
+              View Job Details
+            </a>
+          </div>
+          
+          <p style="font-size: 16px; color: #333; line-height: 1.6; margin-top: 30px;">
+            Best regards,<br>
+            <strong>Team FluidJobs.ai</strong>
+          </p>
+        </div>
+      `
+    };
+    
+    await transporter.sendMail(mailOptions);
+    
+    res.json({ message: 'Job notification sent successfully' });
+  } catch (error) {
+    console.error('Error sending job notification:', error.message);
+    console.error('Stack:', error.stack);
+    res.status(500).json({ error: 'Failed to send job notification', details: error.message });
   }
 });
 

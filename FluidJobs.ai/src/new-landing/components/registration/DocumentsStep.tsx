@@ -23,10 +23,6 @@ const DocumentsStep: React.FC<DocumentsStepProps> = ({ onBack, onComplete }) => 
   };
 
   const handleSubmit = () => {
-    if (!resume) {
-      alert('Please upload your resume.');
-      return;
-    }
     console.log('Documents:', { profilePicture, resume });
     onComplete();
   };

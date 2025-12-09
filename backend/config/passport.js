@@ -16,7 +16,7 @@ passport.use(new GoogleStrategy({
     
     // FIRST: Check if user exists in admin table
     const existingAdmin = await pool.query(
-      'SELECT admin_id as id, username as email, role FROM admin WHERE username = $1',
+      'SELECT id, email, name, role FROM admin WHERE email = $1',
       [email]
     );
     
@@ -25,7 +25,7 @@ passport.use(new GoogleStrategy({
       const adminUser = {
         candidate_id: existingAdmin.rows[0].id,
         email: existingAdmin.rows[0].email,
-        full_name: name,
+        full_name: existingAdmin.rows[0].name || name,
         role: 'Admin'
       };
       return done(null, adminUser);
@@ -85,7 +85,7 @@ passport.deserializeUser(async (obj, done) => {
   try {
     if (obj.role === 'Admin') {
       // Check admin table
-      const result = await pool.query('SELECT admin_id as candidate_id, username as email, role FROM admin WHERE admin_id = $1', [obj.id]);
+      const result = await pool.query('SELECT id as candidate_id, email, name, role FROM admin WHERE id = $1', [obj.id]);
       if (result.rows.length > 0) {
         done(null, { ...result.rows[0], role: 'Admin' });
       } else {

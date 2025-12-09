@@ -216,6 +216,9 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose, 
               onBack={() => setCurrentStep(3)} 
               onComplete={async () => {
                 try {
+                  console.log('Starting registration...');
+                  console.log('Registration data:', registrationData);
+                  
                   const API_BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
                   const signupPayload = {
                     username: registrationData.username,
@@ -235,6 +238,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose, 
                     workMode: registrationData.workMode
                   };
                   
+                  console.log('Sending signup request...');
                   const response = await fetch(`${API_BASE}/api/auth/signup`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -242,11 +246,21 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose, 
                   });
                   
                   const data = await response.json();
-                  if (!response.ok) throw new Error(data.error || 'Signup failed');
+                  console.log('Response:', data);
                   
+                  if (!response.ok) {
+                    console.error('Signup failed:', data.error);
+                    alert('Registration failed: ' + (data.error || 'Unknown error'));
+                    throw new Error(data.error || 'Signup failed');
+                  }
+                  
+                  console.log('Registration successful!');
+                  alert('Account created successfully!');
                   onClose();
                   if (onSuccess) onSuccess();
                 } catch (error: any) {
+                  console.error('Registration error:', error);
+                  alert('Error: ' + error.message);
                   showMessage(error.message, true);
                 }
               }} 

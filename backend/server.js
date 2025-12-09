@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const session = require('express-session');
 const passport = require('./config/passport');
 const { testConnection, setupDatabase } = require('./utils/dbSetup');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -85,10 +86,12 @@ app.use('/api/test-candidates', require('./routes/testCandidates'));
 app.use('/api/job-attachments', require('./routes/jobAttachments'));
 app.use('/api/saved-jobs', require('./routes/savedJobs'));
 app.use('/api/forgot-password', require('./routes/forgotPassword'));
+app.use('/api/superadmin', require('./routes/superadmin'));
 
 // Serve uploaded files with proper headers
-app.use('/uploads', express.static('uploads', {
-  setHeaders: (res, path) => {
+const uploadsPath = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadsPath, {
+  setHeaders: (res, filePath) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');

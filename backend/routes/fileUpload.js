@@ -1,12 +1,31 @@
 const express = require('express');
 const multer = require('multer');
-const { Storage } = require('@google-cloud/storage');
 const path = require('path');
+const fs = require('fs');
 const router = express.Router();
+
+// Create uploads directories if they don't exist
+const resumesDir = path.join(__dirname, '../uploads/resumes');
+const profileImagesDir = path.join(__dirname, '../uploads/profile-images');
+
+if (!fs.existsSync(resumesDir)) {
+  fs.mkdirSync(resumesDir, { recursive: true });
+}
+if (!fs.existsSync(profileImagesDir)) {
+  fs.mkdirSync(profileImagesDir, { recursive: true });
+}
 
 // Configure multer for resume uploads
 const uploadResume = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, resumesDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      cb(null, uniqueName);
+    }
+  }),
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
@@ -25,7 +44,15 @@ const uploadResume = multer({
 
 // Configure multer for image uploads
 const uploadImage = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, profileImagesDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      cb(null, uniqueName);
+    }
+  }),
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
@@ -42,17 +69,6 @@ const uploadImage = multer({
   }
 });
 
-// Initialize Google Cloud Storage (fallback to local if GCS fails)
-let storage = null;
-try {
-  storage = new Storage({
-    projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-    keyFilename: './service-account-key.json'
-  });
-} catch (error) {
-  console.log('GCS not configured, using local storage');
-}
-
 // Upload resume endpoint
 router.post('/resume', uploadResume.single('resume'), async (req, res) => {
   try {
@@ -60,44 +76,13 @@ router.post('/resume', uploadResume.single('resume'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const fileName = `resume/${Date.now()}-${req.file.originalname}`;
+    const fileUrl = `/uploads/resumes/${req.file.filename}`;
     
-    if (storage) {
-      // Upload to Google Cloud Storage
-      const bucket = storage.bucket(process.env.GOOGLE_CLOUD_STORAGE_BUCKET);
-      const file = bucket.file(fileName);
-      
-      await file.save(req.file.buffer, {
-        metadata: {
-          contentType: req.file.mimetype,
-        },
-      });
-      
-      // Make file publicly accessible
-      await file.makePublic();
-      
-      const publicUrl = `https://storage.googleapis.com/fluidjobs-storage/${fileName}`;
-      
-      res.json({
-        success: true,
-        fileUrl: publicUrl,
-        fileName: req.file.originalname
-      });
-    } else {
-      // Fallback to local storage
-      const fs = require('fs');
-      const localPath = path.join(__dirname, '../uploads/resumes', fileName.split('/')[1]);
-      
-      fs.writeFileSync(localPath, req.file.buffer);
-      
-      const localUrl = `${process.env.BACKEND_URL}/uploads/resumes/${fileName.split('/')[1]}`;
-      
-      res.json({
-        success: true,
-        fileUrl: localUrl,
-        fileName: req.file.originalname
-      });
-    }
+    res.json({
+      success: true,
+      fileUrl: fileUrl,
+      fileName: req.file.originalname
+    });
     
   } catch (error) {
     console.error('Upload error:', error);
@@ -112,44 +97,13 @@ router.post('/profile-image', uploadImage.single('profileImage'), async (req, re
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const fileName = `profile images/${Date.now()}-${req.file.originalname}`;
+    const fileUrl = `/uploads/profile-images/${req.file.filename}`;
     
-    if (storage) {
-      // Upload to Google Cloud Storage
-      const bucket = storage.bucket(process.env.GOOGLE_CLOUD_STORAGE_BUCKET);
-      const file = bucket.file(fileName);
-      
-      await file.save(req.file.buffer, {
-        metadata: {
-          contentType: req.file.mimetype,
-        },
-      });
-      
-      // Make file publicly accessible
-      await file.makePublic();
-      
-      const publicUrl = `https://storage.googleapis.com/fluidjobs-storage/${fileName}`;
-      
-      res.json({
-        success: true,
-        fileUrl: publicUrl,
-        fileName: req.file.originalname
-      });
-    } else {
-      // Fallback to local storage
-      const fs = require('fs');
-      const localPath = path.join(__dirname, '../uploads/profile-images', fileName.split('/')[1]);
-      
-      fs.writeFileSync(localPath, req.file.buffer);
-      
-      const localUrl = `${process.env.BACKEND_URL}/uploads/profile-images/${fileName.split('/')[1]}`;
-      
-      res.json({
-        success: true,
-        fileUrl: localUrl,
-        fileName: req.file.originalname
-      });
-    }
+    res.json({
+      success: true,
+      fileUrl: fileUrl,
+      fileName: req.file.originalname
+    });
     
   } catch (error) {
     console.error('Upload error:', error);

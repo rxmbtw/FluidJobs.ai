@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Filter, Users, FileText, Eye, MoreVertical, Download, Mail, Phone, MapPin, Calendar, Building, DollarSign, Linkedin, User, Clock, Briefcase, Plus, Trash2, Ban, Check } from 'lucide-react';
+import { indianCities } from '../data/indianCities';
 
 interface Candidate {
   id: string;
@@ -41,6 +42,63 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
   const [sortOrder, setSortOrder] = useState('asc');
   const [sendingInvite, setSendingInvite] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
+  const [showJobNotificationModal, setShowJobNotificationModal] = useState(false);
+  const [selectedJobForNotification, setSelectedJobForNotification] = useState('');
+  const [availableJobs, setAvailableJobs] = useState<any[]>([]);
+  const [sendingNotification, setSendingNotification] = useState(false);
+
+  // Fetch available jobs
+  const fetchAvailableJobs = async () => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/list`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.jobs) {
+          setAvailableJobs(data.jobs);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+    }
+  };
+
+  // Send Job Notification function
+  const sendJobNotification = async () => {
+    if (!selectedCandidate || !selectedJobForNotification) {
+      alert('Please select a job');
+      return;
+    }
+
+    try {
+      setSendingNotification(true);
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidates/send-job-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          candidateId: selectedCandidate.id,
+          email: selectedCandidate.email,
+          name: selectedCandidate.name,
+          jobId: selectedJobForNotification
+        })
+      });
+
+      if (response.ok) {
+        alert(`Job notification sent successfully to ${selectedCandidate.name}!`);
+        setShowJobNotificationModal(false);
+        setSelectedJobForNotification('');
+      } else {
+        const error = await response.json();
+        alert(`Failed to send notification: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error sending job notification:', error);
+      alert('Failed to send job notification. Please try again.');
+    } finally {
+      setSendingNotification(false);
+    }
+  };
 
   // Send Invite function
   const sendInvite = async () => {
@@ -313,9 +371,9 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
 
 
         {/* Filter and Candidates Container */}
-        <div className="flex-1 flex">
-          {/* Filter Panel */}
-          <div className={`bg-white border-r border-gray-200 transition-all duration-300 overflow-hidden ${showFilters ? 'w-64' : 'w-0'}`}>
+        <div className="flex-1 flex relative">
+          {/* Filter Panel - Overlay */}
+          <div className={`absolute left-0 top-0 bottom-0 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 overflow-hidden z-10 ${showFilters ? 'w-64' : 'w-0'}`}>
             {showFilters && (
               <div className="p-4 w-64">
                 <div className="flex items-center justify-between mb-4">
@@ -354,8 +412,9 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
                     <label className="text-xs font-medium text-gray-700 block mb-1">Location</label>
                     <select className="w-full px-2 py-1 border border-gray-300 rounded text-xs">
                       <option>All Locations</option>
-                      <option>Delhi</option>
-                      <option>Mumbai</option>
+                      {indianCities.map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
                     </select>
                   </div>
                   
@@ -478,6 +537,12 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
                   </button>
                   <button 
                     disabled={isRestricted}
+                    onClick={() => {
+                      if (!isRestricted) {
+                        fetchAvailableJobs();
+                        setShowJobNotificationModal(true);
+                      }
+                    }}
                     className={`px-6 py-2.5 rounded-full text-sm font-medium transition ${
                       isRestricted 
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
@@ -749,6 +814,57 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
           </>
         )}
       </div>
+
+      {/* Job Notification Modal */}
+      {showJobNotificationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Send Job Notification</h2>
+              <button
+                onClick={() => setShowJobNotificationModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Sending notification to: <strong>{selectedCandidate?.name}</strong> ({selectedCandidate?.email})
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select Job</label>
+                <select
+                  value={selectedJobForNotification}
+                  onChange={(e) => setSelectedJobForNotification(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select a job</option>
+                  {availableJobs.map((job) => (
+                    <option key={job.job_id} value={job.job_id.toString()}>
+                      {job.job_title} - {Array.isArray(job.locations) ? job.locations.join(', ') : job.locations}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={sendJobNotification}
+                disabled={sendingNotification || !selectedJobForNotification}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sendingNotification ? 'Sending...' : 'Send Notification'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

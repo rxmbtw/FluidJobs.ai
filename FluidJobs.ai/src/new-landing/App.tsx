@@ -8,7 +8,6 @@ import CommunitySection from './components/CommunitySection';
 import CtaSection from './components/CtaSection';
 import Footer from './components/Footer';
 import SectionDivider from './components/SectionDivider';
-import Navbar from './components/Navbar';
 import LoginPage from './components/LoginPage';
 import CandidateDashboard from './candidate-dashboard/CandidateDashboard';
 import CompanyDashboard from './company-dashboard/CompanyDashboard';
@@ -19,11 +18,47 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('landing');
 
   useEffect(() => {
+    // Handle OAuth callback first
+    const params = new URLSearchParams(window.location.search);
+    const callbackToken = params.get('token');
+    const callbackRole = params.get('role');
+    
+    if (callbackToken) {
+      try {
+        console.log('🔑 Processing OAuth callback token');
+        const decodedToken = JSON.parse(atob(callbackToken.split('.')[1]));
+        const user = {
+          id: decodedToken.candidateId,
+          email: decodedToken.email,
+          name: decodedToken.name,
+          role: decodedToken.role || callbackRole || 'Candidate'
+        };
+        sessionStorage.setItem('fluidjobs_token', callbackToken);
+        sessionStorage.setItem('fluidjobs_user', JSON.stringify(user));
+        window.history.replaceState({}, document.title, '/');
+        
+        console.log('✅ User authenticated:', user);
+        
+        if (user.role === 'admin' || user.role === 'Admin' || user.role === 'HR') {
+          console.log('🔄 Redirecting to company dashboard');
+          setCurrentPage('company-dashboard');
+        } else {
+          console.log('🔄 Redirecting to candidate dashboard');
+          setCurrentPage('dashboard');
+        }
+        return;
+      } catch (error) {
+        console.error('❌ Auth callback error:', error);
+        setCurrentPage('login');
+        return;
+      }
+    }
+    
     // Check if user is already authenticated
     const token = sessionStorage.getItem('fluidjobs_token');
     const userStr = sessionStorage.getItem('fluidjobs_user');
     
-    if (token && userStr && currentPage === 'landing') {
+    if (token && userStr) {
       try {
         const user = JSON.parse(userStr);
         if (user.role === 'admin' || user.role === 'Admin' || user.role === 'HR') {
@@ -33,35 +68,11 @@ const App: React.FC = () => {
         }
       } catch (error) {
         console.error('Error parsing user:', error);
+        setCurrentPage('login');
       }
-    } else if (!token && currentPage === 'landing') {
-      // If no token and on landing, redirect to login
+    } else {
+      // If no token, redirect to login
       setCurrentPage('login');
-    }
-
-    // Handle OAuth callback
-    const params = new URLSearchParams(window.location.search);
-    const callbackToken = params.get('token');
-    if (callbackToken) {
-      try {
-        const decodedToken = JSON.parse(atob(callbackToken.split('.')[1]));
-        const user = {
-          id: decodedToken.candidateId,
-          email: decodedToken.email,
-          name: decodedToken.name,
-          role: decodedToken.role
-        };
-        sessionStorage.setItem('fluidjobs_token', callbackToken);
-        sessionStorage.setItem('fluidjobs_user', JSON.stringify(user));
-        window.history.replaceState({}, document.title, window.location.pathname);
-        if (user.role === 'admin' || user.role === 'Admin' || user.role === 'HR') {
-          setCurrentPage('company-dashboard');
-        } else {
-          setCurrentPage('dashboard');
-        }
-      } catch (error) {
-        console.error('Auth callback error:', error);
-      }
     }
   }, []);
 

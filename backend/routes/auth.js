@@ -28,9 +28,9 @@ router.post('/check-username', async (req, res) => {
   try {
     const { username } = req.body;
     
-    // Check if username (email or phone) exists
+    // Check if username (email or phone) exists (case-insensitive for email)
     const result = await pool.query(
-      'SELECT candidate_id FROM candidates WHERE email = $1 OR phone = $1',
+      'SELECT candidate_id FROM candidates WHERE LOWER(email) = LOWER($1) OR phone_number = $1',
       [username]
     );
     
@@ -49,7 +49,7 @@ router.post('/signup', async (req, res) => {
     
     // Check if user already exists
     const existingUser = await pool.query(
-      'SELECT candidate_id FROM candidates WHERE email = $1 OR phone = $2',
+      'SELECT candidate_id FROM candidates WHERE email = $1 OR phone_number = $2',
       [email || username, phone || username]
     );
     
@@ -60,10 +60,8 @@ router.post('/signup', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Generate candidate ID
-    const countResult = await pool.query('SELECT COUNT(*) FROM candidates');
-    const count = parseInt(countResult.rows[0].count) + 1;
-    const candidateId = `FLC${String(count).padStart(10, '0')}`;
+    // Generate candidate ID using timestamp to avoid duplicates
+    const candidateId = `FLC${Date.now()}`;
     
     // Convert numeric values
     const currentCTCNum = currentCTC ? parseFloat(currentCTC) : null;
@@ -74,7 +72,7 @@ router.post('/signup', async (req, res) => {
     // Insert new candidate
     const newCandidate = await pool.query(
       `INSERT INTO candidates (
-        candidate_id, full_name, email, phone, gender, marital_status,
+        candidate_id, full_name, email, phone_number, gender, marital_status,
         current_company, notice_period, current_ctc,
         last_company, previous_ctc, city, work_mode, work_status, password_hash
       ) VALUES (
@@ -124,7 +122,7 @@ router.post('/admin/login', async (req, res) => {
     
     // Check admin table
     const result = await pool.query(
-      'SELECT admin_id, username, password_hash, role FROM admin WHERE username = $1',
+      'SELECT id, email, name, role, password_hash FROM admin WHERE email = $1',
       [email]
     );
     
@@ -134,20 +132,22 @@ router.post('/admin/login', async (req, res) => {
     
     const admin = result.rows[0];
     
-    // Verify password (using SHA256 hash)
-    const crypto = require('crypto');
-    const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+    // Verify password
+    if (!admin.password_hash) {
+      return res.status(401).json({ error: 'Account not properly configured. Please contact support.' });
+    }
     
-    if (passwordHash !== admin.password_hash) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    const isValidPassword = await bcrypt.compare(password, admin.password_hash);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Invalid password' });
     }
     
     // Generate JWT token
     const token = jwt.sign(
       {
-        adminId: admin.admin_id,
-        email: admin.username,
-        role: admin.role || 'admin'
+        adminId: admin.id,
+        email: admin.email,
+        role: admin.role || 'Admin'
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -155,9 +155,10 @@ router.post('/admin/login', async (req, res) => {
     
     res.json({
       user: {
-        id: admin.admin_id,
-        email: admin.username,
-        role: admin.role || 'admin'
+        id: admin.id,
+        email: admin.email,
+        name: admin.name,
+        role: admin.role || 'Admin'
       },
       token
     });
@@ -174,7 +175,7 @@ router.post('/login', async (req, res) => {
     
     // Check candidates table for both email and phone
     const result = await pool.query(
-      'SELECT candidate_id, full_name, email, password_hash, role FROM candidates WHERE email = $1 OR phone = $1',
+      'SELECT candidate_id, full_name, email, password_hash, role FROM candidates WHERE email = $1 OR phone_number = $1',
       [email]
     );
     
@@ -367,16 +368,16 @@ router.get('/linkedin/callback', async (req, res) => {
     
     // FIRST: Check if user exists in admin table
     const existingAdmin = await pool.query(
-      'SELECT admin_id, username, role FROM admin WHERE username = $1',
+      'SELECT id, email, name, role FROM admin WHERE email = $1',
       [email]
     );
     
     if (existingAdmin.rows.length > 0) {
-      console.log('✅ Admin user found:', existingAdmin.rows[0].admin_id);
+      console.log('✅ Admin user found:', existingAdmin.rows[0].id);
       user = {
-        candidate_id: existingAdmin.rows[0].admin_id,
-        email: existingAdmin.rows[0].username,
-        full_name: name
+        candidate_id: existingAdmin.rows[0].id,
+        email: existingAdmin.rows[0].email,
+        full_name: existingAdmin.rows[0].name || name
       };
       finalRole = 'Admin';
     } else {
