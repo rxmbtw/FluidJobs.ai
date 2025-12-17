@@ -25,8 +25,8 @@ const AuthCallback: React.FC = () => {
         console.log('✅ Auth callback - User:', user);
         
         // Navigate based on role
-        if (user.role === 'Admin') {
-          console.log('🔄 Redirecting Admin to company-dashboard');
+        if (user.role === 'Admin' || user.role === 'HR' || user.role === 'Sales') {
+          console.log(`🔄 Redirecting ${user.role} to company-dashboard`);
           navigate('/company-dashboard');
         } else {
           console.log('🔄 Redirecting Candidate to dashboard');

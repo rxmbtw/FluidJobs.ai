@@ -20,6 +20,7 @@ interface JobData {
   min_salary?: number;
   max_salary?: number;
   job_domain?: string;
+  status?: string;
 }
 
 
@@ -93,7 +94,7 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
           jobId: job.job_id.toString(),
           title: job.job_title,
           experience: `${job.min_experience}-${job.max_experience} years`,
-          location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations,
+          location: Array.isArray(job.locations) ? job.locations.join(', ') : (typeof job.locations === 'string' ? job.locations.replace(/[{}"]/g, '').split(',').map((l: string) => l.trim()).join(', ') : job.locations),
           workplace: job.job_type,
           tags: [job.job_domain],
           image: job.selected_image || 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
@@ -113,7 +114,8 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
           registration_closing_date: job.registration_closing_date,
           min_salary: job.min_salary,
           max_salary: job.max_salary,
-          job_domain: job.job_domain
+          job_domain: job.job_domain,
+          status: job.status
         }));
         console.log('Formatted jobs:', formattedJobs);
         setJobs(formattedJobs);
@@ -224,7 +226,24 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
 
               {/* Job Content */}
               <div className="p-5">
-                <h2 className="text-2xl font-medium text-gray-900 mb-4">{job.title}</h2>
+                <div className="flex items-start justify-between mb-4">
+                  <h2 className="text-2xl font-medium text-gray-900">{job.title}</h2>
+                  {job.status === 'pending' && (
+                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
+                      Pending Approval
+                    </span>
+                  )}
+                  {job.status === 'Published' && (
+                    <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                      Published
+                    </span>
+                  )}
+                  {job.status === 'unpublished' && (
+                    <span className="px-3 py-1 bg-orange-100 text-orange-800 text-xs font-semibold rounded-full">
+                      Unpublished
+                    </span>
+                  )}
+                </div>
                 
                 <div className="mb-4 pb-4 border-b border-gray-200">
                   <span className="text-sm text-gray-600">Posted on: {formatDate(job.created_at)}</span>

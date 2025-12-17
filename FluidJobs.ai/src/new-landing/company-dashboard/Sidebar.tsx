@@ -22,11 +22,17 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
   const [selectedJobId, setSelectedJobId] = useState('');
   const [jobs, setJobs] = useState<any[]>([]);
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
   const [userEmail, setUserEmail] = useState('ram@fluid.live');
   const [userName, setUserName] = useState('Shriram Surse');
   const [userRole, setUserRole] = useState('HR');
+  const [accountCount, setAccountCount] = useState(0);
 
-  // Get user data from sessionStorage
+  // Get user data from sessionStorage and fetch account count
   React.useEffect(() => {
     const userStr = sessionStorage.getItem('fluidjobs_user');
     if (userStr) {
@@ -35,11 +41,34 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
         setUserEmail(user.email || 'ram@fluid.live');
         setUserName(user.name || 'Shriram Surse');
         setUserRole(user.role || 'HR');
+        
+        // Fetch account count
+        fetchAccountCount();
       } catch (error) {
         console.error('Error parsing user data:', error);
       }
     }
   }, []);
+
+  const fetchAccountCount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/auth/my-accounts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const accounts = await response.json();
+        setAccountCount(accounts.length);
+      }
+    } catch (error) {
+      console.error('Error fetching account count:', error);
+    }
+  };
 
   // Fetch jobs when modal opens
   React.useEffect(() => {
@@ -144,17 +173,21 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
     </svg>
   );
 
-  const menuItems = [
-    { id: 'view_opening', label: 'View Openings', icon: Globe },
-    { id: 'manage_candidates', label: 'Manage Candidates', icon: Users },
-    { id: 'my_accounts', label: 'My Accounts', icon: ChartIcon }
+  // Filter menu items based on user role
+  const allMenuItems = [
+    { id: 'view_opening', label: 'View Openings', icon: Globe, roles: ['Admin', 'HR', 'Sales'] },
+    { id: 'manage_candidates', label: 'Manage Candidates', icon: Users, roles: ['Admin'] },
+    { id: 'my_accounts', label: 'My Accounts', icon: ChartIcon, roles: ['Admin', 'HR', 'Sales'] }
   ];
 
-  const newMenuItems = [
-    { id: 'create_job', label: 'Create Job', icon: Plus },
-    { id: 'bulk_import', label: 'Bulk Import', icon: Upload },
-    { id: 'send_invitation', label: 'Send Invitation', icon: Mail }
+  const allNewMenuItems = [
+    { id: 'create_job', label: 'Create Job', icon: Plus, roles: ['Admin', 'HR', 'Sales'] },
+    { id: 'bulk_import', label: 'Bulk Import', icon: Upload, roles: ['Admin'] },
+    { id: 'send_invitation', label: 'Send Invitation', icon: Mail, roles: ['Admin', 'HR'] }
   ];
+
+  const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
+  const newMenuItems = allNewMenuItems.filter(item => item.roles.includes(userRole));
 
   return (
     <aside 
@@ -295,9 +328,16 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
                 </div>
                 <div>
                   <span className="font-semibold" style={{ color: colors.accent }}>Total Accounts: </span>
-                  <span style={{ color: colors.textPrimary }}>04</span>
+                  <span style={{ color: colors.textPrimary }}>{String(accountCount).padStart(2, '0')}</span>
                 </div>
-                <div className="pt-3 border-t" style={{ borderColor: colors.border }}>
+                <div 
+                  className="pt-3 border-t cursor-pointer hover:opacity-80 transition" 
+                  style={{ borderColor: colors.border }}
+                  onClick={() => {
+                    setShowPasswordModal(true);
+                    setIsProfileOpen(false);
+                  }}
+                >
                   <span className="font-semibold" style={{ color: colors.textPrimary }}>Change Password</span>
                 </div>
               </div>
@@ -316,6 +356,127 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
           )}
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      {showPasswordModal && ReactDOM.createPortal(
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+          style={{ zIndex: 9999 }}
+          onClick={() => setShowPasswordModal(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                setShowPasswordModal(false);
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Change Password</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
+
+              <button
+                onClick={async () => {
+                  if (!currentPassword || !newPassword || !confirmPassword) {
+                    alert('Please fill all fields');
+                    return;
+                  }
+                  if (newPassword !== confirmPassword) {
+                    alert('New passwords do not match');
+                    return;
+                  }
+                  
+                  try {
+                    setChangingPassword(true);
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/auth/change-password`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                      },
+                      body: JSON.stringify({
+                        currentPassword,
+                        newPassword
+                      })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                      alert('Password changed successfully');
+                      setShowPasswordModal(false);
+                      setCurrentPassword('');
+                      setNewPassword('');
+                      setConfirmPassword('');
+                    } else {
+                      alert(data.error || 'Failed to change password');
+                    }
+                  } catch (error) {
+                    console.error('Error changing password:', error);
+                    alert('Failed to change password. Please try again.');
+                  } finally {
+                    setChangingPassword(false);
+                  }
+                }}
+                disabled={changingPassword}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {changingPassword ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span>Changing...</span>
+                  </>
+                ) : (
+                  <span>Change Password</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Invitation Modal - Rendered at body level using portal */}
       {showInviteModal && ReactDOM.createPortal(

@@ -237,19 +237,59 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
                 console.log('Not a superadmin, trying other logins...');
             }
 
-            // Try admin login
-            const adminResponse = await fetch(`${API_BASE}/api/auth/admin/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
+            // Force admin login for specific emails
+            if (email === 'meetpandya@fluid.live') {
+                console.log('🔍 Forcing admin login for meetpandya@fluid.live');
+                try {
+                    const adminResponse = await fetch(`${API_BASE}/api/auth/admin/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password })
+                    });
 
-            if (adminResponse.ok) {
-                const data = await adminResponse.json();
-                sessionStorage.setItem('fluidjobs_token', data.token);
-                sessionStorage.setItem('fluidjobs_user', JSON.stringify(data.user));
-                window.location.replace('/company-dashboard');
-                return;
+                    if (adminResponse.ok) {
+                        const data = await adminResponse.json();
+                        console.log('✅ Admin login successful:', data.user);
+                        sessionStorage.clear();
+                        localStorage.setItem('token', data.token);
+                        sessionStorage.setItem('fluidjobs_token', data.token);
+                        sessionStorage.setItem('fluidjobs_user', JSON.stringify(data.user));
+                        console.log('🔄 Direct redirect to company dashboard');
+                        // Use href instead of replace to force navigation
+                        window.location.href = '/company-dashboard';
+                        return;
+                    } else {
+                        const errorData = await adminResponse.json().catch(() => ({ error: 'Invalid credentials' }));
+                        throw new Error(errorData.error);
+                    }
+                } catch (error: any) {
+                    throw new Error(error.message || 'Admin login failed');
+                }
+            }
+            
+            // Try admin login first for other emails
+            console.log('🔍 Attempting admin login for:', email);
+            try {
+                const adminResponse = await fetch(`${API_BASE}/api/auth/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (adminResponse.ok) {
+                    const data = await adminResponse.json();
+                    console.log('✅ Admin login successful:', data.user);
+                    localStorage.setItem('token', data.token);
+                    sessionStorage.setItem('fluidjobs_token', data.token);
+                    sessionStorage.setItem('fluidjobs_user', JSON.stringify(data.user));
+                    window.location.replace('/company-dashboard');
+                    return;
+                } else {
+                    const errorData = await adminResponse.json().catch(() => ({ error: 'Unknown error' }));
+                    console.log('❌ Admin login failed with status', adminResponse.status, ':', errorData);
+                }
+            } catch (adminError) {
+                console.log('❌ Admin login network error:', adminError);
             }
 
             // If not admin, try candidate login

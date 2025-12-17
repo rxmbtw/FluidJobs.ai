@@ -34,20 +34,23 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
   useEffect(() => {
     const fetchDbJobs = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/jobs-enhanced/list');
+        console.log('Fetching jobs from API...');
+        const response = await fetch('http://localhost:8000/api/jobs-enhanced/');
         const data = await response.json();
+        console.log('API Response:', data);
         
-        if (data.success) {
-          const formattedJobs: JobData[] = data.jobs.map((job: any) => ({
-            jobId: job.job_id.toString(),
-            title: job.job_title,
-            experience: `${job.min_experience}-${job.max_experience} years`,
-            location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations,
-            workplace: job.mode_of_job,
-            tags: Array.isArray(job.skills) ? job.skills.split(', ').slice(0, 3) : [job.job_domain],
-            image: job.selected_image || 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
+        if (Array.isArray(data)) {
+          console.log('Data is array, mapping jobs...');
+          const formattedJobs: JobData[] = data.map((job: any) => ({
+            jobId: job.id,
+            title: job.title,
+            experience: '2-5 years',
+            location: job.location,
+            workplace: job.type,
+            tags: ['Technology'],
+            image: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
             description: {
-              overview: job.job_description || 'Join our team and contribute to exciting projects.',
+              overview: 'Join our team and contribute to exciting projects.',
               responsibilities: [
                 'Work on innovative projects',
                 'Collaborate with cross-functional teams',
@@ -55,14 +58,17 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
                 'Contribute to product development'
               ],
               qualifications: [
-                `${job.min_experience}-${job.max_experience} years of experience`,
+                '2-5 years of experience',
                 'Strong communication skills',
                 'Team collaboration abilities'
               ]
             }
           }));
           setDbJobs(formattedJobs);
+          console.log('Formatted jobs:', formattedJobs);
           console.log('Available job IDs:', formattedJobs.map(job => job.jobId));
+        } else {
+          console.log('Data is not an array:', typeof data);
         }
       } catch (error) {
         console.error('Error fetching jobs from database:', error);
@@ -72,10 +78,7 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
     fetchDbJobs();
   }, []);
   
-  // Only use database jobs - single source of truth
-  const allJobs = dbJobs;
-  
-  const [filteredJobs, setFilteredJobs] = useState<JobData[]>(allJobs);
+  const [filteredJobs, setFilteredJobs] = useState<JobData[]>([]);
   const [selectedLocation, setSelectedLocation] = useState('All');
   const [selectedDepartment, setSelectedDepartment] = useState('All');
   const [selectedJob, setSelectedJob] = useState<JobData | null>(null);
@@ -85,11 +88,11 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
   // Mock user role - in real app, get from auth context
   const userRole = 'Candidate'; // 'Admin' or 'Candidate'
 
-  const locations = ['All', ...Array.from(new Set(allJobs.map(job => job.location)))];
+  const locations = ['All', ...Array.from(new Set(dbJobs.map(job => job.location)))];
   const departments = ['All', 'Technology', 'Insurance', 'Supply Chain', 'Customer Success'];
 
   useEffect(() => {
-    let filtered = allJobs;
+    let filtered = dbJobs;
     
     if (selectedLocation !== 'All') {
       filtered = filtered.filter(job => job.location === selectedLocation);
@@ -111,20 +114,20 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
     const handleJobCreated = async () => {
       // Refetch jobs from database
       try {
-        const response = await fetch('http://localhost:8000/api/jobs-enhanced/list');
+        const response = await fetch('http://localhost:8000/api/jobs-enhanced/');
         const data = await response.json();
         
-        if (data.success) {
-          const formattedJobs: JobData[] = data.jobs.map((job: any) => ({
-            jobId: job.job_id.toString(),
-            title: job.job_title,
-            experience: `${job.min_experience}-${job.max_experience} years`,
-            location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations,
-            workplace: job.mode_of_job,
-            tags: Array.isArray(job.skills) ? job.skills.split(', ').slice(0, 3) : [job.job_domain],
-            image: job.selected_image || 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
+        if (Array.isArray(data)) {
+          const formattedJobs: JobData[] = data.map((job: any) => ({
+            jobId: job.id,
+            title: job.title,
+            experience: '2-5 years',
+            location: job.location,
+            workplace: job.type,
+            tags: ['Technology'],
+            image: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
             description: {
-              overview: job.job_description || 'Join our team and contribute to exciting projects.',
+              overview: 'Join our team and contribute to exciting projects.',
               responsibilities: [
                 'Work on innovative projects',
                 'Collaborate with cross-functional teams',
@@ -132,7 +135,7 @@ const JobOpenings: React.FC<JobOpeningsProps> = ({ onJobSelect }) => {
                 'Contribute to product development'
               ],
               qualifications: [
-                `${job.min_experience}-${job.max_experience} years of experience`,
+                '2-5 years of experience',
                 'Strong communication skills',
                 'Team collaboration abilities'
               ]

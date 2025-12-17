@@ -13,6 +13,17 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
   const [saving, setSaving] = useState(false);
   const [isPublished, setIsPublished] = useState(true);
   const [showUnpublishModal, setShowUnpublishModal] = useState(false);
+  const [unpublishReason, setUnpublishReason] = useState('');
+  const [userRole, setUserRole] = useState('');
+
+  // Get user role
+  React.useEffect(() => {
+    const userStr = sessionStorage.getItem('fluidjobs_user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      setUserRole(user.role || '');
+    }
+  }, []);
   const [formData, setFormData] = useState<any>({
     job_title: '',
     job_domain: '',
@@ -45,6 +56,8 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
 
   useEffect(() => {
     fetchJobData();
+    const interval = setInterval(fetchJobData, 5000);
+    return () => clearInterval(interval);
   }, [jobId]);
 
   const fetchJobData = async () => {
@@ -55,55 +68,70 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
 
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/${jobId}`);
+      console.log('Fetching job data for jobId:', jobId);
+      // Try the jobs-enhanced list endpoint first to get job data
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/list`);
       
       if (response.ok) {
-        const data = await response.json();
-        console.log('Fetched job data:', data);
+        const result = await response.json();
+        console.log('Fetched jobs list:', result);
         
-        // Parse salary from salaryRange like "Rs.6.0L-Rs.15.0L"
-        let minSal = '';
-        let maxSal = '';
-        if (data.salaryRange) {
-          const salMatch = data.salaryRange.match(/Rs\.(\d+\.\d+)L-Rs\.(\d+\.\d+)L/);
-          if (salMatch) {
-            minSal = (parseFloat(salMatch[1]) * 100000).toString();
-            maxSal = (parseFloat(salMatch[2]) * 100000).toString();
+        // Find the specific job by ID
+        const job = result.jobs?.find((j: any) => j.job_id.toString() === jobId.toString());
+        if (!job) {
+          console.error('Job not found with ID:', jobId);
+          setLoading(false);
+          return;
+        }
+        
+        console.log('Found job data:', job);
+        
+        // Parse PostgreSQL array format {"item1","item2"} to actual array
+        let skillsArray: string[] = [];
+        if (job.skills) {
+          if (Array.isArray(job.skills)) {
+            skillsArray = job.skills;
+          } else if (typeof job.skills === 'string') {
+            // Handle PostgreSQL array format like {"Python","SQL"}
+            skillsArray = job.skills.replace(/[{}"]/g, '').split(',').filter((s: string) => s.trim());
           }
         }
         
-        // Parse experience from "2-5 years"
-        let minExp = '';
-        let maxExp = '';
-        if (data.experience) {
-          const expMatch = data.experience.match(/(\d+)-(\d+)/);
-          if (expMatch) {
-            minExp = expMatch[1];
-            maxExp = expMatch[2];
+        let locationsArray: string[] = [];
+        if (job.locations) {
+          if (Array.isArray(job.locations)) {
+            locationsArray = job.locations;
+          } else if (typeof job.locations === 'string') {
+            // Handle PostgreSQL array format or comma-separated string
+            locationsArray = job.locations.replace(/[{}"]/g, '').split(',').map((l: string) => l.trim()).filter((l: string) => l);
           }
         }
         
         setFormData({
-          job_title: data.title || '',
-          job_domain: data.industry || '',
-          min_experience: minExp,
-          max_experience: maxExp,
-          job_type: data.employmentType || '',
-          min_salary: minSal,
-          max_salary: maxSal,
+          job_title: job.job_title || '',
+          job_domain: job.job_domain || '',
+          min_experience: job.min_experience?.toString() || '',
+          max_experience: job.max_experience?.toString() || '',
+          job_type: job.job_type || '',
+          min_salary: job.min_salary?.toString() || '',
+          max_salary: job.max_salary?.toString() || '',
           show_salary_to_candidate: true,
-          registration_opening_date: data.registration_opening_date?.split('T')[0] || '',
-          registration_closing_date: data.registration_closing_date?.split('T')[0] || '',
-          locations: data.location || '',
-          mode_of_job: '',
-          skills: Array.isArray(data.skills) ? data.skills.join(', ') : '',
-          job_description: data.description || ''
+          registration_opening_date: job.registration_opening_date?.split('T')[0] || '',
+          registration_closing_date: job.registration_closing_date?.split('T')[0] || '',
+          locations: locationsArray.join(', '),
+          mode_of_job: job.mode_of_job || '',
+          skills: skillsArray.join(', '),
+          job_description: job.job_description || ''
         });
         
-        setSelectedSkills(Array.isArray(data.skills) ? data.skills : []);
-        const locs = data.location ? data.location.split(', ') : [];
+        setSelectedSkills(skillsArray);
+        const locs = locationsArray;
         setSelectedLocations(locs);
-        setIsPublished(true);
+        setIsPublished(job.status === 'Published');
+      } else {
+        console.error('Failed to fetch job data. Status:', response.status);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
       }
     } catch (error) {
       console.error('Error fetching job data:', error);
@@ -127,45 +155,51 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
     setFormData((prev: any) => ({ ...prev, skills: updated.join(', ') }));
   };
 
-  const handlePublishToggle = async () => {
-    // If currently published, show warning modal
+  const handlePublishToggle = () => {
     if (isPublished) {
       setShowUnpublishModal(true);
-      return;
+    } else {
+      // Re-publish: Send for approval
+      updateJobStatus('pending');
+      alert('Re-publish request sent to SuperAdmin for approval');
     }
+  };
+
+  const updateJobStatus = async (status: string) => {
+    if (!jobId) return;
     
-    // If unpublished, publish directly
-    const newStatus = true;
-    setIsPublished(newStatus);
+    setIsPublished(status === 'Published');
     
-    if (jobId) {
-      try {
-        await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/update/${jobId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ is_published: newStatus })
-        });
-      } catch (error) {
-        console.error('Error updating publish status:', error);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/update-status/${jobId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          status,
+          unpublish_reason: status === 'unpublished' ? unpublishReason : null
+        })
+      });
+      
+      if (!response.ok) {
+        setIsPublished(status !== 'Published');
+        alert('Failed to update job status');
       }
+    } catch (error) {
+      console.error('Error updating publish status:', error);
+      setIsPublished(status !== 'Published');
+      alert('Error updating job status');
     }
   };
 
   const confirmUnpublish = async () => {
-    setIsPublished(false);
-    setShowUnpublishModal(false);
-    
-    if (jobId) {
-      try {
-        await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/update/${jobId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ is_published: false })
-        });
-      } catch (error) {
-        console.error('Error updating publish status:', error);
-      }
+    if (!unpublishReason.trim()) {
+      alert('Please enter a reason for unpublishing');
+      return;
     }
+    
+    setShowUnpublishModal(false);
+    await updateJobStatus('unpublished');
+    setUnpublishReason('');
   };
 
   const handleSaveUpdates = async () => {
@@ -242,29 +276,31 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
                 <p className="text-gray-900">{formatDate(formData.registration_opening_date)}</p>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold text-gray-700">Job Publish Status</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">{isPublished ? 'Published' : 'Unpublished'}</span>
-                    <button
-                      onClick={handlePublishToggle}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        isPublished ? 'bg-indigo-600' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          isPublished ? 'translate-x-6' : 'translate-x-1'
+              {userRole !== 'Sales' && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-semibold text-gray-700">Job Publish Status</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">{isPublished ? 'Published' : 'Republish'}</span>
+                      <button
+                        onClick={handlePublishToggle}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          isPublished ? 'bg-indigo-600' : 'bg-gray-300'
                         }`}
-                      />
-                    </button>
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            isPublished ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
                   </div>
+                  <p className="text-sm text-gray-600">
+                    Control whether this job is published for private sharing. Once published, you can share the link directly with the candidates.
+                  </p>
                 </div>
-                <p className="text-sm text-gray-600">
-                  Control whether this job is published for private sharing. Once published, you can share the link directly with the candidates.
-                </p>
-              </div>
+              )}
             </div>
 
             {/* Basic Job Info */}
@@ -508,7 +544,7 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
               <h3 className="text-sm font-semibold text-gray-900 mb-4">
                 Skills <span className="text-red-500">*</span>
               </h3>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mb-4">
                 {selectedSkills.map((skill, index) => (
                   <span
                     key={index}
@@ -521,6 +557,23 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
                   </span>
                 ))}
               </div>
+              <input
+                type="text"
+                placeholder="Add a skill and press Enter"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    const input = e.target as HTMLInputElement;
+                    const skill = input.value.trim();
+                    if (skill && !selectedSkills.includes(skill)) {
+                      const updated = [...selectedSkills, skill];
+                      setSelectedSkills(updated);
+                      setFormData((prev: any) => ({ ...prev, skills: updated.join(', ') }));
+                      input.value = '';
+                    }
+                  }
+                }}
+              />
             </div>
 
             {/* Job Description */}
@@ -594,24 +647,42 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
       </div>
     </div>
 
+
     {/* Unpublish Confirmation Modal */}
     {showUnpublishModal && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Unpublish Job Opening</h3>
-          <p className="text-gray-600 mb-6">Do you want to Unpublish this Job Opening?</p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Unpublish Job</h3>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Reason for Unpublishing *</label>
+            <textarea
+              value={unpublishReason}
+              onChange={(e) => setUnpublishReason(e.target.value)}
+              placeholder="Enter reason for unpublishing this job..."
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+            />
+          </div>
+          
+          <p className="text-gray-600 mb-6">Are you sure you want to unpublish this job? It will no longer be visible to candidates.</p>
+          
           <div className="flex gap-3 justify-end">
             <button
-              onClick={() => setShowUnpublishModal(false)}
+              onClick={() => {
+                setShowUnpublishModal(false);
+                setUnpublishReason('');
+              }}
               className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
             >
               Cancel
             </button>
             <button
               onClick={confirmUnpublish}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+              disabled={!unpublishReason.trim()}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Confirm
+              Unpublish
             </button>
           </div>
         </div>

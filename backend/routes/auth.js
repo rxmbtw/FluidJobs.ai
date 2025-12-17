@@ -115,14 +115,31 @@ router.post('/signup', async (req, res) => {
   }
 });
 
+// Admin check endpoint
+router.post('/admin/check', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    const result = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+    
+    res.json({ exists: result.rows.length > 0 });
+  } catch (error) {
+    console.error('Admin check error:', error);
+    res.status(500).json({ error: 'Check failed' });
+  }
+});
+
 // Admin login endpoint
 router.post('/admin/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    // Check admin table
+    // Check admin table (case-insensitive email)
     const result = await pool.query(
-      'SELECT id, email, name, role, password_hash FROM admin WHERE email = $1',
+      'SELECT id, email, name, role, password_hash FROM users WHERE LOWER(email) = LOWER($1)',
       [email]
     );
     
@@ -173,9 +190,9 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password, role } = req.body;
     
-    // Check candidates table for both email and phone
+    // Check candidates table for both email and phone (case-insensitive email)
     const result = await pool.query(
-      'SELECT candidate_id, full_name, email, password_hash, role FROM candidates WHERE email = $1 OR phone_number = $1',
+      'SELECT candidate_id, full_name, email, password_hash, role FROM candidates WHERE LOWER(email) = LOWER($1) OR phone_number = $1',
       [email]
     );
     
@@ -368,7 +385,7 @@ router.get('/linkedin/callback', async (req, res) => {
     
     // FIRST: Check if user exists in admin table
     const existingAdmin = await pool.query(
-      'SELECT id, email, name, role FROM admin WHERE email = $1',
+      'SELECT id, email, name, role FROM users WHERE email = $1',
       [email]
     );
     
@@ -615,6 +632,113 @@ router.post('/reset-password', async (req, res) => {
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// Change password endpoint
+router.post('/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.adminId || req.user.id;
+    const userEmail = req.user.email;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new password are required' });
+    }
+    
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ error: 'New password must be different from current password' });
+    }
+    
+    // Check if user is admin or candidate
+    let user;
+    if (req.user.role === 'Admin' || req.user.role === 'HR' || req.user.role === 'Sales') {
+      const result = await pool.query(
+        'SELECT id, password_hash FROM users WHERE id = $1',
+        [userId]
+      );
+      user = result.rows[0];
+    } else {
+      const result = await pool.query(
+        'SELECT candidate_id, password_hash FROM candidates WHERE candidate_id = $1',
+        [req.user.candidateId]
+      );
+      user = result.rows[0];
+    }
+    
+    if (!user || !user.password_hash) {
+      return res.status(404).json({ error: 'User not found or password not set' });
+    }
+    
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+    
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update password
+    if (req.user.role === 'Admin' || req.user.role === 'HR' || req.user.role === 'Sales') {
+      await pool.query(
+        'UPDATE users SET password_hash = $1 WHERE id = $2',
+        [hashedPassword, userId]
+      );
+    } else {
+      await pool.query(
+        'UPDATE candidates SET password_hash = $1 WHERE candidate_id = $2',
+        [hashedPassword, req.user.candidateId]
+      );
+    }
+    
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// Get logged-in user's assigned accounts
+router.get('/my-accounts', authenticateToken, async (req, res) => {
+  try {
+    console.log('🔍 My-accounts request - Full token payload:', JSON.stringify(req.user));
+    console.log('🔍 req.user.adminId:', req.user.adminId);
+    console.log('🔍 req.user.id:', req.user.id);
+    
+    const userId = req.user.adminId || req.user.id;
+    console.log('🔍 Extracted userId:', userId);
+    
+    if (!userId) {
+      console.error('❌ No userId found in token');
+      return res.status(400).json({ error: 'User ID not found in token' });
+    }
+    
+    const result = await pool.query(`
+      SELECT 
+        a.account_id,
+        a.account_name,
+        a.created_at,
+        a.status,
+        a.locations,
+        a.last_activity_at,
+        COUNT(DISTINCT CASE WHEN j.status = 'Published' THEN j.id END) as active_jobs,
+        COUNT(DISTINCT CASE WHEN j.status = 'Closed' THEN j.id END) as completed_jobs,
+        COUNT(DISTINCT au2.user_id) as assigned_users
+      FROM account_users au
+      JOIN accounts a ON au.account_id = a.account_id
+      LEFT JOIN jobs_enhanced j ON j.account_id = a.account_id
+      LEFT JOIN account_users au2 ON au2.account_id = a.account_id
+      WHERE au.user_id = $1
+      GROUP BY a.account_id, a.account_name, a.created_at, a.status, a.locations, a.last_activity_at
+      ORDER BY a.account_name
+    `, [userId]);
+    
+    console.log('✅ Found accounts:', result.rows.length);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching user accounts:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

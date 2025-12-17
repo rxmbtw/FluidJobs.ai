@@ -1,0 +1,48 @@
+/* Rich Text Editor Custom Styles */
+[contenteditable] {
+  font-size: 14px;
+}
+
+[contenteditable]:empty:before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+[contenteditable]:focus {
+  outline: none;
+}
+
+/* Formatting styles */
+[contenteditable] h1 {
+  font-size: 2em;
+  font-weight: bold;
+  margin: 0.67em 0;
+}
+
+[contenteditable] h2 {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin: 0.75em 0;
+}
+
+[contenteditable] h3 {
+  font-size: 1.17em;
+  font-weight: bold;
+  margin: 0.83em 0;
+}
+
+[contenteditable] ul,
+[contenteditable] ol {
+  margin: 1em 0;
+  padding-left: 2em;
+}
+
+[contenteditable] li {
+  margin: 0.5em 0;
+}
+
+[contenteditable] a {
+  color: #4f46e5;
+  text-decoration: underline;
+}

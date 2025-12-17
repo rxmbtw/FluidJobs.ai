@@ -41,29 +41,38 @@ router.get('/list', async (req, res) => {
       SELECT 
         j.*,
         a.account_name,
-        ad.name as created_by_admin_name
+        ad.name as created_by_user_name
       FROM jobs_enhanced j
       LEFT JOIN accounts a ON j.account_id = a.account_id
-      LEFT JOIN admin ad ON j.created_by_admin_id = ad.id
-      WHERE j.status = 'Published' OR j.status = 'active'
+      LEFT JOIN users ad ON j.created_by_user_id = ad.id
+      WHERE j.status NOT IN ('rejected', 'deleted')
       ORDER BY j.created_at DESC;
     `);
     
-    // Map to expected format (frontend expects GCP schema)
+    // Map to expected format
     const jobs = result.rows.map(job => ({
       job_id: job.id,
       job_title: job.title,
       company: job.company || 'FluidJobs.ai',
       job_type: job.job_type,
-      job_domain: 'Technology',
-      locations: job.location,
-      min_salary: job.salary_range ? parseInt(job.salary_range.split(' - ')[0]) : null,
-      max_salary: job.salary_range ? parseInt(job.salary_range.split(' - ')[1]) : null,
-      skills: job.requirements || [],
+      job_domain: job.job_domain,
+      locations: job.locations,
+      mode_of_job: job.mode_of_job,
+      min_experience: job.min_experience,
+      max_experience: job.max_experience,
+      min_salary: job.min_salary,
+      max_salary: job.max_salary,
+      show_salary_to_candidate: job.show_salary_to_candidate,
+      skills: job.skills || [],
       job_description: job.description,
+      selected_image: job.selected_image,
+      jd_attachment_name: job.jd_attachment_name,
+      registration_opening_date: job.registration_opening_date,
+      registration_closing_date: job.registration_closing_date,
       status: job.status,
-      created_at: job.created_at || job.posted_date,
-      jd_attachment_name: job.jd_pdf_url
+      created_at: job.created_at,
+      account_name: job.account_name,
+      created_by_user_name: job.created_by_user_name
     }));
     
     res.json({ success: true, jobs });
@@ -128,7 +137,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     
     const jobResult = await pool.query(`
-      SELECT * FROM jobs_enhanced WHERE job_id = $1;
+      SELECT * FROM jobs_enhanced WHERE id = $1;
     `, [id]);
     
     if (jobResult.rows.length === 0) {
@@ -146,16 +155,16 @@ router.get('/:id', async (req, res) => {
     `, [id]);
     
     res.json({
-      id: job.job_id.toString(),
-      title: job.job_title,
-      company: 'FluidJobs.ai',
+      id: job.id.toString(),
+      title: job.title,
+      company: job.company || 'FluidJobs.ai',
       type: job.job_type,
       industry: job.job_domain,
       salary: job.min_salary && job.max_salary ? 
         `₹${(job.min_salary/100000).toFixed(1)}L - ₹${(job.max_salary/100000).toFixed(1)}L` : 
         'Competitive',
       location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations,
-      description: job.job_description,
+      description: job.description,
       skills: Array.isArray(job.skills) ? job.skills : [],
       experience: `${job.min_experience}-${job.max_experience} years`,
       employmentType: job.job_type,
@@ -163,8 +172,6 @@ router.get('/:id', async (req, res) => {
         `Rs.${(job.min_salary/100000).toFixed(1)}L-Rs.${(job.max_salary/100000).toFixed(1)}L` : 
         'Competitive',
       postedDate: new Date(job.created_at).toLocaleDateString(),
-      about_organisation: job.about_organisation,
-      website: job.website,
       registration_opening_date: job.registration_opening_date,
       registration_closing_date: job.registration_closing_date,
       attachments: attachmentsResult.rows
@@ -336,6 +343,27 @@ Provide only the formatted job description without any additional commentary.`;
   }
 });
 
+// Update job status (publish/unpublish)
+router.put('/update-status/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, unpublish_reason } = req.body;
+    
+    await pool.query(
+      'UPDATE jobs_enhanced SET status = $1, unpublish_reason = $2 WHERE id = $3', 
+      [status, unpublish_reason, id]
+    );
+    
+    res.json({ 
+      success: true,
+      message: 'Job status updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating job status:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Update job
 router.put('/update/:id', async (req, res) => {
   try {
@@ -358,30 +386,38 @@ router.put('/update/:id', async (req, res) => {
     
     const result = await pool.query(`
       UPDATE jobs_enhanced SET
-        job_title = $1,
+        title = $1,
         job_type = $2,
         job_domain = $3,
         locations = $4,
         min_salary = $5,
         max_salary = $6,
         skills = $7,
-        job_description = $8,
-        about_organisation = $9,
-        website = $10,
+        description = $8,
+        mode_of_job = $9,
+        min_experience = $10,
+        max_experience = $11,
+        show_salary_to_candidate = $12,
+        registration_opening_date = $13,
+        registration_closing_date = $14,
         updated_at = CURRENT_TIMESTAMP
-      WHERE job_id = $11
+      WHERE id = $15
       RETURNING *;
     `, [
       jobData.job_title,
       jobData.job_type,
       jobData.job_domain,
       locationsArray,
-      jobData.min_salary || 600000,
-      jobData.max_salary || 1500000,
+      jobData.min_salary,
+      jobData.max_salary,
       skillsArray,
       jobData.job_description,
-      jobData.about_organisation,
-      jobData.website,
+      jobData.mode_of_job,
+      jobData.min_experience,
+      jobData.max_experience,
+      jobData.show_salary_to_candidate,
+      jobData.registration_opening_date,
+      jobData.registration_closing_date,
       id
     ]);
     
@@ -415,29 +451,45 @@ router.post('/create', async (req, res) => {
 
     const result = await pool.query(`
       INSERT INTO jobs_enhanced (
-        job_title, job_domain, job_type, locations, mode_of_job,
-        min_experience, max_experience, skills, min_salary, max_salary,
-        show_salary_to_candidate, job_description, selected_image,
-        jd_attachment_name, eligible_courses, eligibility_criteria,
-        selection_process, other_details, registration_schedule,
-        registration_opening_date, registration_closing_date,
-        about_organisation, website, industry, organisation_size,
-        contact_person, job_close_days, closing_date, status,
-        account_id, created_by_admin_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, 'Published', $29, $30)
-      RETURNING job_id;
+        title, company, location, description, requirements,
+        salary_range, job_type, experience_level, no_of_openings, status,
+        posted_date, created_at, account_id, created_by_user_id,
+        job_domain, mode_of_job, min_experience, max_experience,
+        min_salary, max_salary, show_salary_to_candidate, skills, locations,
+        selected_image, jd_attachment_name, registration_opening_date, registration_closing_date
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', NOW(), NOW(), $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+      RETURNING id;
     `, [
-      jobData.job_title, jobData.job_domain, jobData.job_type, locationsArray,
-      jobData.mode_of_job, jobData.min_experience, jobData.max_experience,
-      skillsArray, jobData.min_salary, jobData.max_salary,
-      jobData.show_salary_to_candidate, jobData.job_description,
-      jobData.selected_image, jobData.jd_attachment_name, jobData.eligible_courses,
-      jobData.eligibility_criteria, jobData.selection_process, jobData.other_details,
-      jobData.registration_schedule, jobData.registration_opening_date, jobData.registration_closing_date,
-      jobData.about_organisation, jobData.website, jobData.industry, jobData.organisation_size, 
-      jobData.contact_person, jobData.job_close_days, closingDate,
-      jobData.account_id, jobData.created_by_admin_id
+      jobData.job_title,
+      'FluidJobs.ai',
+      locationsArray.join(', '),
+      jobData.job_description,
+      skillsArray,
+      `${jobData.min_salary} - ${jobData.max_salary}`,
+      jobData.job_type,
+      `${jobData.min_experience}-${jobData.max_experience} years`,
+      jobData.no_of_openings || 1,
+      jobData.account_id,
+      jobData.created_by_user_id,
+      jobData.job_domain,
+      jobData.mode_of_job,
+      jobData.min_experience,
+      jobData.max_experience,
+      jobData.min_salary,
+      jobData.max_salary,
+      jobData.show_salary_to_candidate,
+      skillsArray,
+      locationsArray,
+      jobData.selected_image,
+      jobData.jd_attachment_name,
+      jobData.registration_opening_date,
+      jobData.registration_closing_date
     ]);
+    
+    // Update account last activity
+    if (jobData.account_id) {
+      await pool.query('UPDATE accounts SET last_activity_at = NOW() WHERE account_id = $1', [jobData.account_id]);
+    }
     
     // Delete draft if exists
     if (jobData.userId) {
@@ -446,7 +498,7 @@ router.post('/create', async (req, res) => {
     
     res.json({ 
       success: true, 
-      jobId: result.rows[0].job_id,
+      jobId: result.rows[0].id,
       message: 'Job created successfully'
     });
   } catch (error) {

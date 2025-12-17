@@ -2,7 +2,7 @@ interface User {
   id: string;
   email: string;
   name: string;
-  role: 'Admin' | 'HR' | 'Candidate' | 'Client';
+  role: 'Admin' | 'HR' | 'Sales' | 'Candidate' | 'Client';
 }
 
 interface AuthResponse {

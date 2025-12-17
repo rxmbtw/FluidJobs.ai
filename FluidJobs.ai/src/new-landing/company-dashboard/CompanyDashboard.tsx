@@ -19,6 +19,7 @@ const DashboardContent: React.FC = () => {
   const [showJobSpecificDashboard, setShowJobSpecificDashboard] = useState(false);
   const [selectedJobTitle, setSelectedJobTitle] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState('');
 
   // Check authentication on mount
   React.useEffect(() => {
@@ -32,11 +33,12 @@ const DashboardContent: React.FC = () => {
 
     try {
       const user = JSON.parse(userStr);
-      if (user.role !== 'Admin') {
-        alert('Unauthorized: Admin access only');
+      if (!['Admin', 'HR', 'Sales'].includes(user.role)) {
+        alert('Unauthorized: Company access only');
         window.location.href = '/login';
         return;
       }
+      setUserRole(user.role);
       setIsAuthenticated(true);
     } catch (error) {
       window.location.href = '/login';
@@ -92,11 +94,11 @@ const DashboardContent: React.FC = () => {
             <ThemedJobPublishing onBack={handleBackToDashboard} />
           )}
           
-          {currentView === 'manage_candidates' && (
+          {currentView === 'manage_candidates' && userRole === 'Admin' && (
             <ThemedManageCandidates />
           )}
           
-          {currentView === 'bulk_import' && (
+          {currentView === 'bulk_import' && userRole === 'Admin' && (
             <ThemedBulkImport />
           )}
           

@@ -1,28 +1,79 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 const MyAccounts: React.FC = () => {
-  const accounts = [
-    {
-      name: 'BGIC - Bajaj General Insurance',
-      created: 'October 2025',
-      locations: 'Pune',
-      openings: 5,
-      completed: 2,
-      status: 'Active',
-      users: 3,
-      lastActivity: '20/11/2025 : 01:45PM'
-    },
-    {
-      name: 'BGIC - Bajaj General Insurance',
-      created: 'October 2025',
-      locations: 'Pune | Mumbai | Delhi',
-      openings: 5,
-      completed: 2,
-      status: 'Inactive',
-      users: 3,
-      lastActivity: '20/11/2025 : 01:45PM'
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  const fetchAccounts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      console.log('🔑 Token from localStorage:', token ? 'Present' : 'Missing');
+      
+      if (!token) {
+        console.error('❌ No token found in localStorage');
+        return;
+      }
+      
+      const url = `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/auth/my-accounts`;
+      console.log('📡 Fetching accounts from:', url);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('📥 Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Response not OK:', response.status, errorText);
+        throw new Error(`Failed to fetch accounts: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Received data:', data);
+      
+      // Transform data to match component format
+      const transformedAccounts = data.map((account: any) => ({
+        name: account.account_name,
+        created: new Date(account.created_at).toLocaleDateString(),
+        locations: account.locations || 'N/A',
+        openings: account.active_jobs || 0,
+        completed: account.completed_jobs || 0,
+        status: account.status || 'Active',
+        users: account.assigned_users || 0,
+        lastActivity: account.last_activity_at ? new Date(account.last_activity_at).toLocaleDateString() : 'N/A'
+      }));
+      
+      console.log('✅ Transformed accounts:', transformedAccounts);
+      setAccounts(transformedAccounts);
+    } catch (error) {
+      console.error('❌ Error fetching accounts:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  if (loading) {
+    return (
+      <div style={{ padding: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <div style={{ fontSize: '18px', color: '#666' }}>Loading accounts...</div>
+      </div>
+    );
+  }
+
+  if (accounts.length === 0) {
+    return (
+      <div style={{ padding: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <div style={{ fontSize: '18px', color: '#666' }}>No accounts found. Create a job to see accounts here.</div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '40px', fontFamily: 'Poppins', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>

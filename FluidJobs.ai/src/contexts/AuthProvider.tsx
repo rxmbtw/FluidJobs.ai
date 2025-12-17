@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { authService, User } from '../services/authService';
 import { profileService } from '../services/profileService';
 
-export type UserRole = 'Admin' | 'HR' | 'Candidate' | 'Client';
+export type UserRole = 'Admin' | 'HR' | 'Sales' | 'Candidate' | 'Client';
 
 interface AuthContextType {
   user: User | null;
@@ -53,6 +53,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const loadUserProfile = async () => {
     try {
+      const currentUser = authService.getCurrentUser();
+      // Skip profile loading for admin users
+      if (currentUser && (currentUser.role === 'Admin' || currentUser.role === 'HR' || currentUser.role === 'Sales')) {
+        return;
+      }
+      
       const profile = await profileService.getProfile();
       if (profile) {
         const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';

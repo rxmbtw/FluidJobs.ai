@@ -13,13 +13,14 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { indianCities } from '../data/indianCities';
+import './JobCreationForm.css';
 
 interface JobCreationFormProps {
   onBack: () => void;
 }
 
 const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedAccount, setSelectedAccount] = useState('');
@@ -33,6 +34,7 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
     min_experience: '',
     max_experience: '',
     job_type: '',
+    no_of_openings: '1',
     min_salary: '',
     max_salary: '',
     show_salary_to_candidate: true,
@@ -47,19 +49,14 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [showSkillsSuggestions, setShowSkillsSuggestions] = useState(false);
   const [locationInput, setLocationInput] = useState('');
-  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [showDomainSuggestions, setShowDomainSuggestions] = useState(false);
   const [showMinExpSuggestions, setShowMinExpSuggestions] = useState(false);
   const [showMaxExpSuggestions, setShowMaxExpSuggestions] = useState(false);
   const [showJobTypeSuggestions, setShowJobTypeSuggestions] = useState(false);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [showModeSuggestions, setShowModeSuggestions] = useState(false);
-  const [showFormatDropdown, setShowFormatDropdown] = useState(false);
-  const [showFontDropdown, setShowFontDropdown] = useState(false);
-  const [showListDropdown, setShowListDropdown] = useState(false);
-  const [fontSearch, setFontSearch] = useState('');
-  const [selectedFormat, setSelectedFormat] = useState('Paragraph');
-  const [selectedFont, setSelectedFont] = useState('Arial');
+
   const [selectedImage, setSelectedImage] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [uploadedPdfUrl, setUploadedPdfUrl] = useState('');
@@ -67,16 +64,34 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [uploadedPdfFile, setUploadedPdfFile] = useState<File | null>(null);
   const [isGeneratingFromPdf, setIsGeneratingFromPdf] = useState(false);
+  const [isUserEditing, setIsUserEditing] = useState(false);
 
   // Fetch accounts and current admin on mount
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/jobs-enhanced/accounts');
-        const data = await response.json();
-        if (data.success) {
-          setAccounts(data.accounts);
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        
+        const response = await fetch('http://localhost:8000/api/auth/my-accounts', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch accounts');
         }
+        
+        const data = await response.json();
+        
+        // Transform data to match expected format
+        const transformedAccounts = data.map((account: any) => ({
+          account_id: account.account_id,
+          account_name: account.account_name
+        }));
+        
+        setAccounts(transformedAccounts);
       } catch (error) {
         console.error('Error fetching accounts:', error);
       }
@@ -108,19 +123,9 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
     'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop'
   ];
 
-  const fonts = [
-    'Arial', 'Arial Black', 'Comic Sans MS', 'Courier New', 'Georgia', 'Helvetica', 'Impact',
-    'Lucida Console', 'Lucida Sans Unicode', 'Palatino Linotype', 'Tahoma', 'Times New Roman',
-    'Trebuchet MS', 'Verdana', 'Calibri', 'Cambria', 'Candara', 'Consolas', 'Constantia', 'Corbel',
-    'Garamond', 'Geneva', 'Monaco', 'Optima', 'Segoe UI', 'System', 'Roboto', 'Open Sans',
-    'Lato', 'Montserrat', 'Oswald', 'Raleway', 'PT Sans', 'Source Sans Pro', 'Merriweather',
-    'Noto Sans', 'Poppins', 'Ubuntu', 'Playfair Display', 'Nunito'
-  ];
-
-  const filteredFonts = fonts.filter(font => font.toLowerCase().includes(fontSearch.toLowerCase()));
-
   const experienceOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
   const jobTypeOptions = ['Full-time', 'Part-time', 'Contract', 'Internship'];
+  const openingsOptions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
   const modeOptions = ['Work From Home', 'Hybrid', 'On-site'];
   const domainSuggestions = [
     'Software Development',
@@ -214,9 +219,6 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
         setShowLocationSuggestions(false);
         setShowModeSuggestions(false);
         setShowSkillsSuggestions(false);
-        setShowFormatDropdown(false);
-        setShowFontDropdown(false);
-        setShowListDropdown(false);
       }
     };
 
@@ -235,17 +237,20 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
       if (!formData.min_experience.trim()) newErrors.min_experience = 'Min experience is required';
       if (!formData.max_experience.trim()) newErrors.max_experience = 'Max experience is required';
       if (!formData.job_type.trim()) newErrors.job_type = 'Job type is required';
+      if (!formData.no_of_openings.trim()) newErrors.no_of_openings = 'Number of openings is required';
     } else if (step === 2) {
       if (!formData.min_salary.trim()) newErrors.min_salary = 'Min salary is required';
       if (!formData.max_salary.trim()) newErrors.max_salary = 'Max salary is required';
       if (!formData.registration_opening_date.trim()) newErrors.registration_opening_date = 'Registration opening date is required';
-      if (!formData.registration_closing_date.trim()) newErrors.registration_closing_date = 'Registration closing date is required';
     } else if (step === 3) {
       if (!formData.locations.trim()) newErrors.locations = 'At least one location is required';
       if (!formData.mode_of_job.trim()) newErrors.mode_of_job = 'Mode of job is required';
     } else if (step === 4) {
       if (!formData.skills.trim()) newErrors.skills = 'At least one skill is required';
-      if (!formData.job_description.trim()) newErrors.job_description = 'Job description is required';
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = formData.job_description;
+      const textContent = tempDiv.textContent || tempDiv.innerText || '';
+      if (!textContent.trim()) newErrors.job_description = 'Job description is required';
       if (!selectedImage) newErrors.selectedImage = 'Please select a job posting image';
     }
     
@@ -261,18 +266,21 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
              formData.job_domain.trim().length > 0 && 
              formData.min_experience.trim().length > 0 && 
              formData.max_experience.trim().length > 0 && 
-             formData.job_type.trim().length > 0;
+             formData.job_type.trim().length > 0 &&
+             formData.no_of_openings.trim().length > 0;
     } else if (step === 2) {
       return formData.min_salary.trim().length > 0 && 
              formData.max_salary.trim().length > 0 &&
-             formData.registration_opening_date.trim().length > 0 &&
-             formData.registration_closing_date.trim().length > 0;
+             formData.registration_opening_date.trim().length > 0;
     } else if (step === 3) {
       return formData.locations.trim().length > 0 && 
              formData.mode_of_job.trim().length > 0;
     } else if (step === 4) {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = formData.job_description;
+      const textContent = tempDiv.textContent || tempDiv.innerText || '';
       return formData.skills.trim().length > 0 && 
-             formData.job_description.trim().length > 0 &&
+             textContent.trim().length > 0 &&
              selectedImage.length > 0;
     }
     return false;
@@ -288,10 +296,49 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
     setCurrentStep(prev => Math.max(prev - 1, 0));
   };
 
+  const numberToWords = (num: number): string => {
+    if (!num || num === 0) return 'Zero Rupees';
+    
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    
+    const convert = (n: number): string => {
+      if (n === 0) return '';
+      if (n < 10) return ones[n];
+      if (n < 20) return teens[n - 10];
+      if (n < 100) return (tens[Math.floor(n / 10)] + ' ' + ones[n % 10]).trim();
+      if (n < 1000) {
+        const remainder = convert(n % 100);
+        return (ones[Math.floor(n / 100)] + ' Hundred' + (remainder ? ' ' + remainder : '')).trim();
+      }
+      if (n < 100000) {
+        const remainder = convert(n % 1000);
+        return (convert(Math.floor(n / 1000)) + ' Thousand' + (remainder ? ' ' + remainder : '')).trim();
+      }
+      if (n < 10000000) {
+        const remainder = convert(n % 100000);
+        return (convert(Math.floor(n / 100000)) + ' Lakh' + (remainder ? ' ' + remainder : '')).trim();
+      }
+      const remainder = convert(n % 10000000);
+      return (convert(Math.floor(n / 10000000)) + ' Crore' + (remainder ? ' ' + remainder : '')).trim();
+    };
+    
+    return convert(num) + ' Rupees';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateStep(4)) {
       try {
+        // Calculate closing date if not provided (6 months from opening date)
+        let closingDate = formData.registration_closing_date;
+        if (!closingDate && formData.registration_opening_date) {
+          const openDate = new Date(formData.registration_opening_date);
+          openDate.setMonth(openDate.getMonth() + 6);
+          closingDate = openDate.toISOString().split('T')[0];
+        }
+        
         const jobPayload = {
           job_title: formData.job_title,
           job_domain: formData.job_domain,
@@ -308,10 +355,11 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
           selected_image: selectedImage,
           jd_attachment_name: uploadedPdfUrl,
           registration_opening_date: formData.registration_opening_date,
-          registration_closing_date: formData.registration_closing_date,
+          registration_closing_date: closingDate,
           job_close_days: 30,
+          no_of_openings: parseInt(formData.no_of_openings),
           account_id: parseInt(selectedAccount),
-          created_by_admin_id: currentAdmin?.id
+          created_by_user_id: currentAdmin?.id
         };
 
         const response = await fetch('http://localhost:8000/api/jobs-enhanced/create', {
@@ -359,10 +407,9 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
         const generateData = await generateResponse.json();
         
         if (generateData.success && generateData.jobDescription) {
+          setIsUserEditing(false);
           setFormData(prev => ({ ...prev, job_description: generateData.jobDescription }));
-          if (textareaRef.current) {
-            textareaRef.current.value = generateData.jobDescription;
-          }
+          setErrors(prev => ({ ...prev, job_description: '' }));
           alert('✅ Job description generated from PDF!');
         } else {
           alert('Failed to generate description from PDF');
@@ -394,138 +441,34 @@ What We Offer:
 • Growth opportunities
 • Collaborative work environment`;
 
+      setIsUserEditing(false);
       setFormData(prev => ({ ...prev, job_description: description }));
+      setErrors(prev => ({ ...prev, job_description: '' }));
     }
   };
 
-  const applyFormat = (format: string) => {
-    if (!textareaRef.current) return;
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const value = textarea.value;
-    const selectedText = value.substring(start, end) || 'Sample text';
-    
-    let insert = '';
-    if (format === 'Heading 1') insert = `# ${selectedText}`;
-    else if (format === 'Heading 2') insert = `## ${selectedText}`;
-    else if (format === 'Heading 3') insert = `### ${selectedText}`;
-    else insert = selectedText;
-    
-    const newValue = value.substring(0, start) + insert + value.substring(end);
-    textarea.value = newValue;
-    setFormData(prev => ({ ...prev, job_description: newValue }));
-    textarea.setSelectionRange(start + insert.length, start + insert.length);
-    textarea.focus();
-    setSelectedFormat(format);
-    setShowFormatDropdown(false);
+  const execEditorCommand = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
   };
 
-  const applyList = (listType: string) => {
-    if (!textareaRef.current) return;
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const value = textarea.value;
-    const selectedText = value.substring(start, end);
-    
-    let insert = '';
-    let cursorPos = start;
-    
-    if (listType === 'bullet') {
-      if (selectedText) {
-        const lines = selectedText.split('\n');
-        insert = lines.map(line => line.trim() ? `• ${line.trim()}` : '').filter(l => l).join('\n');
-        cursorPos = start + insert.length;
-      } else {
-        insert = '• ';
-        cursorPos = start + 2;
-      }
-    } else if (listType === 'numbered') {
-      if (selectedText) {
-        const lines = selectedText.split('\n');
-        let num = 1;
-        insert = lines.map(line => line.trim() ? `${num++}. ${line.trim()}` : '').filter(l => l).join('\n');
-        cursorPos = start + insert.length;
-      } else {
-        insert = '1. ';
-        cursorPos = start + 3;
-      }
+  const handleEditorChange = () => {
+    if (editorRef.current) {
+      setIsUserEditing(true);
+      setFormData(prev => ({ ...prev, job_description: editorRef.current!.innerHTML }));
     }
-    
-    const newValue = value.substring(0, start) + insert + value.substring(end);
-    textarea.value = newValue;
-    setFormData(prev => ({ ...prev, job_description: newValue }));
-    textarea.setSelectionRange(cursorPos, cursorPos);
-    textarea.focus();
-    setShowListDropdown(false);
   };
 
-  const execCommand = (command: string) => {
-    if (!textareaRef.current) return;
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const value = textarea.value;
-    const selectedText = value.substring(start, end);
-    
-    let insert = '';
-    let cursorPos = start;
-    
-    if (command === 'bold') {
-      insert = `**${selectedText || 'bold text'}**`;
-      cursorPos = selectedText ? start + insert.length : start + 2;
-    } else if (command === 'italic') {
-      insert = `*${selectedText || 'italic text'}*`;
-      cursorPos = selectedText ? start + insert.length : start + 1;
-    } else if (command === 'underline') {
-      insert = `<u>${selectedText || 'underlined text'}</u>`;
-      cursorPos = selectedText ? start + insert.length : start + 3;
-    } else if (command === 'strikethrough') {
-      insert = `~~${selectedText || 'strikethrough text'}~~`;
-      cursorPos = selectedText ? start + insert.length : start + 2;
+  useEffect(() => {
+    if (editorRef.current && formData.job_description && !isUserEditing) {
+      editorRef.current.innerHTML = formData.job_description;
     }
-    
-    const newValue = value.substring(0, start) + insert + value.substring(end);
-    textarea.value = newValue;
-    setFormData(prev => ({ ...prev, job_description: newValue }));
-    textarea.setSelectionRange(cursorPos, cursorPos);
-    textarea.focus();
-  };
-
-  const handleDescriptionKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key !== 'Enter' || !textareaRef.current) return;
-    
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const value = textarea.value;
-    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-    const currentLine = value.substring(lineStart, start);
-    
-    const bulletMatch = currentLine.match(/^•\s/);
-    const numberedMatch = currentLine.match(/^(\d+)\.\s/);
-    
-    if (bulletMatch) {
-      e.preventDefault();
-      const newValue = value.substring(0, start) + '\n• ' + value.substring(start);
-      textarea.value = newValue;
-      setFormData(prev => ({ ...prev, job_description: newValue }));
-      textarea.setSelectionRange(start + 3, start + 3);
-    } else if (numberedMatch) {
-      e.preventDefault();
-      const nextNum = parseInt(numberedMatch[1]) + 1;
-      const newValue = value.substring(0, start) + `\n${nextNum}. ` + value.substring(start);
-      textarea.value = newValue;
-      setFormData(prev => ({ ...prev, job_description: newValue }));
-      const newPos = start + `\n${nextNum}. `.length;
-      textarea.setSelectionRange(newPos, newPos);
-    }
-  };
+  }, [formData.job_description, isUserEditing]);
 
   return (
-    <div className="h-screen bg-white">
+    <div className="min-h-screen bg-white">
       {/* Main Content */}
-      <div className="w-full p-8 overflow-visible">
+      <div className="w-full p-8">
         <div className="max-w-4xl mx-auto">
           <div ref={formRef} className="bg-white rounded-lg p-8 shadow-md">
             {/* Header */}
@@ -764,6 +707,26 @@ What We Offer:
                       )}
                     </div>
                   </div>
+
+                  {/* No of Openings */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      No of Openings <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="no_of_openings"
+                      value={formData.no_of_openings}
+                      onChange={handleInputChange}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        errors.no_of_openings ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    >
+                      {openingsOptions.map(num => (
+                        <option key={num} value={num}>{num}</option>
+                      ))}
+                    </select>
+                    {errors.no_of_openings && <p className="text-red-500 text-sm mt-1">{errors.no_of_openings}</p>}
+                  </div>
                 </>
               )}
 
@@ -776,26 +739,36 @@ What We Offer:
                     </label>
                     <div className="space-y-3">
                       <div className="flex gap-2">
-                        <input
-                          type="number"
-                          name="min_salary"
-                          value={formData.min_salary}
-                          onChange={handleInputChange}
-                          placeholder="Min Salary"
-                          className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                            errors.min_salary ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                        />
-                        <input
-                          type="number"
-                          name="max_salary"
-                          value={formData.max_salary}
-                          onChange={handleInputChange}
-                          placeholder="Max Salary"
-                          className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                            errors.max_salary ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                        />
+                        <div className="flex-1">
+                          <input
+                            type="number"
+                            name="min_salary"
+                            value={formData.min_salary}
+                            onChange={handleInputChange}
+                            placeholder="Min Salary"
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                              errors.min_salary ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                          />
+                          {formData.min_salary && (
+                            <p className="text-xs text-gray-600 mt-1 italic">{numberToWords(parseInt(formData.min_salary))}</p>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <input
+                            type="number"
+                            name="max_salary"
+                            value={formData.max_salary}
+                            onChange={handleInputChange}
+                            placeholder="Max Salary"
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                              errors.max_salary ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                          />
+                          {formData.max_salary && (
+                            <p className="text-xs text-gray-600 mt-1 italic">{numberToWords(parseInt(formData.max_salary))}</p>
+                          )}
+                        </div>
                       </div>
                       {(errors.min_salary || errors.max_salary) && (
                         <p className="text-red-500 text-sm">{errors.min_salary || errors.max_salary}</p>
@@ -831,18 +804,16 @@ What We Offer:
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Registration Closing Date <span className="text-red-500">*</span>
+                        Registration Closing Date <span className="text-gray-400 text-xs">(Optional)</span>
                       </label>
                       <input
                         type="date"
                         name="registration_closing_date"
                         value={formData.registration_closing_date}
                         onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                          errors.registration_closing_date ? 'border-red-500' : 'border-gray-300'
-                        }`}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
-                      {errors.registration_closing_date && <p className="text-red-500 text-sm mt-1">{errors.registration_closing_date}</p>}
+                      <p className="text-xs text-gray-500 mt-1">If not provided, defaults to 6 months from opening date</p>
                     </div>
                   </div>
                 </>
@@ -854,58 +825,62 @@ What We Offer:
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Locations <span className="text-red-500">*</span>
+                        Location <span className="text-red-500">*</span>
                       </label>
-                      
-                      {/* Selected Locations */}
-                      {selectedLocations.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {selectedLocations.map(location => (
-                            <span key={location} className="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-800 text-sm rounded-full">
-                              {location}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = selectedLocations.filter(l => l !== location);
-                                  setSelectedLocations(updated);
-                                  setFormData(prev => ({ ...prev, locations: updated.join(', ') }));
-                                }}
-                                className="ml-2 text-indigo-600 hover:text-indigo-800"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
                       
                       <div className="relative">
                         <input
                           type="text"
-                          value={locationInput}
+                          value={selectedLocation || locationInput}
                           onChange={(e) => {
-                            setLocationInput(e.target.value);
-                            setShowLocationSuggestions(true);
+                            if (!selectedLocation) {
+                              setLocationInput(e.target.value);
+                              setShowLocationSuggestions(true);
+                            }
                           }}
-                          onFocus={() => setShowLocationSuggestions(true)}
-                          placeholder="Search cities..."
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                          onFocus={() => {
+                            if (!selectedLocation) {
+                              setShowLocationSuggestions(true);
+                            }
+                          }}
+                          placeholder="Search city..."
+                          className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                             errors.locations ? 'border-red-500' : 'border-gray-300'
                           }`}
+                          readOnly={!!selectedLocation}
                         />
+                        
+                        {/* Clear button */}
+                        {selectedLocation && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedLocation('');
+                              setFormData(prev => ({ ...prev, locations: '' }));
+                              setLocationInput('');
+                            }}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                        
                         {errors.locations && <p className="text-red-500 text-sm mt-1">{errors.locations}</p>}
-                        {showLocationSuggestions && locationInput && (
+                        
+                        {/* Suggestions dropdown */}
+                        {showLocationSuggestions && locationInput && !selectedLocation && (
                           <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                             {indianCities
-                              .filter(city => city.toLowerCase().includes(locationInput.toLowerCase()) && !selectedLocations.includes(city))
+                              .filter(city => city.toLowerCase().includes(locationInput.toLowerCase()))
                               .slice(0, 10)
                               .map(city => (
                                 <div
                                   key={city}
                                   onClick={() => {
-                                    const updated = [...selectedLocations, city];
-                                    setSelectedLocations(updated);
-                                    setFormData(prev => ({ ...prev, locations: updated.join(', ') }));
+                                    setSelectedLocation(city);
+                                    setFormData(prev => ({ ...prev, locations: city }));
                                     setLocationInput('');
                                     setShowLocationSuggestions(false);
                                   }}
@@ -1121,169 +1096,84 @@ What We Offer:
                         </button>
                       </div>
                   
-                  {/* Rich Text Editor Toolbar */}
-                  <div className="border border-gray-300 rounded-lg">
-                    <div className="flex items-center gap-2 p-2 bg-white border-b border-gray-300 rounded-t-lg flex-wrap">
-                      {/* Format Dropdown */}
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setShowFormatDropdown(!showFormatDropdown)}
-                          className="px-4 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 flex items-center gap-2 text-sm"
-                        >
-                          {selectedFormat}
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
-                        {showFormatDropdown && (
-                          <div className="absolute z-20 mt-1 w-40 bg-white border border-gray-300 rounded-md shadow-lg">
-                            {['Paragraph', 'Heading 1', 'Heading 2', 'Heading 3'].map(format => (
-                              <button
-                                key={format}
-                                type="button"
-                                onClick={() => applyFormat(format)}
-                                className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm"
-                              >
-                                {format}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      {/* Rich Text Editor */}
+                      <div className={`border rounded-lg ${errors.job_description ? 'border-red-500' : 'border-gray-300'}`}>
+                        {/* Toolbar */}
+                        <div className="flex items-center gap-2 p-2 bg-gray-50 border-b border-gray-300 rounded-t-lg flex-wrap">
+                          <select
+                            onChange={(e) => execEditorCommand('formatBlock', e.target.value)}
+                            className="px-3 py-1 border border-gray-300 rounded text-sm"
+                            defaultValue="p"
+                          >
+                            <option value="p">Paragraph</option>
+                            <option value="h1">Heading 1</option>
+                            <option value="h2">Heading 2</option>
+                            <option value="h3">Heading 3</option>
+                          </select>
 
-                      {/* Font Dropdown */}
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setShowFontDropdown(!showFontDropdown)}
-                          className="px-4 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 flex items-center gap-2 text-sm"
-                        >
-                          {selectedFont}
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
-                        {showFontDropdown && (
-                          <div className="absolute z-20 mt-1 w-56 bg-white border border-gray-300 rounded-md shadow-lg">
-                            <input
-                              type="text"
-                              placeholder="Search fonts..."
-                              value={fontSearch}
-                              onChange={(e) => setFontSearch(e.target.value)}
-                              className="w-full px-3 py-2 border-b border-gray-300 text-sm focus:outline-none"
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            <div className="max-h-60 overflow-y-auto">
-                              {filteredFonts.map(font => (
-                                <button
-                                  key={font}
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedFont(font);
-                                    setShowFontDropdown(false);
-                                    setFontSearch('');
-                                  }}
-                                  className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm"
-                                  style={{ fontFamily: font }}
-                                >
-                                  {font}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                          <div className="w-px h-6 bg-gray-300"></div>
 
-                      <div className="w-px h-6 bg-gray-300"></div>
-                      
-                      {/* Formatting Buttons */}
-                      <button type="button" onClick={() => execCommand('bold')} className="p-2 hover:bg-gray-200 rounded" title="Bold">
-                        <Bold className="w-4 h-4" />
-                      </button>
-                      <button type="button" onClick={() => execCommand('italic')} className="p-2 hover:bg-gray-200 rounded" title="Italic">
-                        <Italic className="w-4 h-4" />
-                      </button>
-                      <button type="button" onClick={() => execCommand('underline')} className="p-2 hover:bg-gray-200 rounded" title="Underline">
-                        <Underline className="w-4 h-4" />
-                      </button>
-                      <button type="button" onClick={() => execCommand('strikethrough')} className="p-2 hover:bg-gray-200 rounded" title="Strikethrough">
-                        <Strikethrough className="w-4 h-4" />
-                      </button>
-                      
-                      <div className="w-px h-6 bg-gray-300"></div>
-                      
-                      {/* Lists Dropdown */}
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setShowListDropdown(!showListDropdown)}
-                          className="px-4 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 flex items-center gap-2 text-sm"
-                        >
-                          Lists
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
-                        {showListDropdown && (
-                          <div className="absolute z-20 mt-1 w-40 bg-white border border-gray-300 rounded-md shadow-lg">
-                            <button
-                              type="button"
-                              onClick={() => applyList('bullet')}
-                              className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm"
-                            >
-                              • Bullet List
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => applyList('numbered')}
-                              className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm"
-                            >
-                              1. Numbered List
-                            </button>
-                          </div>
-                        )}
+                          <button type="button" onClick={() => execEditorCommand('bold')} className="p-2 hover:bg-gray-200 rounded" title="Bold">
+                            <Bold className="w-4 h-4" />
+                          </button>
+                          <button type="button" onClick={() => execEditorCommand('italic')} className="p-2 hover:bg-gray-200 rounded" title="Italic">
+                            <Italic className="w-4 h-4" />
+                          </button>
+                          <button type="button" onClick={() => execEditorCommand('underline')} className="p-2 hover:bg-gray-200 rounded" title="Underline">
+                            <Underline className="w-4 h-4" />
+                          </button>
+                          <button type="button" onClick={() => execEditorCommand('strikeThrough')} className="p-2 hover:bg-gray-200 rounded" title="Strikethrough">
+                            <Strikethrough className="w-4 h-4" />
+                          </button>
+
+                          <div className="w-px h-6 bg-gray-300"></div>
+
+                          <button type="button" onClick={() => execEditorCommand('insertUnorderedList')} className="px-3 py-1 hover:bg-gray-200 rounded text-sm" title="Bullet List">
+                            • List
+                          </button>
+                          <button type="button" onClick={() => execEditorCommand('insertOrderedList')} className="px-3 py-1 hover:bg-gray-200 rounded text-sm" title="Numbered List">
+                            1. List
+                          </button>
+
+                          <div className="w-px h-6 bg-gray-300"></div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const url = prompt('Enter URL:');
+                              if (url) execEditorCommand('createLink', url);
+                            }}
+                            className="px-3 py-1 hover:bg-gray-200 rounded text-sm"
+                          >
+                            Link
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (editorRef.current) {
+                                editorRef.current.innerHTML = '';
+                                setFormData(prev => ({ ...prev, job_description: '' }));
+                              }
+                            }}
+                            className="px-3 py-1 hover:bg-gray-200 rounded text-sm text-red-600"
+                          >
+                            Clear
+                          </button>
+                        </div>
+
+                        {/* Editor */}
+                        <div
+                          ref={editorRef}
+                          contentEditable
+                          onInput={handleEditorChange}
+                          className="min-h-[200px] max-h-[400px] overflow-y-auto p-3 focus:outline-none"
+                          style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}
+                          data-placeholder="Enter job description here..."
+                        />
                       </div>
-                      
-                      <div className="w-px h-6 bg-gray-300"></div>
-                      
-                      <button type="button" className="px-3 py-1 hover:bg-gray-200 rounded text-sm">Link</button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (textareaRef.current) {
-                            textareaRef.current.value = '';
-                            setFormData(prev => ({ ...prev, job_description: '' }));
-                          }
-                        }}
-                        className="px-3 py-1 hover:bg-gray-200 rounded text-sm text-red-600"
-                      >
-                        Clear
-                      </button>
+                      {errors.job_description && <p className="text-red-500 text-sm mt-1">{errors.job_description}</p>}
                     </div>
-                    
-                    <textarea
-                      ref={textareaRef}
-                      name="job_description"
-                      value={formData.job_description}
-                      onChange={handleInputChange}
-                      onKeyDown={handleDescriptionKeyDown}
-                      onPaste={(e) => {
-                        // Allow default paste behavior
-                        setTimeout(() => {
-                          if (textareaRef.current) {
-                            setFormData(prev => ({ ...prev, job_description: textareaRef.current!.value }));
-                          }
-                        }, 0);
-                      }}
-                      placeholder="Enter job description here..."
-                      rows={8}
-                      className={`w-full px-3 py-2 border-0 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none ${
-                        errors.job_description ? 'border-red-500' : ''
-                      }`}
-                      style={{
-                        whiteSpace: 'pre-wrap',
-                        wordWrap: 'break-word'
-                      }}
-                    />
-                    {errors.job_description && <p className="text-red-500 text-sm mt-1">{errors.job_description}</p>}
                   </div>
-                </div>
-              </div>
                 </>
               )}
 
@@ -1368,7 +1258,7 @@ What We Offer:
               }}
               className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
             >
-              Awesome!
+              Continue
             </button>
           </div>
         </div>

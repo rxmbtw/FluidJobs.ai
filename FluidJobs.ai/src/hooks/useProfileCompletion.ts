@@ -28,6 +28,16 @@ export const useProfileCompletion = () => {
 
   const fetchProfileCompletion = async () => {
     try {
+      const userStr = sessionStorage.getItem('fluidjobs_user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        // Skip profile completion for admin users
+        if (user.role === 'Admin' || user.role === 'HR' || user.role === 'Sales') {
+          setLoading(false);
+          return;
+        }
+      }
+      
       const token = sessionStorage.getItem('fluidjobs_token');
       const response = await axios.get('http://localhost:8000/api/profile/profile', {
         headers: { Authorization: `Bearer ${token}` }

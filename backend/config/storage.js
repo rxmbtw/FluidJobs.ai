@@ -1,7 +1,25 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const Minio = require('minio');
+const https = require('https');
 require('dotenv').config();
+
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+// MinIO Configuration
+const minioClient = new Minio.Client({
+  endPoint: '72.60.103.151',
+  port: 9100,
+  useSSL: true,
+  accessKey: 'fluidaiadmin',
+  secretKey: 'Fluidbucket@123',
+  transportAgent: new https.Agent({
+    rejectUnauthorized: false
+  })
+});
+
+const MINIO_BUCKET = 'fluidai-bucket';
 
 // Create uploads directories
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -36,49 +54,50 @@ const upload = multer({
   }
 });
 
-// Upload file to VPS filesystem
+// Upload file to MinIO
 async function uploadToGCS(file, folder = 'uploads') {
   try {
-    const uploadDir = path.join(__dirname, '..', 'uploads', folder);
-    
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    
     const fileName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const filePath = path.join(uploadDir, fileName);
+    const objectName = `${folder}/${fileName}`;
     
-    // Write file if buffer exists (for memory storage), otherwise file already saved by diskStorage
-    if (file.buffer) {
-      fs.writeFileSync(filePath, file.buffer);
-    }
+    const fileBuffer = file.buffer || fs.readFileSync(file.path);
     
-    const publicUrl = `/uploads/${folder}/${fileName}`;
-    console.log('✅ File uploaded to VPS:', publicUrl);
+    await minioClient.putObject(
+      MINIO_BUCKET,
+      objectName,
+      fileBuffer,
+      fileBuffer.length,
+      { 'Content-Type': file.mimetype }
+    );
+    
+    const publicUrl = `https://72.60.103.151:9100/${MINIO_BUCKET}/${objectName}`;
+    console.log('✅ File uploaded to MinIO:', publicUrl);
     return publicUrl;
     
   } catch (error) {
-    console.error('❌ VPS Upload Error:', error);
+    console.error('❌ MinIO Upload Error:', error);
     throw error;
   }
 }
 
-// Upload job description PDF
+// Upload job description PDF to MinIO
 async function uploadJobPDF(file, jobId, jobTitle) {
   try {
     const fileName = `JD_${jobTitle.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
-    const filePath = path.join(jobAttachmentsDir, fileName);
+    const objectName = `job-descriptions/${fileName}`;
     
-    // Write file if buffer exists (for memory storage), otherwise file already saved by diskStorage
-    if (file.buffer) {
-      fs.writeFileSync(filePath, file.buffer);
-    } else if (file.path) {
-      // If file was saved by multer, move it to correct location with correct name
-      fs.renameSync(file.path, filePath);
-    }
+    const fileBuffer = file.buffer || fs.readFileSync(file.path);
     
-    const publicUrl = `/uploads/job-attachments/${fileName}`;
-    console.log('✅ Job PDF uploaded to VPS:', publicUrl);
+    await minioClient.putObject(
+      MINIO_BUCKET,
+      objectName,
+      fileBuffer,
+      fileBuffer.length,
+      { 'Content-Type': 'application/pdf' }
+    );
+    
+    const publicUrl = `https://72.60.103.151:9100/${MINIO_BUCKET}/${objectName}`;
+    console.log('✅ Job PDF uploaded to MinIO:', publicUrl);
     return { publicUrl, fileName };
     
   } catch (error) {
@@ -87,24 +106,27 @@ async function uploadJobPDF(file, jobId, jobTitle) {
   }
 }
 
-// Upload file locally
+// Upload file to MinIO
 async function uploadToLocal(file, folder = 'uploads') {
   try {
-    const fs = require('fs').promises;
-    const uploadDir = path.join(__dirname, '..', 'uploads', folder);
-    
-    await fs.mkdir(uploadDir, { recursive: true });
-    
     const fileName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const filePath = path.join(uploadDir, fileName);
+    const objectName = `${folder}/${fileName}`;
     
-    await fs.writeFile(filePath, file.buffer);
+    const fileBuffer = file.buffer || fs.readFileSync(file.path);
     
-    const publicUrl = `/uploads/${folder}/${fileName}`;
-    console.log('✅ File uploaded locally:', publicUrl);
+    await minioClient.putObject(
+      MINIO_BUCKET,
+      objectName,
+      fileBuffer,
+      fileBuffer.length,
+      { 'Content-Type': file.mimetype }
+    );
+    
+    const publicUrl = `https://72.60.103.151:9100/${MINIO_BUCKET}/${objectName}`;
+    console.log('✅ File uploaded to MinIO:', publicUrl);
     return publicUrl;
   } catch (error) {
-    console.error('❌ Local Upload Error:', error);
+    console.error('❌ MinIO Upload Error:', error);
     throw error;
   }
 }

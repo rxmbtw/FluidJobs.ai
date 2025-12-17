@@ -21,13 +21,13 @@ const vps = new Pool({
 
 async function migrateAdmins() {
   console.log('1️⃣ Migrating Admin Users...');
-  const data = await gcp.query('SELECT * FROM admin WHERE username IS NOT NULL');
+  const data = await gcp.query('SELECT * FROM users WHERE username IS NOT NULL');
   
   let migrated = 0;
   for (const row of data.rows) {
     try {
       await vps.query(
-        'INSERT INTO admin (email, name, role, created_at) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING',
+        'INSERT INTO users (email, name, role, created_at) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING',
         [row.username, row.username, row.role || 'admin', row.created_at]
       );
       migrated++;
@@ -89,9 +89,9 @@ async function migrate() {
     const counts = await vps.query(`
       SELECT 
         (SELECT COUNT(*) FROM candidates) as candidates,
-        (SELECT COUNT(*) FROM admin) as admins,
+        (SELECT COUNT(*) FROM users) as admins,
         (SELECT COUNT(*) FROM jobs_enhanced) as jobs,
-        (SELECT COUNT(*) FROM admin_whitelist) as whitelist
+        (SELECT COUNT(*) FROM user_whitelist) as whitelist
     `);
     
     console.log(`   Candidates: ${counts.rows[0].candidates}`);

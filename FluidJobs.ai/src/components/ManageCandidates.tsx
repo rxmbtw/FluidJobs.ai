@@ -42,6 +42,14 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
   const [sortOrder, setSortOrder] = useState('asc');
   const [sendingInvite, setSendingInvite] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
+  const [showRestrictModal, setShowRestrictModal] = useState(false);
+  const [showUnrestrictModal, setShowUnrestrictModal] = useState(false);
+  const [restrictReason, setRestrictReason] = useState('');
+  const [unrestrictReason, setUnrestrictReason] = useState('');
+  const [submittingRestriction, setSubmittingRestriction] = useState(false);
+  const [submittingUnrestriction, setSubmittingUnrestriction] = useState(false);
+  const [userRole, setUserRole] = useState('');
+  const [candidateJobStatuses, setCandidateJobStatuses] = useState<{job_id: number, job_title: string, status: string}[]>([]);
   const [showJobNotificationModal, setShowJobNotificationModal] = useState(false);
   const [selectedJobForNotification, setSelectedJobForNotification] = useState('');
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
@@ -273,9 +281,127 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
     setSelectedCandidate(sampleCandidates[0]);
   };
 
+  const handleRestrictClick = () => {
+    setShowRestrictModal(true);
+  };
+
+  const handleUnrestrictClick = () => {
+    setShowUnrestrictModal(true);
+  };
+
+  const handleRestrictSubmit = async () => {
+    if (!restrictReason.trim()) {
+      alert('Please enter a reason for restriction');
+      return;
+    }
+
+    try {
+      setSubmittingRestriction(true);
+      const userStr = sessionStorage.getItem('fluidjobs_user');
+      const userId = userStr ? JSON.parse(userStr).id : 1;
+      
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidate-restrictions/restrict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidateId: selectedCandidate?.id,
+          userId: userId,
+          reason: restrictReason
+        })
+      });
+
+      if (response.ok) {
+        setIsRestricted(true);
+        setShowRestrictModal(false);
+        setRestrictReason('');
+        alert('Candidate restricted successfully');
+      } else {
+        alert('Failed to restrict candidate');
+      }
+    } catch (error) {
+      console.error('Error restricting candidate:', error);
+      alert('Failed to restrict candidate');
+    } finally {
+      setSubmittingRestriction(false);
+    }
+  };
+
+  const handleUnrestrictSubmit = async () => {
+    if (!unrestrictReason.trim()) {
+      alert('Please enter a reason for unrestriction');
+      return;
+    }
+
+    try {
+      setSubmittingUnrestriction(true);
+      const userStr = sessionStorage.getItem('fluidjobs_user');
+      const userId = userStr ? JSON.parse(userStr).id : 1;
+      
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidate-restrictions/unrestrict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidateId: selectedCandidate?.id,
+          userId: userId,
+          reason: unrestrictReason
+        })
+      });
+
+      if (response.ok) {
+        setIsRestricted(false);
+        setShowUnrestrictModal(false);
+        setUnrestrictReason('');
+        alert('Candidate unrestricted successfully');
+      } else {
+        alert('Failed to unrestrict candidate');
+      }
+    } catch (error) {
+      console.error('Error unrestricting candidate:', error);
+      alert('Failed to unrestrict candidate');
+    } finally {
+      setSubmittingUnrestriction(false);
+    }
+  };
+
+  const fetchCandidateJobStatuses = async (candidateId: string) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidate-job-status/${candidateId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCandidateJobStatuses(data.statuses);
+      }
+    } catch (error) {
+      console.error('Error fetching candidate job statuses:', error);
+    }
+  };
+
+  const fetchRestrictionStatus = async (candidateId: string) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidate-restrictions/status/${candidateId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setIsRestricted(data.isRestricted);
+      }
+    } catch (error) {
+      console.error('Error fetching restriction status:', error);
+    }
+  };
+
   React.useEffect(() => {
+    const userStr = sessionStorage.getItem('fluidjobs_user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      setUserRole(user.role || '');
+    }
     fetchCandidates();
   }, []);
+
+  React.useEffect(() => {
+    if (selectedCandidate) {
+      fetchCandidateJobStatuses(selectedCandidate.id);
+      fetchRestrictionStatus(selectedCandidate.id);
+    }
+  }, [selectedCandidate]);
 
   const filteredCandidates = useMemo(() => {
     const filtered = candidates.filter(candidate =>
@@ -500,21 +626,37 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
             <div className="bg-white border-b border-gray-100 p-3">
               {/* Action Buttons */}
               <div className="flex justify-between items-center mb-6">
-                <button 
-                  onClick={() => setIsRestricted(!isRestricted)}
-                  className={`flex items-center space-x-2 px-6 py-2.5 text-sm font-medium transition ${
-                    isRestricted ? 'text-red-600' : 'text-gray-600 hover:text-gray-800'
-                  }`}
-                >
-                  <svg width="20" height="20" viewBox="0 0 26 26" fill="none" className="flex-shrink-0">
-                    <path d="M3 3L23 23" stroke={isRestricted ? '#FF0004' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
-                    <path d="M10.9 10.9C10.4 11.4 10 12.1 10 13C10 14.7 11.3 16 13 16C13.9 16 14.6 15.6 15.1 15.1" stroke={isRestricted ? '#FF0004' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
-                    <path d="M7.5 7.5C5.5 9 4 11 4 13C4 14.5 7 19 13 19C15 19 16.5 18.5 18 17.5" stroke={isRestricted ? '#FF0004' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
-                    <path d="M20 14C21 12.5 22 11.5 22 13C22 14.5 19 19 13 19" stroke={isRestricted ? '#FF0004' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
-                    <path d="M13 7C17 7 20 10 22 13" stroke={isRestricted ? '#FF0004' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                  <span>Restrict</span>
-                </button>
+                {userRole === 'Admin' && (
+                  <div className="flex space-x-3">
+                    <button 
+                      onClick={handleRestrictClick}
+                      disabled={isRestricted}
+                      className={`flex items-center space-x-2 px-6 py-2.5 text-sm font-medium transition ${
+                        isRestricted ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:text-gray-800'
+                      }`}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 26 26" fill="none" className="flex-shrink-0">
+                        <path d="M3 3L23 23" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                        <path d="M10.9 10.9C10.4 11.4 10 12.1 10 13C10 14.7 11.3 16 13 16C13.9 16 14.6 15.6 15.1 15.1" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                        <path d="M7.5 7.5C5.5 9 4 11 4 13C4 14.5 7 19 13 19C15 19 16.5 18.5 18 17.5" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                        <path d="M20 14C21 12.5 22 11.5 22 13C22 14.5 19 19 13 19" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                        <path d="M13 7C17 7 20 10 22 13" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                      <span>Restrict</span>
+                    </button>
+                    <button 
+                      onClick={handleUnrestrictClick}
+                      disabled={!isRestricted}
+                      className={`flex items-center space-x-2 px-6 py-2.5 text-sm font-medium transition ${
+                        !isRestricted ? 'text-gray-400 cursor-not-allowed' : 'text-green-600 hover:text-green-800'
+                      }`}
+                    >
+                      <Check className="w-5 h-5" />
+                      <span>Unrestrict</span>
+                    </button>
+                  </div>
+                )}
+                {userRole !== 'Admin' && <div></div>}
                 <div className="flex space-x-3">
                   <button 
                     className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-medium ${
@@ -631,6 +773,35 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
                         )}
                       </div>
                     </div>
+
+                    {/* Job Status Badges */}
+                    {candidateJobStatuses.length > 0 && (
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-2 border-blue-300 p-4">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                          <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Job Application Status
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {candidateJobStatuses.map((status) => (
+                            <button
+                              key={`${status.job_id}-${status.status}`}
+                              onClick={() => {
+                                console.log('Navigate to job:', status.job_id);
+                              }}
+                              className={`px-4 py-2 rounded-full text-sm font-semibold shadow-md hover:shadow-lg transition-all cursor-pointer ${
+                                status.status === 'shortlisted'
+                                  ? 'bg-yellow-200 text-yellow-800 hover:bg-yellow-300'
+                                  : 'bg-green-400 text-green-900 hover:bg-green-500'
+                              }`}
+                            >
+                              {status.status === 'shortlisted' ? 'Shortlisted' : 'Selected'} for: {status.job_title}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Candidate Information */}
                     <div className="bg-white rounded-lg border border-gray-200 p-3">
@@ -860,6 +1031,98 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
                 className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sendingNotification ? 'Sending...' : 'Send Notification'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unrestrict Modal */}
+      {showUnrestrictModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Unrestrict Candidate</h2>
+              <button
+                onClick={() => setShowUnrestrictModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Unrestricting: <strong>{selectedCandidate?.name}</strong>
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Reason for Unrestriction *</label>
+                <textarea
+                  value={unrestrictReason}
+                  onChange={(e) => setUnrestrictReason(e.target.value)}
+                  placeholder="Enter reason for unrestricting this candidate..."
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              <button
+                onClick={handleUnrestrictSubmit}
+                disabled={submittingUnrestriction || !unrestrictReason.trim()}
+                className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submittingUnrestriction ? 'Unrestricting...' : 'Unrestrict Candidate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restrict Modal */}
+      {showRestrictModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Restrict Candidate</h2>
+              <button
+                onClick={() => setShowRestrictModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Restricting: <strong>{selectedCandidate?.name}</strong>
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Reason for Restriction *</label>
+                <textarea
+                  value={restrictReason}
+                  onChange={(e) => setRestrictReason(e.target.value)}
+                  placeholder="Enter reason for restricting this candidate..."
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              <button
+                onClick={handleRestrictSubmit}
+                disabled={submittingRestriction || !restrictReason.trim()}
+                className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submittingRestriction ? 'Restricting...' : 'Restrict Candidate'}
               </button>
             </div>
           </div>

@@ -6,14 +6,14 @@ async function addAdmin(username, password, role = 'admin') {
     const passwordHash = await bcrypt.hash(password, 10);
     
     const result = await pool.query(
-      'INSERT INTO admin (username, password_hash, role) VALUES ($1, $2, $3) RETURNING admin_id, username, role',
+      'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id, username, role',
       [username, passwordHash, role]
     );
     
     console.log('✅ Admin added successfully:');
     console.log('   Username:', result.rows[0].username);
     console.log('   Role:', result.rows[0].role);
-    console.log('   ID:', result.rows[0].admin_id);
+    console.log('   ID:', result.rows[0].id);
   } catch (error) {
     console.error('❌ Error:', error.message);
   } finally {

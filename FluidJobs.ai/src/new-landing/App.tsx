@@ -39,7 +39,7 @@ const App: React.FC = () => {
         
         console.log('✅ User authenticated:', user);
         
-        if (user.role === 'admin' || user.role === 'Admin' || user.role === 'HR') {
+        if (user.role === 'admin' || user.role === 'Admin' || user.role === 'HR' || user.role === 'Sales') {
           console.log('🔄 Redirecting to company dashboard');
           setCurrentPage('company-dashboard');
         } else {
@@ -61,7 +61,7 @@ const App: React.FC = () => {
     if (token && userStr) {
       try {
         const user = JSON.parse(userStr);
-        if (user.role === 'admin' || user.role === 'Admin' || user.role === 'HR') {
+        if (user.role === 'admin' || user.role === 'Admin' || user.role === 'HR' || user.role === 'Sales') {
           setCurrentPage('company-dashboard');
         } else {
           setCurrentPage('dashboard');
