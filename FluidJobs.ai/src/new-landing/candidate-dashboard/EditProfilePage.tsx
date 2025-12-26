@@ -8,6 +8,7 @@ import CollegeAutocomplete from './CollegeAutocomplete';
 import Loader from '../../components/Loader';
 import Notification from '../../components/Notification';
 import { useProfileCompletionContext } from '../../contexts/ProfileCompletionContext';
+import { typography, getTextColor, accentColor } from '../../styles/typography';
 
 interface EditProfilePageProps {
   themeState: 'light' | 'dark';
@@ -213,7 +214,7 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
 
   return (
     <div className="w-full rounded-t-[50px] p-4 overflow-hidden" style={{ backgroundColor: themeState === 'light' ? '#F1F1F1' : '#1a1a1a', height: 'calc(100vh - 116px)' }}>
-      <h1 className="text-[18px] font-bold font-['Poppins'] mb-3" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>Edit Profile</h1>
+      <h1 className={typography.pageTitle} style={{ color: getTextColor(themeState, 'primary'), marginBottom: '12px' }}>Edit Profile</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3" style={{ height: 'calc(100% - 40px)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
@@ -245,37 +246,37 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
               </div>
             </div>
 
-            <button onClick={handleSaveProfile} disabled={loading} className="absolute bottom-[10px] left-[10px] right-[10px] h-[44px] bg-[rgba(0,131,17,0.7)] rounded-[12px] text-[13px] font-semibold font-['Poppins'] text-white hover:opacity-90 transition flex items-center justify-center gap-2 disabled:opacity-50">
+            <button onClick={handleSaveProfile} disabled={loading} className={`absolute bottom-[10px] left-[10px] right-[10px] h-[44px] rounded-xl ${typography.button} text-white hover:opacity-90 transition flex items-center justify-center gap-2 disabled:opacity-50`} style={{ backgroundColor: 'rgba(0,131,17,0.7)' }}>
               {loading ? <Loader themeState={themeState} /> : <><Edit className="w-4 h-4" />Save Changes</>}
             </button>
           </div>
 
           <div className="rounded-[25px] p-4" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937', height: 'calc(50% - 6px)', overflow: 'hidden' }}>
-            <h3 className="text-[16px] font-bold font-['Poppins'] mb-2" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>Information</h3>
+            <h3 className={typography.sectionTitle} style={{ color: getTextColor(themeState, 'primary'), marginBottom: '8px' }}>Information</h3>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 w-[140px]">
-                  <UserIcon className="w-5 h-5 text-[#6E6E6E]" />
-                  <span className="text-[13px] font-medium font-['Poppins'] text-[#6E6E6E]">Full Name*</span>
+                  <UserIcon className="w-5 h-5" style={{ color: getTextColor(themeState, 'secondary') }} />
+                  <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>Full Name*</span>
                 </div>
-                <input value={formData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} className="w-[211px] h-[28px] px-2 border border-[rgba(0,0,0,0.5)] rounded-[5px] text-[12px] font-medium font-['Poppins']" style={inputStyle} />
+                <input value={formData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} className={`w-[211px] h-[32px] px-2 border rounded-lg ${typography.bodySmall}`} style={inputStyle} />
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 w-[140px]">
-                  <Mail className="w-5 h-5 text-[#6E6E6E]" />
-                  <span className="text-[13px] font-medium font-['Poppins'] text-[#6E6E6E]">Email Address*</span>
+                  <Mail className="w-5 h-5" style={{ color: getTextColor(themeState, 'secondary') }} />
+                  <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>Email Address*</span>
                 </div>
-                <input value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} className="w-[211px] h-[28px] px-2 border border-[rgba(0,0,0,0.5)] rounded-[5px] text-[12px] font-medium font-['Poppins']" style={inputStyle} />
+                <input value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} className={`w-[211px] h-[32px] px-2 border rounded-lg ${typography.bodySmall}`} style={inputStyle} />
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 w-[140px]">
-                  <Phone className="w-5 h-5 text-[#6E6E6E]" />
-                  <span className="text-[13px] font-medium font-['Poppins'] text-[#6E6E6E]">Phone Number*</span>
+                  <Phone className="w-5 h-5" style={{ color: getTextColor(themeState, 'secondary') }} />
+                  <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>Phone Number*</span>
                 </div>
-                <div style={{ width: '211px', height: '28px' }}>
+                <div style={{ width: '211px', height: '32px' }}>
                   <PhoneInput
                     value={formData.phone}
                     onChange={(value) => handleInputChange('phone', value)}
@@ -287,10 +288,10 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 w-[140px]">
-                  <UserIcon className="w-5 h-5 text-[#6E6E6E]" />
-                  <span className="text-[13px] font-medium font-['Poppins'] text-[#6E6E6E]">Gender</span>
+                  <UserIcon className="w-5 h-5" style={{ color: getTextColor(themeState, 'secondary') }} />
+                  <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>Gender</span>
                 </div>
-                <select value={formData.gender} onChange={(e) => handleInputChange('gender', e.target.value)} className="w-[211px] h-[28px] px-2 border border-[rgba(0,0,0,0.5)] rounded-[5px] text-[12px] font-medium font-['Poppins']" style={inputStyle}>
+                <select value={formData.gender} onChange={(e) => handleInputChange('gender', e.target.value)} className={`w-[211px] h-[32px] px-2 border rounded-lg ${typography.bodySmall}`} style={inputStyle}>
                   <option value="">Select Gender</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
@@ -300,10 +301,10 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 w-[140px]">
-                  <UserIcon className="w-5 h-5 text-[#6E6E6E]" />
-                  <span className="text-[13px] font-medium font-['Poppins'] text-[#6E6E6E]">Marital Status</span>
+                  <UserIcon className="w-5 h-5" style={{ color: getTextColor(themeState, 'secondary') }} />
+                  <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>Marital Status</span>
                 </div>
-                <select value={formData.maritalStatus} onChange={(e) => handleInputChange('maritalStatus', e.target.value)} className="w-[211px] h-[28px] px-2 border border-[rgba(0,0,0,0.5)] rounded-[5px] text-[12px] font-medium font-['Poppins']" style={inputStyle}>
+                <select value={formData.maritalStatus} onChange={(e) => handleInputChange('maritalStatus', e.target.value)} className={`w-[211px] h-[32px] px-2 border rounded-lg ${typography.bodySmall}`} style={inputStyle}>
                   <option value="">Select Status</option>
                   <option value="Unmarried">Unmarried</option>
                   <option value="Married">Married</option>
@@ -312,13 +313,13 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 w-[140px]">
-                  <MapPin className="w-5 h-5 text-[#6E6E6E]" />
-                  <span className="text-[13px] font-medium font-['Poppins'] text-[#6E6E6E]">Current City</span>
+                  <MapPin className="w-5 h-5" style={{ color: getTextColor(themeState, 'secondary') }} />
+                  <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>Current City</span>
                 </div>
                 <LocationAutocomplete
                   value={formData.currentCity}
                   onChange={(value) => handleInputChange('currentCity', value)}
-                  className="w-[211px] h-[28px] px-2 border border-[rgba(0,0,0,0.5)] rounded-[5px] text-[12px] font-medium font-['Poppins']"
+                  className={`w-[211px] h-[32px] px-2 border rounded-lg ${typography.bodySmall}`}
                   style={inputStyle}
                   themeState={themeState}
                 />
@@ -329,15 +330,15 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
           <div className="rounded-[25px] p-4" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937', height: 'calc(50% - 6px)', overflow: 'auto' }}>
-            <h3 className="text-[20px] font-bold font-['Poppins'] mb-4" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>Work Experience</h3>
+            <h3 className={typography.sectionTitle} style={{ color: getTextColor(themeState, 'primary'), marginBottom: '16px' }}>Work Experience</h3>
 
             <div>
               <div className="flex items-center justify-between mb-4">
-                <p className="text-[13px] font-medium font-['Poppins'] text-[#6E6E6E]">Are you currently working anywhere?*</p>
+                <p className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>Are you currently working anywhere?*</p>
                 <div className="flex gap-2">
-                  <button onClick={() => setWorkStatus('yes')} className={`w-[85px] h-[31px] rounded-[5px] text-[12px] font-medium font-['Poppins'] ${workStatus === 'yes' ? 'bg-[rgba(66,133,244,0.16)] border border-[#4285F4] text-black' : 'bg-[rgba(217,217,217,0.5)] border border-[rgba(0,0,0,0.5)] text-black'}`}>Yes</button>
-                  <button onClick={() => setWorkStatus('no')} className={`w-[85px] h-[31px] rounded-[5px] text-[12px] font-medium font-['Poppins'] ${workStatus === 'no' ? 'bg-[rgba(66,133,244,0.16)] border border-[#4285F4] text-black' : 'bg-[rgba(217,217,217,0.5)] border border-[rgba(0,0,0,0.5)] text-black'}`}>No</button>
-                  <button onClick={() => setWorkStatus('fresher')} className={`w-[85px] h-[31px] rounded-[5px] text-[12px] font-medium font-['Poppins'] ${workStatus === 'fresher' ? 'bg-[rgba(66,133,244,0.16)] border border-[#4285F4] text-black' : 'bg-[rgba(217,217,217,0.5)] border border-[rgba(0,0,0,0.5)] text-black'}`}>Fresher</button>
+                  <button onClick={() => setWorkStatus('yes')} className={`w-[85px] h-[36px] rounded-lg ${typography.bodySmall} ${workStatus === 'yes' ? 'border-2 text-black' : 'border text-black'}`} style={{ backgroundColor: workStatus === 'yes' ? 'rgba(66,133,244,0.16)' : 'rgba(217,217,217,0.5)', borderColor: workStatus === 'yes' ? accentColor : 'rgba(0,0,0,0.5)' }}>Yes</button>
+                  <button onClick={() => setWorkStatus('no')} className={`w-[85px] h-[36px] rounded-lg ${typography.bodySmall} ${workStatus === 'no' ? 'border-2 text-black' : 'border text-black'}`} style={{ backgroundColor: workStatus === 'no' ? 'rgba(66,133,244,0.16)' : 'rgba(217,217,217,0.5)', borderColor: workStatus === 'no' ? accentColor : 'rgba(0,0,0,0.5)' }}>No</button>
+                  <button onClick={() => setWorkStatus('fresher')} className={`w-[85px] h-[36px] rounded-lg ${typography.bodySmall} ${workStatus === 'fresher' ? 'border-2 text-black' : 'border text-black'}`} style={{ backgroundColor: workStatus === 'fresher' ? 'rgba(66,133,244,0.16)' : 'rgba(217,217,217,0.5)', borderColor: workStatus === 'fresher' ? accentColor : 'rgba(0,0,0,0.5)' }}>Fresher</button>
                 </div>
               </div>
 
@@ -438,13 +439,13 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
           </div>
 
           <div className="rounded-[25px] p-4" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937', height: 'calc(50% - 6px)' }}>
-            <h3 className="text-[20px] font-bold font-['Poppins'] mb-4" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>Upload Your Resume</h3>
+            <h3 className={typography.sectionTitle} style={{ color: getTextColor(themeState, 'primary'), marginBottom: '16px' }}>Upload Your Resume</h3>
 
-            <label htmlFor="resume-upload" className="border border-[#4285F4] rounded-[10px] h-[152px] flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition">
-              <Upload className="w-10 h-10 text-[#6B6B6B] mb-2" />
-              <p className="text-[13px] font-medium font-['Poppins'] text-[#4285F4] text-center">Click to upload or drag and drop</p>
-              <p className="text-[10px] font-medium font-['Poppins'] text-[#717171] text-center mt-1">PDF, DOC (Max 5MB)</p>
-              <span className="mt-2 w-[133px] h-[24px] bg-[#4285F4] rounded-[5px] text-[10px] font-medium font-['Poppins'] text-white hover:opacity-90 flex items-center justify-center">Choose File</span>
+            <label htmlFor="resume-upload" className="border-2 rounded-xl h-[152px] flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition" style={{ borderColor: accentColor }}>
+              <Upload className="w-10 h-10 mb-2" style={{ color: '#6B6B6B' }} />
+              <p className={typography.bodyNormal} style={{ color: accentColor, textAlign: 'center' }}>Click to upload or drag and drop</p>
+              <p className={typography.bodySmall} style={{ color: '#717171', textAlign: 'center', marginTop: '4px' }}>PDF, DOC (Max 5MB)</p>
+              <span className={`mt-2 w-[133px] h-[28px] rounded-lg text-white hover:opacity-90 flex items-center justify-center ${typography.bodySmall}`} style={{ backgroundColor: accentColor }}>Choose File</span>
             </label>
             <input id="resume-upload" type="file" accept=".pdf,.doc,.docx" onChange={handleResumeUpload} className="hidden" />
           </div>

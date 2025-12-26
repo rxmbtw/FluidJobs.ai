@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { accentColor, accentHover } from '../../styles/typography';
 
 type Theme = 'light' | 'dark';
 
@@ -43,10 +44,10 @@ export const getThemeColors = (theme: Theme) => ({
   textPrimary: theme === 'dark' ? '#f9fafb' : '#000000',
   textSecondary: theme === 'dark' ? '#9ca3af' : '#6E6E6E',
   border: theme === 'dark' ? '#374151' : '#D9D9D9',
-  accent: theme === 'dark' ? '#8B5CF6' : '#4285F4',
-  accentHover: theme === 'dark' ? '#7245d9' : '#3367D6',
+  accent: '#4285F4', // Blue for both themes - consistent branding
+  accentHover: '#3367D6', // Darker blue for hover
   iconColor: theme === 'dark' ? '#9ca3af' : '#6E6E6E',
-  activeItemBg: theme === 'dark' ? 'rgba(139, 92, 246, 0.15)' : '#E3F2FD',
+  activeItemBg: theme === 'dark' ? 'rgba(66, 133, 244, 0.15)' : '#E3F2FD', // Blue tint for both
   success: '#10B981',
   warning: '#F59E0B',
   error: '#EF4444'

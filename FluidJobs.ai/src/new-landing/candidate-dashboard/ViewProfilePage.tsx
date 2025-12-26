@@ -3,6 +3,7 @@ import { Mail, Phone, MapPin, Info, Edit, FileText, ExternalLink, Trash2 } from 
 import axios from 'axios';
 import Loader from '../../components/Loader';
 import { useProfileCompletionContext } from '../../contexts/ProfileCompletionContext';
+import { typography, getTextColor, accentColor } from '../../styles/typography';
 
 interface ViewProfilePageProps {
   themeState: 'light' | 'dark';
@@ -72,7 +73,7 @@ const ViewProfilePage: React.FC<ViewProfilePageProps> = ({ themeState, onChangeP
 
   return (
     <div className="w-full rounded-t-[50px] p-4 overflow-hidden" style={{ backgroundColor: themeState === 'light' ? '#F1F1F1' : '#1a1a1a', height: 'calc(100vh - 116px)' }}>
-      <h1 className="text-[18px] font-bold font-['Poppins'] mb-3" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>
+      <h1 className={typography.pageTitle} style={{ color: getTextColor(themeState, 'primary'), marginBottom: '12px' }}>
         Candidate Profile
       </h1>
 
@@ -96,11 +97,11 @@ const ViewProfilePage: React.FC<ViewProfilePageProps> = ({ themeState, onChangeP
               </div>
             </div>
 
-            <h2 className="text-[13px] font-bold font-['Poppins'] text-center mt-[35px]" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>
+            <h2 className={typography.sectionTitle} style={{ color: getTextColor(themeState, 'primary'), textAlign: 'center', marginTop: '35px' }}>
               {profile?.full_name || 'User'}
             </h2>
 
-            <p className="text-[11px] font-normal font-['Poppins'] text-[#4285F4] text-center mt-1">
+            <p className={typography.bodySmall} style={{ color: accentColor, textAlign: 'center', marginTop: '4px' }}>
               {profile?.city || profile?.location || 'Location not set'}
               {profile?.created_at && ` | Joined ${new Date(profile.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
             </p>
@@ -108,16 +109,16 @@ const ViewProfilePage: React.FC<ViewProfilePageProps> = ({ themeState, onChangeP
             <div className="flex gap-2 mt-2 px-[8px]">
               <button
                 onClick={onChangePassword}
-                className="flex-1 h-[30px] border rounded-[6px] text-[11px] font-semibold font-['Poppins'] transition"
+                className={`flex-1 h-10 border rounded-lg ${typography.button} transition`}
                 style={{ 
                   backgroundColor: themeState === 'light' ? '#FFFFFF' : '#374151',
                   borderColor: themeState === 'light' ? '#000000' : '#6B7280',
-                  color: themeState === 'light' ? '#000000' : '#E5E7EB'
+                  color: getTextColor(themeState, 'primary')
                 }}
               >
                 Change Password
               </button>
-              <button onClick={onEditProfile} className="flex-1 h-[30px] border border-[#4285F4] rounded-[6px] text-[11px] font-semibold font-['Poppins'] text-[#4285F4] transition flex items-center justify-center gap-1" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#374151' }}>
+              <button onClick={onEditProfile} className={`flex-1 h-10 border rounded-lg ${typography.button} transition flex items-center justify-center gap-1`} style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#374151', borderColor: accentColor, color: accentColor }}>
                 <Edit className="w-4 h-4" />
                 Edit Profile
               </button>
@@ -125,67 +126,67 @@ const ViewProfilePage: React.FC<ViewProfilePageProps> = ({ themeState, onChangeP
           </div>
 
           <div className="rounded-[25px] p-4" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937', height: 'calc(50% - 6px)', overflow: 'auto' }}>
-            <h3 className="text-[16px] font-bold font-['Poppins'] mb-3" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>
+            <h3 className={typography.sectionTitle} style={{ color: getTextColor(themeState, 'primary'), marginBottom: '12px' }}>
               Information
             </h3>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }} />
-                  <span className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }}>
+                  <Mail className="w-5 h-5" style={{ color: getTextColor(themeState, 'secondary') }} />
+                  <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>
                     Email Address
                   </span>
                 </div>
-                <span className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#080808' : '#E5E7EB' }}>
+                <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'primary') }}>
                   {profile?.email || 'Not set'}
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Phone className="w-5 h-5" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }} />
-                  <span className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }}>
+                  <Phone className="w-5 h-5" style={{ color: getTextColor(themeState, 'secondary') }} />
+                  <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>
                     Phone Number
                   </span>
                 </div>
-                <span className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#000000' : '#E5E7EB' }}>
+                <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'primary') }}>
                   {profile?.phone || profile?.phone_number || 'Not set'}
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Info className="w-5 h-5" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }} />
-                  <span className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }}>
+                  <Info className="w-5 h-5" style={{ color: getTextColor(themeState, 'secondary') }} />
+                  <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>
                     Gender
                   </span>
                 </div>
-                <span className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#080808' : '#E5E7EB' }}>
+                <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'primary') }}>
                   {profile?.gender || 'Not set'}
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Info className="w-5 h-5" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }} />
-                  <span className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }}>
+                  <Info className="w-5 h-5" style={{ color: getTextColor(themeState, 'secondary') }} />
+                  <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>
                     Marital Status
                   </span>
                 </div>
-                <span className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#080808' : '#E5E7EB' }}>
+                <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'primary') }}>
                   {profile?.marital_status || 'Not set'}
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <MapPin className="w-5 h-5" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }} />
-                  <span className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }}>
+                  <MapPin className="w-5 h-5" style={{ color: getTextColor(themeState, 'secondary') }} />
+                  <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>
                     Current City
                   </span>
                 </div>
-                <span className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#080808' : '#E5E7EB' }}>
+                <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'primary') }}>
                   {profile?.city || profile?.location || 'Not set'}
                 </span>
               </div>
@@ -195,27 +196,27 @@ const ViewProfilePage: React.FC<ViewProfilePageProps> = ({ themeState, onChangeP
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
           <div className="rounded-[25px] p-4" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937', height: 'calc(50% - 6px)' }}>
-            <h3 className="text-[16px] font-bold font-['Poppins'] mb-3" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>
+            <h3 className={typography.sectionTitle} style={{ color: getTextColor(themeState, 'primary'), marginBottom: '12px' }}>
               Work Experience
             </h3>
 
             {profile?.current_company ? (
               <div>
                 <div className="flex justify-between items-center gap-4 mb-1">
-                  <h4 className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }}>
+                  <h4 className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>
                     {profile.current_company}
                   </h4>
                   <div className="flex-1 h-[1px]" style={{ backgroundColor: themeState === 'light' ? '#000000' : '#6B7280' }}></div>
-                  <span className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#050505' : '#E5E7EB' }}>
+                  <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'primary') }}>
                     Current
                   </span>
                 </div>
                 
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-medium font-['Poppins'] text-[#4285F4]">
+                  <span className={typography.bodySmall} style={{ color: accentColor }}>
                     {profile.work_mode || 'Not specified'}
                   </span>
-                  <span className="text-[10px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }}>
+                  <span className={typography.bodySmall} style={{ color: getTextColor(themeState, 'secondary') }}>
                     {profile.current_ctc ? `CTC: ${profile.current_ctc}` : 'CTC not set'}
                   </span>
                 </div>
@@ -223,33 +224,33 @@ const ViewProfilePage: React.FC<ViewProfilePageProps> = ({ themeState, onChangeP
             ) : profile?.last_company ? (
               <div>
                 <div className="flex justify-between items-center gap-4 mb-1">
-                  <h4 className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }}>
+                  <h4 className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>
                     {profile.last_company}
                   </h4>
                   <div className="flex-1 h-[1px]" style={{ backgroundColor: themeState === 'light' ? '#000000' : '#6B7280' }}></div>
-                  <span className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#050505' : '#E5E7EB' }}>
+                  <span className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'primary') }}>
                     Previous
                   </span>
                 </div>
                 
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-medium font-['Poppins'] text-[#4285F4]">
+                  <span className={typography.bodySmall} style={{ color: accentColor }}>
                     {profile.work_mode || 'Not specified'}
                   </span>
-                  <span className="text-[10px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }}>
+                  <span className={typography.bodySmall} style={{ color: getTextColor(themeState, 'secondary') }}>
                     {profile.previous_ctc ? `Last CTC: ${profile.previous_ctc}` : 'CTC not set'}
                   </span>
                 </div>
               </div>
             ) : (
-              <p className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }}>
+              <p className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>
                 No work experience added yet
               </p>
             )}
           </div>
 
           <div className="rounded-[25px] p-4" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937', height: 'calc(50% - 6px)', overflow: 'auto' }}>
-            <h3 className="text-[16px] font-bold font-['Poppins'] mb-3" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>
+            <h3 className={typography.sectionTitle} style={{ color: getTextColor(themeState, 'primary'), marginBottom: '12px' }}>
               Resume
             </h3>
 
@@ -258,18 +259,18 @@ const ViewProfilePage: React.FC<ViewProfilePageProps> = ({ themeState, onChangeP
                 {profile.resume_files.map((resume: any, index: number) => {
                   const fullUrl = resume.url.startsWith('http') ? resume.url : `http://localhost:8000${resume.url}`;
                   return (
-                    <div key={index} className="w-full flex items-center gap-2 p-3 border border-[#4285F4] rounded-[8px]">
-                      <FileText className="w-5 h-5 text-[#4285F4]" />
+                    <div key={index} className="w-full flex items-center gap-2 p-3 border rounded-lg" style={{ borderColor: accentColor }}>
+                      <FileText className="w-5 h-5" style={{ color: accentColor }} />
                       <div className="flex-1">
-                        <p className="text-[13px] font-medium font-['Poppins'] text-[#4285F4]">
+                        <p className={typography.bodyNormal} style={{ color: accentColor }}>
                           {resume.name}
                         </p>
-                        <p className="text-[10px] font-['Poppins'] text-gray-500">
+                        <p className={typography.bodySmall} style={{ color: getTextColor(themeState, 'secondary') }}>
                           {new Date(resume.uploadedAt).toLocaleDateString()}
                         </p>
                       </div>
                       <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-blue-50 rounded transition">
-                        <ExternalLink className="w-4 h-4 text-[#4285F4]" />
+                        <ExternalLink className="w-4 h-4" style={{ color: accentColor }} />
                       </a>
                       <button onClick={() => handleDeleteResume(resume.id)} className="p-2 hover:bg-red-50 rounded transition">
                         <Trash2 className="w-4 h-4 text-red-500" />
@@ -279,7 +280,7 @@ const ViewProfilePage: React.FC<ViewProfilePageProps> = ({ themeState, onChangeP
                 })}
               </div>
             ) : (
-              <p className="text-[13px] font-medium font-['Poppins']" style={{ color: themeState === 'light' ? '#6E6E6E' : '#9CA3AF' }}>
+              <p className={typography.bodyNormal} style={{ color: getTextColor(themeState, 'secondary') }}>
                 No resume uploaded yet
               </p>
             )}
