@@ -13,6 +13,8 @@ const ThemedJobSpecificDashboard: React.FC<ThemedJobSpecificDashboardProps> = ({
   const colors = getThemeColors(theme);
   const [activeSection, setActiveSection] = useState('manage-candidates');
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   const menuItems = [
     { id: 'manage-candidates', label: 'Manage Candidates', icon: Users },
@@ -105,16 +107,28 @@ const ThemedJobSpecificDashboard: React.FC<ThemedJobSpecificDashboardProps> = ({
             {!isCollapsed && <span className="text-xl font-bold" style={{ color: colors.accent }}>FluidJobs.ai</span>}
           </div>
           {!isCollapsed && (
-            <button
-              onClick={onBack}
-              className="flex items-center space-x-2 hover:opacity-80 w-full text-left mt-4 transition"
-              style={{ color: colors.textPrimary }}
-            >
-              <ArrowLeft className="w-4 h-4 flex-shrink-0" />
-              <h1 className="text-sm font-medium leading-tight">
-                {jobTitle}
-              </h1>
-            </button>
+            <>
+              <button
+                onClick={onBack}
+                className="flex items-center space-x-2 hover:opacity-80 w-full text-left mt-4 transition"
+                style={{ color: colors.textPrimary }}
+              >
+                <ArrowLeft className="w-4 h-4 flex-shrink-0" />
+                <h1 className="text-sm font-medium leading-tight">
+                  {jobTitle}
+                </h1>
+              </button>
+              <button
+                onClick={() => setShowCompletedModal(true)}
+                className="mt-3 w-full px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+                style={{
+                  backgroundColor: isCompleted ? '#10B981' : '#E5E7EB',
+                  color: isCompleted ? '#FFFFFF' : '#374151'
+                }}
+              >
+                {isCompleted ? '✓ Completed' : 'Mark as Completed'}
+              </button>
+            </>
           )}
         </div>
 
@@ -152,6 +166,53 @@ const ThemedJobSpecificDashboard: React.FC<ThemedJobSpecificDashboardProps> = ({
       <div className="flex-1 overflow-auto">
         {renderContent()}
       </div>
+
+      {/* Completed Confirmation Modal */}
+      {showCompletedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Mark Job as Completed</h2>
+              <button
+                onClick={() => setShowCompletedModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-sm text-gray-600">
+                Are you sure you want to mark <strong>"{jobTitle}"</strong> as completed?
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                This will update the job status to completed.
+              </p>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowCompletedModal(false)}
+                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setIsCompleted(true);
+                  setShowCompletedModal(false);
+                  alert(`Job "${jobTitle}" marked as completed!`);
+                }}
+                className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

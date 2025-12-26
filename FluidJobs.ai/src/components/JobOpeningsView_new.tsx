@@ -27,9 +27,11 @@ interface JobData {
 
 interface JobOpeningsViewNewProps {
   hideHeader?: boolean;
+  searchQuery?: string;
+  showFilters?: boolean;
 }
 
-const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = false }) => {
+const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = false, searchQuery: externalSearchQuery, showFilters: externalShowFilters }) => {
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleJobs, setVisibleJobs] = useState(10);
@@ -37,6 +39,20 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
   const [showJobDashboard, setShowJobDashboard] = useState(false);
   const [selectedJobForDashboard, setSelectedJobForDashboard] = useState<JobData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Use external search query if provided
+  const activeSearchQuery = externalSearchQuery !== undefined ? externalSearchQuery : searchQuery;
+  const activeShowFilters = externalShowFilters !== undefined ? externalShowFilters : showFilters;
+  
+  // Filter states
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterDomain, setFilterDomain] = useState<string>('');
+  const [filterJobType, setFilterJobType] = useState<string>('');
+  const [filterWorkMode, setFilterWorkMode] = useState<string>('');
+  const [filterSalaryRange, setFilterSalaryRange] = useState<string>('');
+  const [filterPostedDate, setFilterPostedDate] = useState<string>('');
+  const [filterSkills, setFilterSkills] = useState<string[]>([]);
 
   useEffect(() => {
     fetchJobs();
@@ -129,9 +145,61 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
     }
   };
 
-  const filteredJobs = jobs.filter(job => 
-    job.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredJobs = jobs.filter(job => {
+    // Search filter
+    if (activeSearchQuery && !job.title.toLowerCase().includes(activeSearchQuery.toLowerCase())) {
+      return false;
+    }
+    
+    // Status filter
+    if (filterStatus && job.status !== filterStatus) {
+      return false;
+    }
+    
+    // Domain filter
+    if (filterDomain && job.job_domain !== filterDomain) {
+      return false;
+    }
+    
+    // Job Type filter
+    if (filterJobType && job.workplace !== filterJobType) {
+      return false;
+    }
+    
+    // Work Mode filter (stored in tags)
+    if (filterWorkMode && !job.tags.includes(filterWorkMode)) {
+      return false;
+    }
+    
+    // Salary Range filter
+    if (filterSalaryRange && job.min_salary && job.max_salary) {
+      const [minRange, maxRange] = filterSalaryRange.split('-').map(s => parseFloat(s) * 100000);
+      if (job.min_salary < minRange || job.max_salary > maxRange) {
+        return false;
+      }
+    }
+    
+    // Posted Date filter
+    if (filterPostedDate && job.created_at) {
+      const jobDate = new Date(job.created_at);
+      const now = new Date();
+      const daysDiff = Math.floor((now.getTime() - jobDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (filterPostedDate === '7' && daysDiff > 7) return false;
+      if (filterPostedDate === '30' && daysDiff > 30) return false;
+      if (filterPostedDate === '90' && daysDiff > 90) return false;
+    }
+    
+    // Skills filter (if any selected skill matches)
+    if (filterSkills.length > 0) {
+      const hasMatchingSkill = filterSkills.some(skill => 
+        job.tags.some(tag => tag.toLowerCase().includes(skill.toLowerCase()))
+      );
+      if (!hasMatchingSkill) return false;
+    }
+    
+    return true;
+  });
 
   const displayedJobs = filteredJobs.slice(0, visibleJobs);
 
@@ -195,24 +263,180 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                   className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={fetchJobs}
-                  className="p-3 hover:bg-gray-100 rounded-lg" 
-                  title="Refresh jobs"
-                >
-                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
-                <button className="p-3 hover:bg-gray-100 rounded-lg">
-                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                  </svg>
-                </button>
-              </div>
+              <button 
+                onClick={() => setShowFilters(!showFilters)}
+                className="p-3 hover:bg-gray-100 rounded-lg" 
+                title="Filter jobs"
+              >
+                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+              </button>
             </div>
           </>
+        )}
+
+        {/* Filters Panel */}
+        {activeShowFilters && (
+          <div className="bg-white rounded-xl p-6 mb-4 shadow-sm border border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+              <button
+                onClick={() => {
+                  setFilterStatus('');
+                  setFilterDomain('');
+                  setFilterJobType('');
+                  setFilterWorkMode('');
+                  setFilterSalaryRange('');
+                  setFilterPostedDate('');
+                  setFilterSkills([]);
+                }}
+                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+              >
+                Clear All
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-4 gap-4">
+              {/* Job Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Job Status</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                >
+                  <option value="">All Status</option>
+                  <option value="Published">Published</option>
+                  <option value="pending">Pending</option>
+                  <option value="unpublished">Unpublished</option>
+                </select>
+              </div>
+
+              {/* Job Domain */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Job Domain</label>
+                <select
+                  value={filterDomain}
+                  onChange={(e) => setFilterDomain(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                >
+                  <option value="">All Domains</option>
+                  <option value="Software Development">Software Development</option>
+                  <option value="Data Science">Data Science</option>
+                  <option value="Machine Learning">Machine Learning</option>
+                  <option value="Web Development">Web Development</option>
+                  <option value="Mobile Development">Mobile Development</option>
+                  <option value="DevOps">DevOps</option>
+                  <option value="Quality Assurance">Quality Assurance</option>
+                  <option value="UI/UX Design">UI/UX Design</option>
+                  <option value="Product Management">Product Management</option>
+                  <option value="Digital Marketing">Digital Marketing</option>
+                  <option value="Sales">Sales</option>
+                  <option value="Human Resources">Human Resources</option>
+                  <option value="Finance">Finance</option>
+                  <option value="Operations">Operations</option>
+                </select>
+              </div>
+
+              {/* Job Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Job Type</label>
+                <select
+                  value={filterJobType}
+                  onChange={(e) => setFilterJobType(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                >
+                  <option value="">All Types</option>
+                  <option value="Full-time">Full-time</option>
+                  <option value="Part-time">Part-time</option>
+                  <option value="Contract">Contract</option>
+                  <option value="Internship">Internship</option>
+                </select>
+              </div>
+
+              {/* Work Mode */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Work Mode</label>
+                <select
+                  value={filterWorkMode}
+                  onChange={(e) => setFilterWorkMode(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                >
+                  <option value="">All Modes</option>
+                  <option value="Work From Home">Work From Home</option>
+                  <option value="Hybrid">Hybrid</option>
+                  <option value="On-site">On-site</option>
+                </select>
+              </div>
+
+              {/* Salary Range */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Salary Range</label>
+                <select
+                  value={filterSalaryRange}
+                  onChange={(e) => setFilterSalaryRange(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                >
+                  <option value="">All Ranges</option>
+                  <option value="0-5">0-5 LPA</option>
+                  <option value="5-10">5-10 LPA</option>
+                  <option value="10-15">10-15 LPA</option>
+                  <option value="15-20">15-20 LPA</option>
+                  <option value="20-100">20+ LPA</option>
+                </select>
+              </div>
+
+              {/* Posted Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Posted Date</label>
+                <select
+                  value={filterPostedDate}
+                  onChange={(e) => setFilterPostedDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                >
+                  <option value="">All Time</option>
+                  <option value="7">Last 7 days</option>
+                  <option value="30">Last 30 days</option>
+                  <option value="90">Last 3 months</option>
+                </select>
+              </div>
+
+              {/* Skills */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Skills</label>
+                <input
+                  type="text"
+                  placeholder="Type skills..."
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                      const skill = e.currentTarget.value.trim();
+                      if (!filterSkills.includes(skill)) {
+                        setFilterSkills([...filterSkills, skill]);
+                      }
+                      e.currentTarget.value = '';
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                />
+                {filterSkills.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {filterSkills.map(skill => (
+                      <span key={skill} className="inline-flex items-center px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full">
+                        {skill}
+                        <button
+                          onClick={() => setFilterSkills(filterSkills.filter(s => s !== skill))}
+                          className="ml-1 text-indigo-600 hover:text-indigo-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Job Cards Grid */}

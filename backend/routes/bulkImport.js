@@ -5,6 +5,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const pool = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { logAudit } = require('../middleware/auditLogger');
 
 const router = express.Router();
 
@@ -61,6 +62,8 @@ router.post('/candidates', authenticateToken, upload.single('csvFile'), async (r
         }
 
         fs.unlinkSync(req.file.path);
+
+        await logAudit(req.user.id, req.user.name || req.user.email, 'BULK_IMPORT', `Imported ${processedCount} candidates`, 'bulk_import', null, req);
 
         res.json({
           success: true,

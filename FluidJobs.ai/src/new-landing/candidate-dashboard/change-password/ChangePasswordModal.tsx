@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Edit, X } from 'lucide-react';
+import ReactDOM from 'react-dom';
+import { Edit, X, Eye, EyeOff } from 'lucide-react';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -11,22 +12,173 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
   const [formData, setFormData] = useState({
     currentPassword: '',
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    email: '',
+    code: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [codeVerified, setCodeVerified] = useState(false);
+  const [error, setError] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = () => {
-    // Handle password change/reset logic
-    console.log('Form submitted:', formData);
+  const resetForm = () => {
+    setFormData({ currentPassword: '', newPassword: '', confirmPassword: '', email: '', code: '' });
+    setError('');
+    setShowResetForm(false);
+    setCodeSent(false);
+    setCodeVerified(false);
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
+  const validateForm = () => {
+    if (!showResetForm && !formData.currentPassword) {
+      setError('Please enter your current password');
+      return false;
+    }
+    if (showResetForm && !formData.email) {
+      setError('Please enter your email');
+      return false;
+    }
+    if (showResetForm && !formData.code) {
+      setError('Please enter verification code');
+      return false;
+    }
+    if (!formData.newPassword) {
+      setError('Please enter a new password');
+      return false;
+    }
+    if (formData.newPassword.length < 8) {
+      setError('Password must be at least 8 characters');
+      return false;
+    }
+    if (formData.newPassword !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSendCode = async () => {
+    setError('');
+    if (!formData.email) {
+      setError('Please enter your email');
+      return;
+    }
+
+    try {
+      setIsSendingCode(true);
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to send code');
+
+      setCodeSent(true);
+      alert('Verification code sent to your email!');
+    } catch (err: any) {
+      setError(err.message || 'Failed to send code');
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    setError('');
+    if (!formData.code) {
+      setError('Please enter verification code');
+      return;
+    }
+
+    try {
+      setIsVerifyingCode(true);
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/auth/verify-reset-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, code: formData.code })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Invalid verification code');
+
+      setCodeVerified(true);
+      alert('Code verified successfully! You can now set your new password.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to verify code');
+    } finally {
+      setIsVerifyingCode(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    setError('');
+    if (!validateForm()) return;
+
+    try {
+      setIsSubmitting(true);
+      const token = localStorage.getItem('token');
+      
+      if (showResetForm) {
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/auth/reset-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            code: formData.code,
+            newPassword: formData.newPassword
+          })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to reset password');
+        
+        alert('Password reset successfully!');
+        handleClose();
+      } else {
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/auth/change-password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            currentPassword: formData.currentPassword,
+            newPassword: formData.newPassword
+          })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to change password');
+        
+        alert('Password changed successfully!');
+        handleClose();
+      }
+    } catch (err: any) {
+      setError(err.message || 'An error occurred');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center" style={{ zIndex: 999999 }}>
       {!showResetForm ? (
         // Change Password Form
         <div className="relative w-[630px] h-[570px] bg-white rounded-[25px]">
-          <button onClick={onClose} className="absolute top-[35px] right-[25px] w-6 h-6 flex items-center justify-center z-10">
+          <button onClick={handleClose} className="absolute top-[35px] right-[25px] w-6 h-6 flex items-center justify-center z-10">
             <X className="w-5 h-5 text-black opacity-56" />
           </button>
 
@@ -36,50 +188,89 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
           </div>
 
           <div className="px-[37px]">
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm text-center">
+                {error}
+              </div>
+            )}
+            
             <div className="mb-[40px]">
               <label className="block font-['Poppins'] font-bold text-[15px] leading-[22px] text-black text-center mb-[14px]">
                 Current Password*
               </label>
-              <input
-                type="password"
-                value={formData.currentPassword}
-                onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
-                placeholder="Enter your current password"
-                className="w-full h-[45px] px-4 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
-              />
+              <div className="relative">
+                <input
+                  type={showCurrentPassword ? "text" : "password"}
+                  value={formData.currentPassword}
+                  onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
+                  placeholder="Enter your current password"
+                  className="w-full h-[45px] px-4 pr-12 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
             <div className="mb-[40px]">
               <label className="block font-['Poppins'] font-bold text-[15px] leading-[22px] text-black text-center mb-[14px]">
                 New Password*
               </label>
-              <input
-                type="password"
-                value={formData.newPassword}
-                onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                placeholder="Enter your new password"
-                className="w-full h-[45px] px-4 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
-              />
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={formData.newPassword}
+                  onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                  placeholder="Enter your new password"
+                  className="w-full h-[45px] px-4 pr-12 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
             <div className="mb-[35px]">
               <label className="block font-['Poppins'] font-bold text-[15px] leading-[22px] text-black text-center mb-[14px]">
                 Confirm New Password*
               </label>
-              <input
-                type="password"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                placeholder="Type the new password again"
-                className="w-full h-[45px] px-4 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  placeholder="Type the new password again"
+                  className="w-full h-[45px] px-4 pr-12 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
             <button
               onClick={handleSubmit}
-              className="w-full h-[44px] bg-[#4285F4] rounded-[10px] font-['Poppins'] font-semibold text-[15px] text-white hover:opacity-90 mb-[12px]"
+              disabled={isSubmitting}
+              className="w-full h-[44px] bg-[#4285F4] rounded-[10px] font-['Poppins'] font-semibold text-[15px] text-white hover:opacity-90 mb-[12px] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              Submit
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Submitting...
+                </>
+              ) : 'Submit'}
             </button>
 
             <div className="pb-[32px]">
@@ -94,8 +285,8 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
         </div>
       ) : (
         // Reset Password Form
-        <div className="relative w-[630px] h-[440px] bg-white rounded-[25px]">
-          <button onClick={onClose} className="absolute top-[35px] right-[25px] w-6 h-6 flex items-center justify-center z-10">
+        <div className="relative w-[630px] bg-white rounded-[25px]" style={{ minHeight: '500px' }}>
+          <button onClick={handleClose} className="absolute top-[35px] right-[25px] w-6 h-6 flex items-center justify-center z-10">
             <X className="w-5 h-5 text-black opacity-56" />
           </button>
 
@@ -105,42 +296,145 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
           </div>
 
           <div className="px-[37px]">
-            <div className="mb-[44px]">
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm text-center">
+                {error}
+              </div>
+            )}
+            
+            <button
+              onClick={() => setShowResetForm(false)}
+              className="mb-4 text-sm text-gray-600 hover:text-gray-800 flex items-center"
+            >
+              ← Back to Change Password
+            </button>
+            
+            <div className="mb-[30px]">
               <label className="block font-['Poppins'] font-bold text-[15px] leading-[22px] text-black text-center mb-[14px]">
-                New Password*
+                Email*
               </label>
               <input
-                type="password"
-                value={formData.newPassword}
-                onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                placeholder="Enter your new password"
-                className="w-full h-[45px] px-4 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
-              />
-            </div>
-
-            <div className="mb-[37px]">
-              <label className="block font-['Poppins'] font-bold text-[15px] leading-[22px] text-black text-center mb-[14px]">
-                Confirm New Password*
-              </label>
-              <input
-                type="password"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                placeholder="Type the new password again"
-                className="w-full h-[45px] px-4 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="Enter your email"
+                disabled={codeSent}
+                className="w-full h-[45px] px-4 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E] disabled:bg-gray-100"
               />
             </div>
 
             <button
-              onClick={handleSubmit}
-              className="w-full h-[44px] bg-[#4285F4] rounded-[10px] font-['Poppins'] font-semibold text-[15px] text-white hover:opacity-90 mb-[37px]"
+              onClick={handleSendCode}
+              disabled={isSendingCode || codeSent || !formData.email}
+              className="w-full h-[44px] bg-green-600 rounded-[10px] font-['Poppins'] font-semibold text-[15px] text-white hover:bg-green-700 mb-[30px] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              Submit
+              {isSendingCode ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Sending...
+                </>
+              ) : codeSent ? 'Code Sent ✓' : 'Send Verification Code'}
             </button>
+
+            {codeSent && (
+              <>
+                <div className="mb-[30px]">
+                  <label className="block font-['Poppins'] font-bold text-[15px] leading-[22px] text-black text-center mb-[14px]">
+                    Verification Code*
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                    placeholder="Enter 6-digit code"
+                    maxLength={6}
+                    disabled={codeVerified}
+                    className="w-full h-[45px] px-4 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E] text-center tracking-widest disabled:bg-gray-100"
+                  />
+                </div>
+
+                <button
+                  onClick={handleVerifyCode}
+                  disabled={isVerifyingCode || codeVerified || !formData.code}
+                  className="w-full h-[44px] bg-blue-600 rounded-[10px] font-['Poppins'] font-semibold text-[15px] text-white hover:bg-blue-700 mb-[30px] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {isVerifyingCode ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                      Verifying...
+                    </>
+                  ) : codeVerified ? 'Code Verified ✓' : 'Verify Code'}
+                </button>
+              </>
+            )}
+            
+            {codeVerified && (
+              <>
+                <div className="mb-[30px]">
+                  <label className="block font-['Poppins'] font-bold text-[15px] leading-[22px] text-black text-center mb-[14px]">
+                    New Password*
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      value={formData.newPassword}
+                      onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                      placeholder="Enter your new password"
+                      className="w-full h-[45px] px-4 pr-12 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mb-[30px]">
+                  <label className="block font-['Poppins'] font-bold text-[15px] leading-[22px] text-black text-center mb-[14px]">
+                    Confirm New Password*
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={formData.confirmPassword}
+                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                      placeholder="Type the new password again"
+                      className="w-full h-[45px] px-4 pr-12 bg-white border border-[rgba(0,0,0,0.5)] rounded-[10px] font-['Poppins'] font-medium text-[15px] text-[#6E6E6E] placeholder:text-[#6E6E6E]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {codeVerified && (
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="w-full h-[44px] bg-[#4285F4] rounded-[10px] font-['Poppins'] font-semibold text-[15px] text-white hover:opacity-90 mb-[30px] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    Submitting...
+                  </>
+                ) : 'Submit'}
+              </button>
+            )}
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -1,10 +1,10 @@
 import React from 'react';
 import ManageCandidates from './ManageCandidates';
 
-const ManageCandidatesWrapper: React.FC = () => {
+const ManageCandidatesWrapper: React.FC<{ isSuperAdmin?: boolean }> = ({ isSuperAdmin = false }) => {
   return (
-    <div className="h-screen">
-      <ManageCandidates />
+    <div className="h-full overflow-hidden">
+      <ManageCandidates isSuperAdmin={isSuperAdmin} />
     </div>
   );
 };
