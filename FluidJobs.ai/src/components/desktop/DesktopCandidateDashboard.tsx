@@ -84,7 +84,7 @@ const DesktopCandidateDashboard: React.FC = () => {
             alt="FluidJobs" 
             className="w-[59px] h-[59px]"
           />
-          <h1 className="text-3xl font-extrabold" style={{
+          <h1 className="text-xl font-semibold" style={{
             fontFamily: 'Poppins, sans-serif',
             backgroundImage: 'linear-gradient(90deg, #4285F4 0%, #0060FF 100%)',
             WebkitBackgroundClip: 'text',
@@ -94,10 +94,10 @@ const DesktopCandidateDashboard: React.FC = () => {
         </div>
 
         {/* Navigation Tabs */}
-        <nav className="flex space-x-6 text-base lg:text-lg font-extrabold flex-1 max-w-md">
+        <nav className="flex space-x-6 text-base lg:text-lg font-semibold flex-1 max-w-md">
           <button 
             onClick={() => setNewUiTab('alerts')} 
-            className="flex items-center space-x-2 px-4 py-2 rounded-full transition-all font-bold whitespace-nowrap"
+            className="flex items-center space-x-2 px-4 py-2 rounded-full transition-all font-semibold whitespace-nowrap"
             style={{
               backgroundColor: newUiTab === 'alerts' ? (themeState === 'light' ? '#DBEAFE' : 'rgba(37, 99, 235, 0.2)') : 'transparent',
               color: newUiTab === 'alerts' ? '#2563EB' : (themeState === 'light' ? '#000000' : '#E5E7EB')
@@ -108,7 +108,7 @@ const DesktopCandidateDashboard: React.FC = () => {
           </button>
           <button 
             onClick={() => setNewUiTab('jobs')} 
-            className="flex items-center space-x-2 px-4 py-2 rounded-full transition-all font-bold whitespace-nowrap"
+            className="flex items-center space-x-2 px-4 py-2 rounded-full transition-all font-semibold whitespace-nowrap"
             style={{
               backgroundColor: newUiTab === 'jobs' ? (themeState === 'light' ? '#DBEAFE' : 'rgba(37, 99, 235, 0.2)') : 'transparent',
               color: newUiTab === 'jobs' ? '#2563EB' : (themeState === 'light' ? '#000000' : '#E5E7EB')
@@ -119,7 +119,7 @@ const DesktopCandidateDashboard: React.FC = () => {
           </button>
           <button 
             onClick={() => setNewUiTab('resume')} 
-            className="flex items-center space-x-2 px-4 py-2 rounded-full transition-all font-bold whitespace-nowrap"
+            className="flex items-center space-x-2 px-4 py-2 rounded-full transition-all font-semibold whitespace-nowrap"
             style={{
               backgroundColor: newUiTab === 'resume' ? (themeState === 'light' ? '#DBEAFE' : 'rgba(37, 99, 235, 0.2)') : 'transparent',
               color: newUiTab === 'resume' ? '#2563EB' : (themeState === 'light' ? '#000000' : '#E5E7EB')

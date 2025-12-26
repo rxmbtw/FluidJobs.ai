@@ -3,10 +3,10 @@
 
 export const typography = {
   // Page-level headers
-  pageTitle: "text-2xl font-bold font-['Poppins']", // 24px
+  pageTitle: "text-2xl font-semibold font-['Poppins']", // 24px - Changed to semibold
   
   // Section headers
-  sectionTitle: "text-xl font-bold font-['Poppins']", // 20px
+  sectionTitle: "text-xl font-semibold font-['Poppins']", // 20px - Changed to semibold
   subsectionTitle: "text-lg font-semibold font-['Poppins']", // 18px
   
   // Body text
