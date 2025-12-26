@@ -1,148 +1,230 @@
-import React from 'react';
-import { FileText, Sparkles, Mail, Phone, Calendar, MapPin, Info } from 'lucide-react';
-import { useProfileCompletionContext } from '../../../contexts/ProfileCompletionContext';
+import React, { useState, useEffect } from 'react';
+import { User, Mail, Phone, Calendar, MapPin, Info, FilePlus, Sparkles } from 'lucide-react';
+import Loader from '../../../components/Loader';
+import AIResumeReviewer from './AIResumeReviewer';
 
 interface MyResumeViewProps {
   themeState?: 'light' | 'dark';
 }
 
 const MyResumeView: React.FC<MyResumeViewProps> = ({ themeState = 'light' }) => {
-  const { triggerRefresh } = useProfileCompletionContext();
+  const [loading, setLoading] = useState(true);
+  const [showAIReviewer, setShowAIReviewer] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const bgColor = themeState === 'light' ? '#F1F1F1' : '#1a1a1a';
   const cardBg = themeState === 'light' ? '#FFFFFF' : '#1F2937';
   const textPrimary = themeState === 'light' ? '#000000' : '#f9fafb';
-  const textSecondary = themeState === 'light' ? '#6b7280' : '#9ca3af';
-  const borderColor = themeState === 'light' ? '#D1D5DB' : '#374151';
-  
-  // Trigger refresh when component mounts (in case resume was uploaded)
-  React.useEffect(() => {
-    triggerRefresh();
-  }, [triggerRefresh]);
-  
+  const textSecondary = themeState === 'light' ? '#6E6E6E' : '#9ca3af';
+
+  if (loading) {
+    return (
+      <div style={{ backgroundColor: bgColor, minHeight: 'calc(100vh - 116px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader themeState={themeState} />
+      </div>
+    );
+  }
+
+  if (showAIReviewer) {
+    return <AIResumeReviewer themeState={themeState} onBack={() => setShowAIReviewer(false)} />;
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 pt-4">
-      <h1 className="text-xl sm:text-3xl font-bold mb-6 hidden lg:block" style={{ color: textPrimary }}>My Resume</h1>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* LEFT COLUMN - Profile and Information */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Profile Card */}
-          <div className="p-4 pt-16 rounded-3xl shadow-lg relative overflow-hidden" style={{ backgroundColor: cardBg }}>
-            <div className="absolute top-0 left-0 w-full h-32 rounded-t-2xl bg-gradient-to-r from-[#0060FF] to-[#4285F4]"></div>
-
-            <div className="relative z-10 mx-auto w-24 h-24 rounded-full p-1" style={{ backgroundColor: cardBg }}>
-              <div className="w-full h-full bg-[#4285F4] rounded-full flex items-center justify-center text-white text-3xl font-bold">
-                SS
-              </div>
-            </div>
-
-            <div className="text-center mt-3">
-              <h2 className="text-xl font-bold" style={{ color: textPrimary }}>Shriram Surse</h2>
-              <p className="text-sm text-[#4285F4] mt-1">Pune, Maharashtra | Joined Oct 2025</p>
-            </div>
-
-            <div className="flex space-x-4 mt-6 justify-center pb-4">
-              <button className="flex items-center space-x-2 bg-[#4285F4] text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-md hover:bg-blue-600 transition">
-                <FileText className="w-4 h-4" />
-                <span>Generate Resume</span>
-              </button>
-              <button className="flex items-center space-x-2 bg-green-700/70 text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-md hover:bg-green-800 transition">
-                <Sparkles className="w-4 h-4" />
-                <span>AI Resume Reviewer</span>
-              </button>
+    <div style={{ backgroundColor: bgColor, height: 'calc(100vh - 116px)', padding: '12px 40px', overflow: 'hidden' }}>
+      <h1 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '24px', color: textPrimary, marginBottom: '12px' }}>My Resume</h1>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px', marginBottom: '12px', height: 'calc(50% - 30px)' }}>
+        {/* Profile Card */}
+        <div style={{ backgroundColor: cardBg, borderRadius: '20px', padding: '16px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', overflow: 'hidden' }}>
+          {/* Blue Header */}
+          <div style={{
+            background: 'linear-gradient(135deg, #4285F4 0%, #0060FF 100%)',
+            height: '80px',
+            borderRadius: '16px',
+            marginBottom: '45px',
+            position: 'relative'
+          }}>
+            <div style={{
+              position: 'absolute',
+              bottom: '-35px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '70px',
+              height: '70px',
+              borderRadius: '50%',
+              background: '#6BA3F7',
+              border: '4px solid #FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <User style={{ width: '35px', height: '35px', color: '#FFFFFF' }} />
             </div>
           </div>
 
-          {/* Information Card */}
-          <div className="p-6 rounded-3xl shadow-lg" style={{ backgroundColor: cardBg }}>
-            <h3 className="text-xl font-bold mb-4" style={{ color: textPrimary }}>Information</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3" style={{ color: textSecondary }}>
-                  <Mail className="w-5 h-5" />
-                  <span className="text-sm">Email Address</span>
-                </div>
-                <span className="text-sm font-medium" style={{ color: textPrimary }}>ram@fluid.live</span>
-              </div>
+          {/* User Info */}
+          <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+            <h2 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '16px', color: textPrimary, marginBottom: '4px' }}>
+              Shriram Surse
+            </h2>
+            <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 500, color: '#4285F4' }}>
+              Pune, Maharashtra | Joined Oct 2025
+            </p>
+          </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3" style={{ color: textSecondary }}>
-                  <Phone className="w-5 h-5" />
-                  <span className="text-sm">Phone Number</span>
-                </div>
-                <span className="text-sm font-medium" style={{ color: textPrimary }}>+91 98765 XXXXX</span>
-              </div>
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button style={{
+              flex: 1,
+              background: '#4285F4',
+              color: 'white',
+              padding: '8px 6px',
+              borderRadius: '8px',
+              border: 'none',
+              fontFamily: 'Poppins',
+              fontWeight: 600,
+              fontSize: '11px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px'
+            }}>
+              <FilePlus style={{ width: '13px', height: '13px', flexShrink: 0 }} />
+              <span style={{ whiteSpace: 'nowrap' }}>Generate Resume</span>
+            </button>
+            <button 
+              onClick={() => setShowAIReviewer(true)}
+              style={{
+              flex: 1,
+              background: '#34A853',
+              color: 'white',
+              padding: '8px 6px',
+              borderRadius: '8px',
+              border: 'none',
+              fontFamily: 'Poppins',
+              fontWeight: 600,
+              fontSize: '11px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px'
+            }}>
+              <Sparkles style={{ width: '13px', height: '13px', flexShrink: 0 }} />
+              <span style={{ whiteSpace: 'nowrap' }}>AI Resume Reviewer</span>
+            </button>
+          </div>
+        </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3" style={{ color: textSecondary }}>
-                  <Calendar className="w-5 h-5" />
-                  <span className="text-sm">DOB (Date of Birth)</span>
-                </div>
-                <span className="text-sm font-medium" style={{ color: textPrimary }}>01/01/2004</span>
+        {/* Work Experience */}
+        <div style={{ backgroundColor: cardBg, borderRadius: '20px', padding: '16px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' }}>
+          <h3 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '16px', color: textPrimary, marginBottom: '12px' }}>Work Experience</h3>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+              <div>
+                <p style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: textPrimary, marginBottom: '3px' }}>
+                  FluidLive Solutions Pvt Ltd
+                </p>
+                <p style={{ fontFamily: 'Poppins', fontSize: '10px', color: '#4285F4' }}>
+                  Pune, Maharashtra
+                </p>
               </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontFamily: 'Poppins', fontSize: '12px', fontWeight: 600, color: textPrimary, marginBottom: '3px' }}>
+                  Aug 2025 - Present
+                </p>
+                <p style={{ fontFamily: 'Poppins', fontSize: '10px', color: textSecondary }}>
+                  Current CTC: 3LPA
+                </p>
+              </div>
+            </div>
+            <div style={{ width: '100%', height: '1px', background: '#E0E0E0' }} />
+          </div>
+        </div>
+      </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3" style={{ color: textSecondary }}>
-                  <MapPin className="w-5 h-5" />
-                  <span className="text-sm">Current City</span>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px', height: 'calc(50% - 30px)' }}>
+        {/* Information */}
+        <div style={{ backgroundColor: cardBg, borderRadius: '20px', padding: '16px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' }}>
+          <h3 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '16px', color: textPrimary, marginBottom: '12px' }}>Information</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '20px', height: '20px', border: '2px solid #6E6E6E', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Mail style={{ width: '11px', height: '11px', color: textSecondary }} />
                 </div>
-                <span className="text-sm font-medium" style={{ color: textPrimary }}>Pune, Maharashtra</span>
+                <span style={{ fontFamily: 'Poppins', fontSize: '11px', color: textSecondary }}>Email Address</span>
               </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3" style={{ color: textSecondary }}>
-                  <Info className="w-5 h-5" />
-                  <span className="text-sm">Joined</span>
+              <span style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 600, color: textPrimary }}>ram@fluid.live</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '20px', height: '20px', border: '2px solid #6E6E6E', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Phone style={{ width: '11px', height: '11px', color: textSecondary }} />
                 </div>
-                <span className="text-sm font-medium" style={{ color: textPrimary }}>5 Oct 2025</span>
+                <span style={{ fontFamily: 'Poppins', fontSize: '11px', color: textSecondary }}>Phone Number</span>
               </div>
+              <span style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 600, color: textPrimary }}>+91 98765 XXXXX</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '20px', height: '20px', border: '2px solid #6E6E6E', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Calendar style={{ width: '11px', height: '11px', color: textSecondary }} />
+                </div>
+                <span style={{ fontFamily: 'Poppins', fontSize: '11px', color: textSecondary }}>DOB (Date of Birth)</span>
+              </div>
+              <span style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 600, color: textPrimary }}>01/01/2004</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '20px', height: '20px', border: '2px solid #6E6E6E', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <MapPin style={{ width: '11px', height: '11px', color: textSecondary }} />
+                </div>
+                <span style={{ fontFamily: 'Poppins', fontSize: '11px', color: textSecondary }}>Current City</span>
+              </div>
+              <span style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 600, color: textPrimary }}>Pune, Maharashtra</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '20px', height: '20px', border: '2px solid #6E6E6E', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Info style={{ width: '11px', height: '11px', color: textSecondary }} />
+                </div>
+                <span style={{ fontFamily: 'Poppins', fontSize: '11px', color: textSecondary }}>Joined</span>
+              </div>
+              <span style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 600, color: textPrimary }}>5 Oct 2025</span>
             </div>
           </div>
         </div>
 
-        {/* RIGHT COLUMN - Work Experience and Skills */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Work Experience Card */}
-          <div className="p-6 rounded-3xl shadow-lg min-h-[312px]" style={{ backgroundColor: cardBg }}>
-            <h3 className="text-xl font-bold mb-6" style={{ color: textPrimary }}>Work Experience</h3>
-
-            <div className="border-l-4 border-[#4285F4] pl-4 space-y-1">
-              <div className="flex justify-between items-start">
-                <h4 className="text-base font-semibold" style={{ color: textPrimary }}>Software Development Engineer Intern</h4>
-                <span className="text-sm font-medium text-right" style={{ color: textPrimary }}>Aug 2025 - Present</span>
+        {/* Resume & Skills - Merged */}
+        <div style={{ backgroundColor: cardBg, borderRadius: '20px', padding: '16px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' }}>
+          <h3 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '16px', color: textPrimary, marginBottom: '12px' }}>Resume</h3>
+          
+          {/* Resume upload area will go here */}
+          
+          {/* Separator Line */}
+          <div style={{ width: '100%', height: '1px', background: '#E0E0E0', margin: '60px 0 24px 0' }} />
+          
+          <h3 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '16px', color: textPrimary, marginBottom: '12px' }}>Skills</h3>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {['Python', 'C/C++', 'Java'].map((skill) => (
+              <div key={skill} style={{
+                padding: '8px 20px',
+                borderRadius: '8px',
+                border: '1px solid #4285F4',
+                fontFamily: 'Poppins',
+                fontSize: '14px',
+                color: '#4285F4',
+                fontWeight: 500
+              }}>
+                {skill}
               </div>
-              <div className="flex justify-between items-start">
-                <p className="text-sm font-medium" style={{ color: textSecondary }}>FluidLive Solutions Pvt Ltd</p>
-                <span className="text-xs font-medium text-right hidden sm:block" style={{ color: textSecondary }}>Current CTC: 3LPA</span>
-              </div>
-              <p className="text-xs font-medium text-[#4285F4] mt-0.5">Pune, Maharashtra</p>
-            </div>
-          </div>
-
-          {/* Skills and Education Card */}
-          <div className="p-6 rounded-3xl shadow-lg min-h-[288px]" style={{ backgroundColor: cardBg }}>
-            <h3 className="text-xl font-bold mb-4" style={{ color: textPrimary }}>Skills</h3>
-            <div className="flex flex-wrap gap-3">
-              <span className="px-4 py-1 border border-[#4285F4] text-[#4285F4] font-medium rounded-md text-sm transition hover:bg-blue-50">Python</span>
-              <span className="px-4 py-1 border border-[#4285F4] text-[#4285F4] font-medium rounded-md text-sm transition hover:bg-blue-50">C/C++</span>
-              <span className="px-4 py-1 border border-[#4285F4] text-[#4285F4] font-medium rounded-md text-sm transition hover:bg-blue-50">Java</span>
-              <span className="px-4 py-1 border border-[#4285F4] text-[#4285F4] font-medium rounded-md text-sm transition hover:bg-blue-50">Tailwind CSS</span>
-              <span className="px-4 py-1 border border-[#4285F4] text-[#4285F4] font-medium rounded-md text-sm transition hover:bg-blue-50">React</span>
-              <span className="px-4 py-1 border border-[#4285F4] text-[#4285F4] font-medium rounded-md text-sm transition hover:bg-blue-50">Firestore</span>
-              <span className="px-4 py-1 border border-[#4285F4] text-[#4285F4] font-medium rounded-md text-sm transition hover:bg-blue-50">Cloud Functions</span>
-            </div>
-
-            <hr className="my-6" style={{ borderColor: borderColor }} />
-
-            <h3 className="text-xl font-bold mb-4" style={{ color: textPrimary }}>Education</h3>
-
-            <div className="border-l-4 pl-4 space-y-1" style={{ borderColor: borderColor }}>
-              <div className="flex justify-between items-start">
-                <h4 className="text-base font-semibold" style={{ color: textPrimary }}>B.Tech in Computer Science</h4>
-                <span className="text-sm font-medium text-right" style={{ color: textPrimary }}>2021 - 2025</span>
-              </div>
-              <p className="text-sm font-medium" style={{ color: textSecondary }}>Pune Institute of Technology</p>
-              <p className="text-xs font-medium text-[#4285F4] mt-0.5">Pune, Maharashtra | CGPA: 9.2</p>
-            </div>
+            ))}
           </div>
         </div>
       </div>

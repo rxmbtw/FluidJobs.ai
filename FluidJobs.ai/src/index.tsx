@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/tailwind.css';
 import './styles/animated-gradient.css';
+import './styles/mobile.css';
 import App from './App';
 import { AuthProvider } from './contexts/AuthProvider';
 

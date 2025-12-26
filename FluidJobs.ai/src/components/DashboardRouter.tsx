@@ -1,41 +1,24 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import { useAuth } from '../contexts/AuthProvider';
+import CandidateDashboard from '../new-landing/candidate-dashboard/CandidateDashboard';
+import CompanyDashboard from '../new-landing/company-dashboard/CompanyDashboard';
 
 const DashboardRouter: React.FC = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
 
-  useEffect(() => {
-    console.log('DashboardRouter - User data:', user);
-    console.log('DashboardRouter - User role:', user?.role);
-    
-    if (!user) {
-      console.log('No user found, redirecting to login');
-      navigate('/login');
-      return;
-    }
+  if (!user) {
+    return null;
+  }
 
-    // Add a small delay to ensure proper state management
-    setTimeout(() => {
-      if (user.role === 'Admin') {
-        console.log('ADMIN DETECTED - Redirecting to company-dashboard');
-        navigate('/company-dashboard', { replace: true });
-      } else {
-        console.log('CANDIDATE DETECTED - Redirecting to candidate dashboard');
-        navigate('/dashboard', { replace: true });
-      }
-    }, 100);
-  }, [navigate, user]);
+  if (user.role === 'Candidate') {
+    return <CandidateDashboard />;
+  }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Redirecting to dashboard...</p>
-      </div>
-    </div>
-  );
+  if (['Admin', 'HR', 'Sales'].includes(user.role)) {
+    return <CompanyDashboard />;
+  }
+
+  return <div>Unauthorized</div>;
 };
 
 export default DashboardRouter;

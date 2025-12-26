@@ -1,6 +1,0 @@
-@echo off
-echo Starting Cloud SQL Proxy...
-start /B cloud-sql-proxy fluidjobsai:asia-south1:fluidjobsaidb --port=5432
-timeout /t 3
-echo Starting backend server...
-npm start

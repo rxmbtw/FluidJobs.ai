@@ -91,6 +91,8 @@ app.use('/api/candidate-restrictions', require('./routes/candidateRestrictions')
 app.use('/api/job-stages', require('./routes/jobCandidateStages'));
 app.use('/api/candidate-job-status', require('./routes/candidateJobStatus'));
 app.use('/api/accounts', require('./routes/accounts'));
+app.use('/api/contact-support', require('./routes/contactSupport'));
+app.use('/api/resume-form', require('./routes/resumeForm'));
 
 // Serve uploaded files with proper headers
 const uploadsPath = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');

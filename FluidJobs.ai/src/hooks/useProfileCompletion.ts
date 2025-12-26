@@ -27,11 +27,11 @@ export const useProfileCompletion = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchProfileCompletion = async () => {
+    setLoading(true);
     try {
       const userStr = sessionStorage.getItem('fluidjobs_user');
       if (userStr) {
         const user = JSON.parse(userStr);
-        // Skip profile completion for admin users
         if (user.role === 'Admin' || user.role === 'HR' || user.role === 'Sales') {
           setLoading(false);
           return;
@@ -39,6 +39,12 @@ export const useProfileCompletion = () => {
       }
       
       const token = sessionStorage.getItem('fluidjobs_token');
+      if (!token) {
+        console.error('No token found');
+        setLoading(false);
+        return;
+      }
+
       const response = await axios.get('http://localhost:8000/api/profile/profile', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -48,13 +54,13 @@ export const useProfileCompletion = () => {
         {
           id: 'fullName',
           label: 'Full Name',
-          completed: !!(profile.full_name?.trim() && profile.full_name.trim() !== ''),
+          completed: !!(profile.full_name?.trim()),
           required: true
         },
         {
           id: 'email',
           label: 'Email Address',
-          completed: !!(profile.email?.trim() && profile.email.trim() !== ''),
+          completed: !!(profile.email?.trim()),
           required: true
         },
         {
@@ -62,7 +68,6 @@ export const useProfileCompletion = () => {
           label: 'Phone Number',
           completed: (() => {
             const phone = profile.phone?.trim() || profile.phone_number?.trim() || '';
-            // Check if phone has both country code (+) and actual number (more than just country code)
             return !!(phone && phone.includes('+') && phone.length > 4 && /\d{7,}/.test(phone));
           })(),
           required: true
@@ -70,7 +75,7 @@ export const useProfileCompletion = () => {
         {
           id: 'profileImage',
           label: 'Upload profile picture',
-          completed: !!(profile.profile_image_url?.trim() && profile.profile_image_url.trim() !== ''),
+          completed: !!(profile.profile_image_url?.trim()),
           required: false
         },
         {
@@ -82,37 +87,46 @@ export const useProfileCompletion = () => {
         {
           id: 'address',
           label: 'Add your address',
-          completed: !!(profile.city?.trim() && profile.city.trim() !== '') || !!(profile.location?.trim() && profile.location.trim() !== ''),
+          completed: !!(profile.city?.trim() || profile.location?.trim()),
           required: false
         },
         {
           id: 'gender',
           label: 'Gender',
-          completed: !!(profile.gender?.trim() && profile.gender.trim() !== '' && profile.gender !== 'Select Gender'),
+          completed: !!(profile.gender?.trim() && profile.gender !== 'Select Gender'),
           required: false
         },
         {
           id: 'maritalStatus',
           label: 'Marital Status',
-          completed: !!(profile.marital_status?.trim() && profile.marital_status.trim() !== '' && profile.marital_status !== 'Select Status'),
+          completed: !!(profile.marital_status?.trim() && profile.marital_status !== 'Select Status'),
           required: false
         },
         {
           id: 'workStatus',
           label: 'Work Experience',
-          completed: !!(profile.work_status?.trim() && profile.work_status.trim() !== ''),
+          completed: !!(profile.work_status?.trim()),
           required: true
         },
-        {
-          id: 'currentCompany',
-          label: 'Current/Last Company',
-          completed: !!(profile.current_company?.trim() && profile.current_company.trim() !== '') || !!(profile.last_company?.trim() && profile.last_company.trim() !== ''),
-          required: false
-        },
+        ...(profile.work_status?.trim() === 'fresher' ? [
+          {
+            id: 'college',
+            label: 'College/University',
+            completed: !!(profile.college?.trim()),
+            required: false
+          }
+        ] : [
+          {
+            id: 'currentCompany',
+            label: 'Current/Last Company',
+            completed: !!(profile.current_company?.trim() || profile.last_company?.trim()),
+            required: false
+          }
+        ]),
         {
           id: 'workMode',
           label: 'Work Mode Preference',
-          completed: !!(profile.work_mode?.trim() && profile.work_mode.trim() !== '' && profile.work_mode !== 'Select Work Mode'),
+          completed: !!(profile.work_mode?.trim() && profile.work_mode !== 'Select Work Mode'),
           required: false
         }
       ];
@@ -121,7 +135,6 @@ export const useProfileCompletion = () => {
       const totalCount = items.length;
       const completionPercentage = Math.round((completedCount / totalCount) * 100);
 
-      // Sort items: incomplete first, then completed
       const sortedItems = items.sort((a, b) => {
         if (a.completed === b.completed) return 0;
         return a.completed ? 1 : -1;
@@ -133,8 +146,13 @@ export const useProfileCompletion = () => {
         completedCount,
         totalCount
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching profile completion:', error);
+      if (error.response?.status === 401) {
+        sessionStorage.removeItem('fluidjobs_token');
+        sessionStorage.removeItem('fluidjobs_user');
+        window.location.reload();
+      }
     } finally {
       setLoading(false);
     }

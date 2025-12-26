@@ -71,13 +71,13 @@ const PhoneInput: React.FC<PhoneInputProps> = ({ value, onChange, className, sty
   };
 
   return (
-    <div className="relative flex" style={{ width: '211px', maxWidth: '211px' }}>
+    <div className="relative flex" style={{ width: '100%' }}>
       <div ref={dropdownRef} className="relative">
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="h-[28px] px-2 border border-r-0 border-[rgba(0,0,0,0.5)] rounded-l-[5px] flex items-center gap-1 text-[12px] font-medium"
-          style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#374151', color: themeState === 'light' ? '#000000' : '#E5E7EB', minWidth: '85px' }}
+          className="h-[28px] px-1 border border-r-0 border-[rgba(0,0,0,0.5)] rounded-l-[5px] flex items-center gap-1 text-[12px] font-medium"
+          style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#374151', color: themeState === 'light' ? '#000000' : '#E5E7EB', width: '70px', flexShrink: 0 }}
         >
           {selectedCountry ? (
             <>
@@ -115,7 +115,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({ value, onChange, className, sty
         onChange={handlePhoneChange}
         placeholder="9284710996"
         className="h-[28px] px-2 border border-[rgba(0,0,0,0.5)] rounded-r-[5px] text-[12px] font-medium font-['Poppins']"
-        style={{ ...style, borderRadius: '0 5px 5px 0', backgroundColor: style?.backgroundColor, color: style?.color, width: '126px', flex: 'none' }}
+        style={{ ...style, borderRadius: '0 5px 5px 0', backgroundColor: style?.backgroundColor, color: style?.color, flex: 1, minWidth: 0 }}
       />
     </div>
   );

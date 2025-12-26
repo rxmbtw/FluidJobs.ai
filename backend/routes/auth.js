@@ -6,7 +6,47 @@ const pool = require('../config/database');
 const fetch = require('node-fetch');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
+
+// Rate limiter for login attempts (5 attempts per 15 minutes)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts
+  message: 'Too many login attempts. Please try again after 15 minutes.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiter for signup (3 attempts per hour)
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  message: 'Too many registration attempts. Please try again later.',
+});
+
+// Password strength validation
+function validatePasswordStrength(password) {
+  const minLength = 8;
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  
+  if (password.length < minLength) {
+    return { valid: false, message: 'Password must be at least 8 characters long' };
+  }
+  if (!hasUpperCase) {
+    return { valid: false, message: 'Password must contain at least one uppercase letter' };
+  }
+  if (!hasLowerCase) {
+    return { valid: false, message: 'Password must contain at least one lowercase letter' };
+  }
+  if (!hasNumber) {
+    return { valid: false, message: 'Password must contain at least one number' };
+  }
+  
+  return { valid: true };
+}
 
 // Email transporter setup
 let transporter;
@@ -42,10 +82,16 @@ router.post('/check-username', async (req, res) => {
 });
 
 // Signup endpoint
-router.post('/signup', async (req, res) => {
+router.post('/signup', signupLimiter, async (req, res) => {
   try {
     console.log('📝 Registration request body:', req.body);
     const { username, password, fullName, phone, email, gender, maritalStatus, workStatus, currentCompany, noticePeriod, currentCTC, lastCompany, previousCTC, city, workMode } = req.body;
+    
+    // Validate password strength
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({ error: passwordValidation.message });
+    }
     
     // Check if user already exists
     const existingUser = await pool.query(
@@ -133,7 +179,7 @@ router.post('/admin/check', async (req, res) => {
 });
 
 // Admin login endpoint
-router.post('/admin/login', async (req, res) => {
+router.post('/admin/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     
@@ -186,7 +232,7 @@ router.post('/admin/login', async (req, res) => {
 });
 
 // Login endpoint
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password, role } = req.body;
     
@@ -603,6 +649,12 @@ router.post('/reset-password', async (req, res) => {
   try {
     const { email, code, newPassword } = req.body;
     
+    // Validate password strength
+    const passwordValidation = validatePasswordStrength(newPassword);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({ error: passwordValidation.message });
+    }
+    
     // Verify code again
     const codeResult = await pool.query(
       'SELECT * FROM password_reset_codes WHERE email = $1 AND code = $2 AND expires_at > CURRENT_TIMESTAMP',
@@ -648,6 +700,12 @@ router.post('/change-password', authenticateToken, async (req, res) => {
     
     if (currentPassword === newPassword) {
       return res.status(400).json({ error: 'New password must be different from current password' });
+    }
+    
+    // Validate new password strength
+    const passwordValidation = validatePasswordStrength(newPassword);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({ error: passwordValidation.message });
     }
     
     // Check if user is admin or candidate
@@ -755,6 +813,7 @@ function authenticateToken(req, res, next) {
     if (err) {
       return res.status(403).json({ error: 'Invalid token' });
     }
+    
     req.user = user;
     next();
   });

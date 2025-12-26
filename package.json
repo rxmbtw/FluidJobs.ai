@@ -27,7 +27,8 @@
   "author": "FluidJobs.ai Team",
   "license": "MIT",
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.13"
+    "@tailwindcss/postcss": "^4.1.13",
+    "node-appwrite": "^21.1.0"
   },
   "engines": {
     "node": ">=16.0.0",

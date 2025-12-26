@@ -1,100 +1,147 @@
-import React, { useState } from 'react';
-import { Clock, CheckSquare } from 'lucide-react';
+import React from 'react';
+import { Info, CheckCircle } from 'lucide-react';
 
 interface AppliedJobsViewProps {
   themeState?: 'light' | 'dark';
+  onJobClick: (job: any) => void;
 }
 
-const AppliedJobsView: React.FC<AppliedJobsViewProps> = ({ themeState = 'light' }) => {
-  const [showFullDescription, setShowFullDescription] = useState(false);
-  
+const AppliedJobsView: React.FC<AppliedJobsViewProps> = ({ themeState = 'light', onJobClick }) => {
+  const bgColor = themeState === 'light' ? '#F1F1F1' : '#1a1a1a';
   const cardBg = themeState === 'light' ? '#FFFFFF' : '#1F2937';
   const textPrimary = themeState === 'light' ? '#000000' : '#f9fafb';
-  const textSecondary = themeState === 'light' ? '#6b7280' : '#9ca3af';
-  const logoBg = themeState === 'light' ? '#D1D5DB' : '#374151';
-  const borderColor = themeState === 'light' ? '#D1D5DB' : '#374151';
+  const textSecondary = themeState === 'light' ? '#6E6E6E' : '#9ca3af';
+
+  const mockJob = {
+    id: '1',
+    title: 'QA Engineer - Insurance',
+    postedDate: '30/10/2025',
+    jobType: 'Full-Time',
+    ctc: 'Rs.6.0L-Rs.15.0L',
+    industry: 'Technology',
+    location: 'Pune, Mumbai',
+    description: 'FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable, FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable',
+    skills: ['Python', 'C/C++', 'Java']
+  };
 
   return (
-    <div className="p-6 lg:p-10 rounded-3xl shadow-2xl mx-auto max-w-5xl" style={{ backgroundColor: cardBg }}>
-      {/* Company Banner and Logo */}
-      <div className="relative mb-6">
-        <div className="w-full h-40 rounded-xl" style={{ backgroundColor: logoBg }}></div>
-        <div className="absolute -bottom-10 left-6 md:left-10 w-24 h-24 rounded-full flex items-center justify-center shadow-lg ring-8 ring-blue-500/20" style={{ backgroundColor: cardBg }}>
-          <span className="text-4xl font-bold text-blue-500">FL</span>
-        </div>
-      </div>
-
-      {/* Job Title, Post Date, and Status */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between mt-10 md:mt-0 pt-4">
-        <div className="mb-4 md:mb-0">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-1" style={{ color: textPrimary }}>QA Engineer - Insurance</h2>
-          <p className="text-sm font-semibold" style={{ color: textSecondary }}>Posted on: 30/10/2025</p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-          <div className="px-4 py-2 border rounded-lg flex items-center text-sm font-semibold" style={{ borderColor: borderColor, color: textPrimary }}>
-            <Clock className="w-4 h-4 mr-1" />
-            Under Review
+    <div>
+      {/* Job Card */}
+      <div 
+        onClick={() => onJobClick(mockJob)}
+        style={{
+        backgroundColor: cardBg,
+        borderRadius: '20px',
+        padding: '20px',
+        maxWidth: '896px',
+        margin: '0 auto',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+        overflow: 'hidden'
+      }}>
+        {/* Banner */}
+        <div style={{ width: '100%', height: '120px', background: '#C4C4C4', position: 'relative', borderRadius: '20px', marginBottom: '40px' }}>
+          <div style={{
+            position: 'absolute',
+            bottom: '-30px',
+            left: '24px',
+            width: '60px',
+            height: '60px',
+            borderRadius: '50%',
+            background: '#FFFFFF',
+            border: '6px solid rgba(66, 133, 244, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <img src="/images/FLuid Live Icon.png" alt="Company Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
           </div>
-          <div className="px-4 py-2 bg-green-700/80 rounded-lg flex items-center text-sm font-semibold text-white">
-            <CheckSquare className="w-4 h-4 mr-1" />
-            Applied
-          </div>
         </div>
-      </div>
 
-      {/* Job Metadata */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-6 mb-6 mt-6" style={{ borderBottom: `1px solid ${borderColor}` }}>
+        {/* Content */}
         <div>
-          <p className="text-xs font-semibold uppercase mb-1" style={{ color: textSecondary }}>Job Type</p>
-          <p className="text-sm font-semibold" style={{ color: textPrimary }}>Full-Time</p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase mb-1" style={{ color: textSecondary }}>CTC</p>
-          <p className="text-sm font-semibold" style={{ color: textPrimary }}>Rs.6.0L-Rs.15.0L</p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase mb-1" style={{ color: textSecondary }}>Industry</p>
-          <p className="text-sm font-semibold" style={{ color: textPrimary }}>Technology</p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase mb-1" style={{ color: textSecondary }}>Location</p>
-          <p className="text-sm font-semibold" style={{ color: textPrimary }}>Pune, Mumbai</p>
-        </div>
-      </div>
+          {/* Title & Status Badges */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+            <div>
+              <h2 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '20px', color: textPrimary, marginBottom: '4px' }}>
+                QA Engineer - Insurance
+              </h2>
+              <p style={{ fontFamily: 'Poppins', fontSize: '11px', color: '#9E9E9E' }}>
+                Posted on: 30/10/2025
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: '1px solid #000000',
+                background: '#FFFFFF'
+              }}>
+                <Info style={{ width: '16px', height: '16px', color: '#000000' }} />
+                <span style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: '#000000' }}>Under Review</span>
+              </div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                background: '#34A853'
+              }}>
+                <CheckCircle style={{ width: '16px', height: '16px', color: '#FFFFFF' }} />
+                <span style={{ fontFamily: 'Poppins', fontSize: '14px', fontWeight: 600, color: '#FFFFFF' }}>Applied</span>
+              </div>
+            </div>
+          </div>
 
-      {/* Description */}
-      <div className="mb-8">
-        <h3 className="text-base font-semibold uppercase mb-3" style={{ color: textPrimary }}>Description</h3>
-        {!showFullDescription ? (
-          <div className="text-sm font-medium leading-relaxed" style={{ color: textSecondary }}>
-            FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable,{' '}
-            <span className="text-blue-500 cursor-pointer font-semibold" onClick={() => setShowFullDescription(true)}>
-              more.
-            </span>
+          {/* Job Details - Grid Layout */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
+            <div>
+              <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>JOB TYPE</p>
+              <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>Full-Time</p>
+            </div>
+            <div>
+              <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>CTC</p>
+              <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>Rs.6.0L-Rs.15.0L</p>
+            </div>
+            <div>
+              <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>INDUSTRY</p>
+              <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>Technology</p>
+            </div>
+            <div>
+              <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>LOCATION</p>
+              <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>Pune, Mumbai</p>
+            </div>
           </div>
-        ) : (
-          <div className="text-sm font-medium leading-relaxed" style={{ color: textSecondary }}>
-            FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable, more, FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable, FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable{' '}
-            <span className="text-blue-500 cursor-pointer font-semibold" onClick={() => setShowFullDescription(false)}>
-              less.
-            </span>
-          </div>
-        )}
-      </div>
 
-      {/* Eligible Skills */}
-      <div>
-        <h3 className="text-base font-semibold uppercase mb-3" style={{ color: textPrimary }}>Eligible Skills</h3>
-        <div className="flex flex-wrap gap-3">
-          <div className="px-4 py-1.5 border border-blue-500 rounded-lg text-sm font-medium text-blue-500 hover:bg-blue-50 transition duration-150">
-            Python
+          {/* Description */}
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{ fontFamily: 'Poppins', fontSize: '12px', fontWeight: 700, color: textPrimary, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>DESCRIPTION</h3>
+            <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 500, color: textSecondary, lineHeight: '1.5' }}>
+              FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable, <span style={{ color: '#4285F4', fontWeight: 600, cursor: 'pointer' }}>more</span>
+            </p>
           </div>
-          <div className="px-4 py-1.5 border border-blue-500 rounded-lg text-sm font-medium text-blue-500 hover:bg-blue-50 transition duration-150">
-            C/C++
-          </div>
-          <div className="px-4 py-1.5 border border-blue-500 rounded-lg text-sm font-medium text-blue-500 hover:bg-blue-50 transition duration-150">
-            Java
+
+          {/* Skills */}
+          <div>
+            <h3 style={{ fontFamily: 'Poppins', fontSize: '12px', fontWeight: 700, color: textPrimary, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ELIGIBLE SKILLS</h3>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {['Python', 'C/C++', 'Java'].map((skill) => (
+                <div key={skill} style={{
+                  padding: '6px 16px',
+                  borderRadius: '6px',
+                  border: '1px solid #4285F4',
+                  fontFamily: 'Poppins',
+                  fontSize: '13px',
+                  color: '#4285F4',
+                  fontWeight: 500
+                }}>
+                  {skill}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

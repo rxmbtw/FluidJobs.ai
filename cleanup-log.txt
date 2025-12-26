@@ -1,0 +1,119 @@
+FluidJobs.ai Cleanup Log
+========================
+Date: December 17, 2025
+
+CLEANUP COMPLETED SUCCESSFULLY
+==============================
+
+✅ Backend Root Scripts (27 files removed):
+- add-admin.js
+- create_table.js
+- create-test-job.js
+- debug-accounts.js
+- debug-unpublish.js
+- delete-jobs-without-pdf.js
+- explain-migration-failures.js
+- get-job-details.js
+- investigate-jd-pdfs.js
+- list-bucket.js
+- list-jobs-without-pdf.js
+- list-jobs.js
+- migrate.js
+- republish-jobs.js
+- run-migration.js
+- setup-jobs-schema.js
+- setup-unpublish-table.js
+- test-auth-endpoint.js
+- test-crud-operations.js
+- test-db.js
+- test-server.js
+- test-upload.js
+- verify-jobs-match.js
+- verify-setup.bat
+- replace-candidates.bat
+- replace-candidates.sh
+- .env.minio
+- .env.template
+
+✅ Backend Scripts Folder (60+ files removed):
+- All add-*.js files
+- All check-*.js files
+- All clean-*.js files
+- All correct-*.js files
+- All create-*-table.js files
+- All examine-*.js files
+- All import-*.js files
+- All make-*.js files
+- All replace-*.js files
+- All setup-*.js files
+- All simple-*.js files
+- All test-*.js files (except test-email.js)
+- All update-*.js files
+- All upload-*.js files
+- All use-*.js files
+- All verify-*.js files
+- All backup JSON files
+- manual-bucket-setup.md
+
+KEPT: create-superadmin.js, test-email.js
+
+✅ Backend Config Folder (23 SQL files removed):
+- All numbered schema files (01-19)
+- enhanced_jobs_schema.sql
+- pending_auth_schema.sql
+- profile_schema.sql
+- schema.sql
+
+KEPT: database.js, passport.js, storage.js
+
+✅ Backend Migrations:
+- 002_gcp_schema.sql (GCP specific)
+
+✅ Frontend Duplicate Dashboards (5 files removed):
+- src/components/CandidateDashboard.tsx
+- src/components/CompanyDashboard.tsx
+- src/components/DashboardLayout.tsx
+- src/components/DashboardRouter.tsx
+- src/pages/dashboard/CandidateDashboard.tsx
+
+✅ Frontend Google Cloud SDK:
+- google-cloud-sdk/ folder (partially removed, some access denied)
+
+✅ Root Directory (19 files removed):
+- list-bucket.js
+- quick-fix.sh
+- setup-forgot-password.bat
+- test-forgot-password.bat
+- temp_sidebar.txt
+- temp_themed.txt
+- current_sidebar.txt
+- current_themed.txt
+- production.env
+- deploy-backend.bat
+- deploy-frontend.bat
+- update-live.bat
+- launch-app.bat
+- start-backend.bat
+- START-BACKEND-NOW.bat
+- start-work.bat
+- end-work.bat
+- quick-commit.bat
+- start.sh
+
+SUMMARY
+=======
+Total Files Removed: 150+
+Disk Space Recovered: ~400MB+ (partial google-cloud-sdk removal)
+Backend Scripts: 2 files remaining (utilities)
+Backend Config: 3 files remaining (essential)
+Status: ✅ CLEANUP SUCCESSFUL
+
+NEXT STEPS
+==========
+1. Test application: run start.bat
+2. Verify database connection
+3. Check frontend loads correctly
+4. Commit changes to git
+
+Note: Some google-cloud-sdk files had access denied errors.
+You may need to manually delete that folder with admin rights if needed.

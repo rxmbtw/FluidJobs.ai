@@ -13,8 +13,8 @@ function getPool() {
       password: process.env.DB_PASSWORD,
       ssl: process.env.DB_HOST === 'localhost' || process.env.DB_HOST === '127.0.0.1' ? false : { rejectUnauthorized: false },
       max: 5,
-      idleTimeoutMillis: 10000,
-      connectionTimeoutMillis: 10000
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 30000
     });
     
     pool.on('connect', () => {

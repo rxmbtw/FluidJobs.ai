@@ -15,7 +15,7 @@ import ComingSoon from './components/ComingSoon';
 import RegistrationSuccess from './components/RegistrationSuccess';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState('landing');
+  const [currentPage, setCurrentPage] = useState<string | null>(null);
 
   useEffect(() => {
     // Handle OAuth callback first
@@ -71,10 +71,19 @@ const App: React.FC = () => {
         setCurrentPage('login');
       }
     } else {
-      // If no token, redirect to login
       setCurrentPage('login');
     }
   }, []);
+  
+  if (currentPage === null) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#050505' }}>
+        <div className="spinner">
+          <div className="spinner1"></div>
+        </div>
+      </div>
+    );
+  }
 
   const navigateToLogin = () => {
     setCurrentPage('login');

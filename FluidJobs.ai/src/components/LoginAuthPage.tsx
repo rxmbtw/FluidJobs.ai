@@ -25,9 +25,14 @@ const LoginAuthPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Check for success message from password reset
+  // Check for success message from password reset or session expiry
   React.useEffect(() => {
-    if (location.state?.message) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionExpired = urlParams.get('session');
+    
+    if (sessionExpired === 'expired') {
+      setError('Your session has expired due to inactivity. Please login again.');
+    } else if (location.state?.message) {
       setSuccessMessage(location.state.message);
       // Clear the message from location state
       navigate(location.pathname, { replace: true });

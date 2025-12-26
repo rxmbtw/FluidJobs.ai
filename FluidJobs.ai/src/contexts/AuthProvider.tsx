@@ -29,6 +29,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     setLoading(false);
     
+    // Session timeout check (30 minutes inactivity)
+    let inactivityTimer: NodeJS.Timeout;
+    
+    const resetInactivityTimer = () => {
+      clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        // Auto-logout after 30 minutes of inactivity
+        if (authService.getCurrentUser()) {
+          console.log('Session expired due to inactivity');
+          authService.logout();
+          setUser(null);
+          window.location.href = '/login?session=expired';
+        }
+      }, 30 * 60 * 1000); // 30 minutes
+    };
+    
+    // Track user activity
+    const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    activityEvents.forEach(event => {
+      document.addEventListener(event, resetInactivityTimer);
+    });
+    
+    // Start the timer
+    resetInactivityTimer();
+    
     // Listen for storage changes to update user when sessionStorage changes
     const handleStorageChange = () => {
       const updatedUser = authService.getCurrentUser();
@@ -46,6 +71,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     window.addEventListener('userUpdated', handleStorageChange);
     
     return () => {
+      clearTimeout(inactivityTimer);
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, resetInactivityTimer);
+      });
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('userUpdated', handleStorageChange);
     };

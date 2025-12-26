@@ -304,11 +304,13 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
 
     return (
         <div className="w-full md:w-1/2 flex items-center justify-center relative p-12" style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(199, 220, 255, 0.6) 100%)' }}>
+            {/* Logo Header - Top Center */}
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2">
+                <img src="/images/FLuid Live Icon light theme.png" alt="FluidJobs.ai Logo" className="h-8 w-8 object-contain" />
+                <span className="text-xl font-bold" style={{ color: 'rgba(66, 133, 244, 1)' }}>FluidJobs.ai</span>
+            </div>
+            
             <div className="w-full max-w-xl flex flex-col">
-                <div className="flex items-center gap-3 mb-8">
-                    <img src="/images/FLuid Live Icon light theme.png" alt="FluidJobs.ai Logo" className="h-10 w-10 object-contain" />
-                    <span className="text-2xl font-bold" style={{ color: 'rgba(66, 133, 244, 1)' }}>FluidJobs.ai</span>
-                </div>
                 <div className="text-center mb-8 flex-grow flex flex-col justify-center">
                     <h1 className="text-4xl font-bold mb-2" style={{ color: 'rgba(0, 0, 0, 1)' }}>Welcome Back</h1>
                     <p className="text-sm" style={{ color: 'rgba(96, 96, 96, 1)' }}>Sign in to access your dashboard</p>

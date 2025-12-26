@@ -86,7 +86,7 @@ const CollegeAutocomplete: React.FC<CollegeAutocompleteProps> = ({
         onChange={handleInputChange}
         placeholder={placeholder}
         className={className}
-        style={style}
+        style={{ ...style, color: '#080808' }}
       />
       {showSuggestions && suggestions.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 max-h-[200px] overflow-y-auto border rounded-[10px] shadow-lg z-50" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#374151', borderColor: 'rgba(0,0,0,0.5)' }}>

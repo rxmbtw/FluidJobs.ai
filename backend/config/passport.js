@@ -55,7 +55,7 @@ passport.use(new GoogleStrategy({
     // Create new candidate
     const newCandidate = await pool.query(
       `INSERT INTO candidates (
-        candidate_id, full_name, email, phone, gender, marital_status, 
+        candidate_id, full_name, email, phone_number, gender, marital_status, 
         work_status, current_company, notice_period, current_ctc, 
         last_company, previous_ctc, city, work_mode, 
         created_at, updated_at

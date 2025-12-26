@@ -21,8 +21,22 @@ const Signup: React.FC = () => {
     if (!formData.name.trim()) newErrors.name = 'Full name is required';
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid';
-    if (!formData.password) newErrors.password = 'Password is required';
-    else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+    
+    // Password strength validation
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else {
+      if (formData.password.length < 8) {
+        newErrors.password = 'Password must be at least 8 characters long';
+      } else if (!/[A-Z]/.test(formData.password)) {
+        newErrors.password = 'Password must contain at least one uppercase letter';
+      } else if (!/[a-z]/.test(formData.password)) {
+        newErrors.password = 'Password must contain at least one lowercase letter';
+      } else if (!/[0-9]/.test(formData.password)) {
+        newErrors.password = 'Password must contain at least one number';
+      }
+    }
+    
     if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
 
     setErrors(newErrors);
@@ -151,6 +165,7 @@ const Signup: React.FC = () => {
                   errors.password ? 'border-red-300' : 'border-gray-300'
                 }`}
               />
+              <p className="mt-1 text-xs text-gray-500">Must be 8+ characters with uppercase, lowercase, and number</p>
               {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
             </div>
 

@@ -13,74 +13,102 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
   onNavigateToEdit, 
   onNavigateToResume 
 }) => {
-  const { profileCompletion, loading, refreshProfileCompletion } = useProfileCompletion();
+  const { profileCompletion, loading } = useProfileCompletion();
 
   const handleItemClick = (item: ProfileCompletionItem) => {
     if (item.completed) return;
     onNavigateToEdit();
   };
 
-  const textColor = themeState === 'light' ? '#000000' : '#FFFFFF';
+  const bgColor = themeState === 'light' ? '#FFFFFF' : '#1F2937';
+  const textPrimary = themeState === 'light' ? '#000000' : '#f9fafb';
+  const textSecondary = themeState === 'light' ? '#6E6E6E' : '#9ca3af';
+  const borderColor = themeState === 'light' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)';
+  const dividerColor = themeState === 'light' ? 'rgba(0,0,0,0.29)' : 'rgba(255,255,255,0.2)';
 
-  if (loading) {
+  if (loading && profileCompletion.items.length === 0) {
     return (
-      <div className="lg:col-span-1 p-6 rounded-[25px] shadow-lg min-h-[500px] flex items-center justify-center" 
-           style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937' }}>
+      <div className="w-full max-w-[390px] mx-auto p-6 rounded-[25px] min-h-[395px] flex items-center justify-center" style={{ backgroundColor: bgColor }}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="lg:col-span-1 p-6 rounded-[25px] shadow-lg min-h-[500px]" 
-         style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937' }}>
-      <h2 className="text-2xl font-extrabold mb-2" style={{ color: textColor }}>
+    <div className="w-full mx-auto px-5 py-5 rounded-[25px] relative flex flex-col overflow-hidden" style={{ backgroundColor: bgColor, height: '100%' }}>
+      {/* Title */}
+      <h2 className="text-[25px] font-extrabold leading-[29px] mb-4" style={{ fontFamily: 'Roboto, sans-serif', color: textPrimary }}>
         Complete your profile
       </h2>
-      <p className="text-sm font-semibold text-gray-600 mb-6">
+      
+      {/* Description */}
+      <p className="text-[14px] font-semibold leading-[16px] mb-6" style={{ fontFamily: 'Roboto, sans-serif', color: textSecondary }}>
         By completing your profile you can start applying to job openings in one click...
       </p>
       
+      {/* Progress */}
       <div className="mb-6">
-        <span className="text-lg font-bold" style={{ color: textColor }}>
+        <span className="text-[20px] font-semibold leading-[23px]" style={{ fontFamily: 'Roboto, sans-serif', color: textPrimary }}>
           {profileCompletion.completionPercentage}%
         </span>
-        <div className="relative w-full h-3 bg-gray-200 rounded-full mt-2">
+        <div className="relative w-full mt-3">
+          <div className="w-full h-[6px] rounded-full" style={{ backgroundColor: themeState === 'light' ? '#D9D9D9' : '#374151' }}></div>
           <div 
-            className="absolute top-0 left-0 h-3 bg-blue-500 rounded-full transition-all duration-500" 
+            className="absolute top-0 left-0 h-[6px] bg-[#4285F4] rounded-full transition-all duration-500" 
             style={{ width: `${profileCompletion.completionPercentage}%` }}
           ></div>
         </div>
-        <p className="text-xs text-gray-500 mt-1">
-          {profileCompletion.completedCount} of {profileCompletion.totalCount} completed
-        </p>
       </div>
       
-      <div className="border-t border-gray-200 pt-6 space-y-3 max-h-80 overflow-y-auto">
+      {/* Divider */}
+      <div className="w-full h-[1px] mb-4 flex-shrink-0" style={{ backgroundColor: dividerColor }}></div>
+      
+      {/* Items - Scrollable */}
+      <div className="space-y-[18px] overflow-y-auto flex-1 pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: '#4285F4 #E5E7EB' }}>
+        <style>{`
+          .space-y-\[18px\]::-webkit-scrollbar {
+            width: 6px;
+          }
+          .space-y-\[18px\]::-webkit-scrollbar-track {
+            background: #E5E7EB;
+            border-radius: 10px;
+          }
+          .space-y-\[18px\]::-webkit-scrollbar-thumb {
+            background: #4285F4;
+            border-radius: 10px;
+          }
+        `}</style>
         {profileCompletion.items.map((item) => (
           <div 
             key={item.id}
             onClick={() => handleItemClick(item)}
-            className={`flex items-center p-3 border rounded-xl transition-all hover:shadow-md ${
-              item.completed 
-                ? 'border-green-300 bg-green-50 cursor-default' 
-                : 'border-gray-300 cursor-pointer hover:border-blue-400'
+            className={`relative flex items-center h-[50px] px-4 border rounded-[10px] transition-all ${
+              item.completed ? 'cursor-default' : 'cursor-pointer hover:border-[#4285F4]'
             }`}
+            style={{ borderColor: borderColor, backgroundColor: themeState === 'light' ? 'transparent' : '#374151' }}
           >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
-              item.completed ? 'bg-green-500' : 'bg-blue-500'
-            }`}>
-              {item.completed ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            {/* Checkbox Icon */}
+            <div className="flex-shrink-0 mr-3">
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                item.completed ? 'bg-[#10B981] border-[1.5px] border-[#10B981]' : 'border-[1.5px] border-[#6E6E6E]'
+              }`}>
+                {item.completed && (
+                  <Check className="w-4 h-4 text-white" strokeWidth={2.5} />
+                )}
+              </div>
             </div>
-            <span className={`ml-4 text-sm font-semibold flex-grow ${
-              item.completed ? 'text-green-700' : 'text-gray-600'
-            }`}>
+            
+            {/* Label */}
+            <span className="text-[14px] font-semibold leading-[16px] flex-grow" style={{ fontFamily: 'Roboto, sans-serif', color: item.completed ? '#10B981' : textSecondary }}>
               {item.label}
-              {item.required && <span className="text-red-500 ml-1">*</span>}
             </span>
-            {item.completed && (
-              <span className="text-xs text-green-600 font-medium">✓ Done</span>
-            )}
+            
+            {/* Plus Icon */}
+            <div className="flex-shrink-0">
+              <div className="w-6 h-6 rounded-md bg-[#4285F4] flex items-center justify-center relative">
+                <Plus className="w-4 h-4 text-white" strokeWidth={2} />
+              </div>
+            </div>
           </div>
         ))}
       </div>

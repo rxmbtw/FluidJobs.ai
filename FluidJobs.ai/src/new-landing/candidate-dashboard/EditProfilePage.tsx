@@ -187,17 +187,18 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
         lastCompany: formData.lastCompany,
         previousCTC: formData.previousCTC,
         city: formData.currentCity,
-        workMode: formData.workMode
+        workMode: formData.workMode,
+        college: formData.college,
+        joiningDate: formData.joiningDate,
+        leavingDate: formData.leavingDate
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       console.log('Profile save response:', response.data);
       setMessage('Profile saved successfully!');
       setShowNotification(true);
-      triggerRefresh(); // Trigger profile completion refresh
-      setTimeout(() => {
-        fetchProfile(); // Reload to confirm save
-      }, 2000);
+      await fetchProfile(); // Reload immediately to confirm save
+      triggerRefresh(); // Trigger profile completion refresh after data is loaded
     } catch (error: any) {
       console.error('Error saving profile:', error);
       console.error('Error response:', error.response?.data);
@@ -211,12 +212,12 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
   const labelStyle = { color: themeState === 'light' ? '#000000' : '#FFFFFF' };
 
   return (
-    <div className="w-full min-h-[716px] rounded-t-[50px] p-8 pt-6" style={{ backgroundColor: themeState === 'light' ? '#F1F1F1' : '#1a1a1a' }}>
-      <h1 className="text-[23px] font-bold font-['Poppins'] mb-6" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>Edit Profile</h1>
+    <div className="w-full rounded-t-[50px] p-4 overflow-hidden" style={{ backgroundColor: themeState === 'light' ? '#F1F1F1' : '#1a1a1a', height: 'calc(100vh - 116px)' }}>
+      <h1 className="text-[18px] font-bold font-['Poppins'] mb-3" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>Edit Profile</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="space-y-5">
-          <div className="rounded-[25px] p-[10px] relative h-[251px]" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3" style={{ height: 'calc(100% - 40px)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
+          <div className="rounded-[25px] p-[8px] relative" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937', height: 'calc(50% - 6px)' }}>
             <div className="w-full h-[118px] bg-gradient-to-r from-[#0060FF] to-[#4285F4] rounded-[12px]"></div>
             
             <div className="absolute top-[78px] left-1/2 transform -translate-x-1/2 z-10">
@@ -249,10 +250,10 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
             </button>
           </div>
 
-          <div className="rounded-[25px] p-5 h-[310px]" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937' }}>
-            <h3 className="text-[20px] font-bold font-['Poppins'] mb-3" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>Information</h3>
+          <div className="rounded-[25px] p-4" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937', height: 'calc(50% - 6px)', overflow: 'hidden' }}>
+            <h3 className="text-[16px] font-bold font-['Poppins'] mb-2" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>Information</h3>
 
-            <div className="space-y-2.5">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 w-[140px]">
                   <UserIcon className="w-5 h-5 text-[#6E6E6E]" />
@@ -274,12 +275,14 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
                   <Phone className="w-5 h-5 text-[#6E6E6E]" />
                   <span className="text-[13px] font-medium font-['Poppins'] text-[#6E6E6E]">Phone Number*</span>
                 </div>
-                <PhoneInput
-                  value={formData.phone}
-                  onChange={(value) => handleInputChange('phone', value)}
-                  style={inputStyle}
-                  themeState={themeState}
-                />
+                <div style={{ width: '211px', height: '28px' }}>
+                  <PhoneInput
+                    value={formData.phone}
+                    onChange={(value) => handleInputChange('phone', value)}
+                    style={inputStyle}
+                    themeState={themeState}
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-between">
@@ -324,8 +327,8 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
           </div>
         </div>
 
-        <div>
-          <div className="rounded-[25px] p-5 min-h-[293px] mb-5" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
+          <div className="rounded-[25px] p-4" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937', height: 'calc(50% - 6px)', overflow: 'auto' }}>
             <h3 className="text-[20px] font-bold font-['Poppins'] mb-4" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>Work Experience</h3>
 
             <div>
@@ -434,7 +437,7 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
             </div>
           </div>
 
-          <div className="rounded-[25px] p-5 h-[268px]" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937' }}>
+          <div className="rounded-[25px] p-4" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937', height: 'calc(50% - 6px)' }}>
             <h3 className="text-[20px] font-bold font-['Poppins'] mb-4" style={{ color: themeState === 'light' ? '#000000' : '#FFFFFF' }}>Upload Your Resume</h3>
 
             <label htmlFor="resume-upload" className="border border-[#4285F4] rounded-[10px] h-[152px] flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition">

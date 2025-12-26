@@ -229,6 +229,19 @@ router.get('/profile', authenticateToken, async (req, res) => {
       work_status: profile.work_status || '',
       resume_files: Array.isArray(profile.resume_files) ? profile.resume_files : [],
       documents: Array.isArray(profile.documents) ? profile.documents : [],
+      // Basic Details fields
+      roll_no: profile.roll_no || '',
+      first_name: profile.first_name || '',
+      middle_name: profile.middle_name || '',
+      last_name: profile.last_name || '',
+      course: profile.course || '',
+      primary_specialization: profile.primary_specialization || '',
+      date_of_birth: profile.date_of_birth || '',
+      blood_group: profile.blood_group || '',
+      medical_history: profile.medical_history || '',
+      disability: profile.disability || '',
+      known_languages: profile.known_languages || '',
+      dream_company: profile.dream_company || '',
       created_at: profile.created_at
     };
     
@@ -255,7 +268,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
   
   try {
     const candidateId = req.user.candidateId;
-    const { fullName, phone, email, gender, maritalStatus, workStatus, currentCompany, noticePeriod, currentCTC, lastCompany, previousCTC, city, workMode } = req.body;
+    const { fullName, phone, email, gender, maritalStatus, workStatus, currentCompany, noticePeriod, currentCTC, lastCompany, previousCTC, city, workMode, college, joiningDate, leavingDate } = req.body;
 
     if (!candidateId) {
       console.log('ERROR: No candidateId in token');
@@ -273,6 +286,22 @@ router.put('/profile', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Candidate not found in database' });
     }
 
+    // Convert empty strings to NULL for proper database handling
+    const fullNameValue = fullName?.trim() || null;
+    const phoneValue = phone?.trim() || null;
+    const emailValue = email?.trim() || null;
+    const genderValue = gender?.trim() || null;
+    const maritalStatusValue = maritalStatus?.trim() || null;
+    const workStatusValue = workStatus?.trim() || null;
+    const currentCompanyValue = currentCompany?.trim() || null;
+    const noticePeriodValue = noticePeriod?.trim() || null;
+    const lastCompanyValue = lastCompany?.trim() || null;
+    const cityValue = city?.trim() || null;
+    const workModeValue = workMode?.trim() || null;
+    const collegeValue = college?.trim() || null;
+    const joiningDateValue = joiningDate?.trim() || null;
+    const leavingDateValue = leavingDate?.trim() || null;
+    
     // Convert CTC values to proper numeric format
     const currentCTCNumeric = currentCTC ? parseFloat(currentCTC) : null;
     const previousCTCNumeric = previousCTC ? parseFloat(previousCTC) : null;
@@ -293,11 +322,14 @@ router.put('/profile', authenticateToken, async (req, res) => {
         previous_ctc = $11, 
         city = $12,
         location = $12,
-        work_mode = $13, 
+        work_mode = $13,
+        college = $14,
+        joining_date = $15,
+        leaving_date = $16, 
         updated_at = CURRENT_TIMESTAMP 
-      WHERE candidate_id = $14 
+      WHERE candidate_id = $17 
       RETURNING *`,
-      [fullName, phone, email, gender, maritalStatus, workStatus, currentCompany, noticePeriod, currentCTCNumeric, lastCompany, previousCTCNumeric, city, workMode, candidateId]
+      [fullNameValue, phoneValue, emailValue, genderValue, maritalStatusValue, workStatusValue, currentCompanyValue, noticePeriodValue, currentCTCNumeric, lastCompanyValue, previousCTCNumeric, cityValue, workModeValue, collegeValue, joiningDateValue, leavingDateValue, candidateId]
     );
 
     console.log('Update result rows:', result.rows.length);
@@ -313,6 +345,106 @@ router.put('/profile', authenticateToken, async (req, res) => {
     console.log('Error stack:', error.stack);
     console.log('=== PROFILE UPDATE REQUEST END (ERROR) ===\n');
     res.status(500).json({ error: 'Failed to update profile', details: error.message });
+  }
+});
+
+// Update basic details
+router.put('/basic-details', authenticateToken, async (req, res) => {
+  console.log('\n=== BASIC DETAILS UPDATE START ===');
+  console.log('User:', req.user);
+  console.log('Request Body:', req.body);
+  
+  try {
+    const candidateId = req.user.candidateId;
+    const { 
+      rollNo, 
+      firstName, 
+      middleName, 
+      lastName, 
+      course, 
+      primarySpecialization, 
+      gender, 
+      dateOfBirth, 
+      bloodGroup, 
+      maritalStatus, 
+      medicalHistory, 
+      disability, 
+      knownLanguages, 
+      dreamCompany 
+    } = req.body;
+
+    if (!candidateId) {
+      return res.status(400).json({ error: 'Invalid user token' });
+    }
+
+    // Convert empty strings to NULL
+    const rollNoValue = rollNo?.trim() || null;
+    const firstNameValue = firstName?.trim() || null;
+    const middleNameValue = middleName?.trim() || null;
+    const lastNameValue = lastName?.trim() || null;
+    const courseValue = course?.trim() || null;
+    const primarySpecializationValue = primarySpecialization?.trim() || null;
+    const genderValue = (gender && gender !== 'Select') ? gender.trim() : null;
+    const dateOfBirthValue = dateOfBirth?.trim() || null;
+    const bloodGroupValue = (bloodGroup && bloodGroup !== 'Select') ? bloodGroup.trim() : null;
+    const maritalStatusValue = (maritalStatus && maritalStatus !== 'Select') ? maritalStatus.trim() : null;
+    const medicalHistoryValue = medicalHistory?.trim() || null;
+    const disabilityValue = (disability && disability !== 'Select') ? disability.trim() : null;
+    const knownLanguagesValue = knownLanguages?.trim() || null;
+    const dreamCompanyValue = dreamCompany?.trim() || null;
+
+    // Update full_name from first, middle, last names
+    const fullNameParts = [firstNameValue, middleNameValue, lastNameValue].filter(Boolean);
+    const fullNameValue = fullNameParts.length > 0 ? fullNameParts.join(' ') : null;
+
+    const result = await pool.query(
+      `UPDATE candidates SET 
+        roll_no = $1,
+        first_name = $2,
+        middle_name = $3,
+        last_name = $4,
+        full_name = $5,
+        course = $6,
+        primary_specialization = $7,
+        gender = $8,
+        date_of_birth = $9,
+        blood_group = $10,
+        marital_status = $11,
+        medical_history = $12,
+        disability = $13,
+        known_languages = $14,
+        dream_company = $15,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE candidate_id = $16
+      RETURNING *`,
+      [
+        rollNoValue,
+        firstNameValue,
+        middleNameValue,
+        lastNameValue,
+        fullNameValue,
+        courseValue,
+        primarySpecializationValue,
+        genderValue,
+        dateOfBirthValue,
+        bloodGroupValue,
+        maritalStatusValue,
+        medicalHistoryValue,
+        disabilityValue,
+        knownLanguagesValue,
+        dreamCompanyValue,
+        candidateId
+      ]
+    );
+
+    console.log('SUCCESS: Basic details updated');
+    console.log('=== BASIC DETAILS UPDATE END ===\n');
+    
+    res.json({ success: true, message: 'Basic details saved successfully', data: result.rows[0] });
+  } catch (error) {
+    console.log('ERROR in basic details update:', error.message);
+    console.log('=== BASIC DETAILS UPDATE END (ERROR) ===\n');
+    res.status(500).json({ error: 'Failed to update basic details', details: error.message });
   }
 });
 

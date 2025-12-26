@@ -13,6 +13,7 @@ import Applications from './pages/Applications';
 import Profile from './pages/Profile';
 import ProfilePage from './pages/ProfilePage';
 import EditProfilePage from './pages/EditProfilePage';
+import ResponsiveEditProfile from './components/mobile/ResponsiveEditProfile';
 import ResumesPage from './pages/ResumesPage';
 import Settings from './pages/Settings';
 import Interviews from './pages/Interviews';
@@ -30,6 +31,8 @@ import ChangePassword from './pages/ChangePassword';
 import AuthCallback from './pages/AuthCallback';
 import ManageCandidates from './components/ManageCandidates';
 import ForgotPassword from './pages/ForgotPassword';
+import MyJobs from './pages/MyJobs';
+import MyResume from './pages/MyResume';
 
 import DashboardRouter from './components/DashboardRouter';
 
@@ -60,13 +63,15 @@ const AppRoutes = () => (
 				<Route path="/companies" element={<Companies />} />
 				<Route path="/applications" element={<Applications />} />
 				<Route path="/profile" element={<ProfilePage />} />
-				<Route path="/edit-profile" element={<EditProfilePage />} />
+				<Route path="/edit-profile" element={<ResponsiveEditProfile />} />
 				<Route path="/resumes" element={<ResumesPage />} />
 				<Route path="/settings" element={<Settings />} />
 				<Route path="/contact" element={<Contact />} />
 				<Route path="/change-password" element={<ChangePassword />} />
 				<Route path="/interviews" element={<Interviews />} />
 				<Route path="/saved-jobs" element={<SavedJobsComponent />} />
+				<Route path="/my-jobs" element={<MyJobs />} />
+				<Route path="/my-resume" element={<MyResume />} />
 				{/* Admin and HR access job management */}
 				<Route element={<RoleRoute allowedRoles={["Admin", "HR"]} />}>
 					<Route path="/job-management" element={<Jobs />} />
