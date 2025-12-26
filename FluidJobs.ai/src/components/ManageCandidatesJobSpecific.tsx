@@ -43,6 +43,18 @@ const ManageCandidatesJobSpecific: React.FC<ManageCandidatesJobSpecificProps> = 
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sortOrder, setSortOrder] = useState('asc');
+  
+  const [filters, setFilters] = useState({
+    location: '',
+    minExperience: '',
+    maxExperience: '',
+    currentlyEmployed: '',
+    noticePeriod: '',
+    minSalary: '',
+    maxSalary: '',
+    gender: '',
+    maritalStatus: ''
+  });
 
 
   const fetchCandidates = async () => {
@@ -101,11 +113,32 @@ const ManageCandidatesJobSpecific: React.FC<ManageCandidatesJobSpecificProps> = 
   }, []);
 
   const filteredCandidates = useMemo(() => {
-    const filtered = candidates.filter(candidate =>
-      candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      candidate.phone.includes(searchTerm)
-    );
+    let filtered = candidates.filter(candidate => {
+      const matchesSearch = candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        candidate.phone.includes(searchTerm);
+      
+      if (!matchesSearch) return false;
+      
+      if (filters.location && candidate.location !== filters.location) return false;
+      if (filters.minExperience && candidate.experience < parseFloat(filters.minExperience)) return false;
+      if (filters.maxExperience && candidate.experience > parseFloat(filters.maxExperience)) return false;
+      if (filters.currentlyEmployed && candidate.currentlyEmployed !== filters.currentlyEmployed) return false;
+      if (filters.noticePeriod && candidate.noticePeriod !== filters.noticePeriod) return false;
+      if (filters.gender && candidate.gender.toLowerCase() !== filters.gender.toLowerCase()) return false;
+      if (filters.maritalStatus && candidate.maritalStatus !== filters.maritalStatus) return false;
+      
+      if (filters.minSalary) {
+        const currentSalary = parseFloat(candidate.currentSalary.replace(/[^0-9]/g, ''));
+        if (currentSalary < parseFloat(filters.minSalary)) return false;
+      }
+      if (filters.maxSalary) {
+        const currentSalary = parseFloat(candidate.currentSalary.replace(/[^0-9]/g, ''));
+        if (currentSalary > parseFloat(filters.maxSalary)) return false;
+      }
+      
+      return true;
+    });
     
     return filtered.sort((a, b) => {
       if (sortOrder === 'asc') {
@@ -114,7 +147,7 @@ const ManageCandidatesJobSpecific: React.FC<ManageCandidatesJobSpecificProps> = 
         return b.name.localeCompare(a.name);
       }
     });
-  }, [candidates, searchTerm, sortOrder]);
+  }, [candidates, searchTerm, sortOrder, filters]);
 
   if (loading) {
     return (
@@ -190,7 +223,7 @@ const ManageCandidatesJobSpecific: React.FC<ManageCandidatesJobSpecificProps> = 
 
         <div className="flex-1 flex relative">
           {showFilters && (
-            <div className="absolute left-0 top-0 bottom-0 bg-white border-r border-gray-200 shadow-lg w-64 z-10 p-4">
+            <div className="absolute left-0 top-0 bottom-0 bg-white border-r border-gray-200 shadow-lg w-64 z-10 p-4 overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
                 <button onClick={() => setShowFilters(false)} className="p-1 hover:bg-gray-100 rounded">
@@ -200,16 +233,133 @@ const ManageCandidatesJobSpecific: React.FC<ManageCandidatesJobSpecificProps> = 
                 </button>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
                   <label className="text-xs font-medium text-gray-700 block mb-1">Location</label>
-                  <select className="w-full px-2 py-1 border border-gray-300 rounded text-xs">
-                    <option>All Locations</option>
+                  <select 
+                    value={filters.location}
+                    onChange={(e) => setFilters({...filters, location: e.target.value})}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                  >
+                    <option value="">All Locations</option>
                     {indianCities.map(city => (
                       <option key={city} value={city}>{city}</option>
                     ))}
                   </select>
                 </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Experience (Years)</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      placeholder="Min"
+                      value={filters.minExperience}
+                      onChange={(e) => setFilters({...filters, minExperience: e.target.value})}
+                      className="w-1/2 px-2 py-1 border border-gray-300 rounded text-xs"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Max"
+                      value={filters.maxExperience}
+                      onChange={(e) => setFilters({...filters, maxExperience: e.target.value})}
+                      className="w-1/2 px-2 py-1 border border-gray-300 rounded text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Currently Employed</label>
+                  <select
+                    value={filters.currentlyEmployed}
+                    onChange={(e) => setFilters({...filters, currentlyEmployed: e.target.value})}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                  >
+                    <option value="">All</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Notice Period</label>
+                  <select
+                    value={filters.noticePeriod}
+                    onChange={(e) => setFilters({...filters, noticePeriod: e.target.value})}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                  >
+                    <option value="">All</option>
+                    <option value="Immediate">Immediate</option>
+                    <option value="15 days">15 days</option>
+                    <option value="30 days">30 days</option>
+                    <option value="60 days">60 days</option>
+                    <option value="90 days">90 days</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Salary Range (₹)</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      placeholder="Min"
+                      value={filters.minSalary}
+                      onChange={(e) => setFilters({...filters, minSalary: e.target.value})}
+                      className="w-1/2 px-2 py-1 border border-gray-300 rounded text-xs"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Max"
+                      value={filters.maxSalary}
+                      onChange={(e) => setFilters({...filters, maxSalary: e.target.value})}
+                      className="w-1/2 px-2 py-1 border border-gray-300 rounded text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Gender</label>
+                  <select
+                    value={filters.gender}
+                    onChange={(e) => setFilters({...filters, gender: e.target.value})}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                  >
+                    <option value="">All</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Marital Status</label>
+                  <select
+                    value={filters.maritalStatus}
+                    onChange={(e) => setFilters({...filters, maritalStatus: e.target.value})}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                  >
+                    <option value="">All</option>
+                    <option value="Single">Single</option>
+                    <option value="Married">Married</option>
+                  </select>
+                </div>
+
+                <button
+                  onClick={() => setFilters({
+                    location: '',
+                    minExperience: '',
+                    maxExperience: '',
+                    currentlyEmployed: '',
+                    noticePeriod: '',
+                    minSalary: '',
+                    maxSalary: '',
+                    gender: '',
+                    maritalStatus: ''
+                  })}
+                  className="w-full px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-medium transition"
+                >
+                  Clear All Filters
+                </button>
               </div>
             </div>
           )}

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import DashboardHeader from './DashboardHeader';
 import Sidebar from './Sidebar';
-import { ThemeProvider, useTheme, getThemeColors } from '../candidate-dashboard/ThemeContext';
 import { JobsProvider } from '../../contexts/JobsProvider';
 import ThemedJobPublishing from './ThemedJobPublishing';
 import JobOpeningsViewNew from '../../components/JobOpeningsView_new';
@@ -13,8 +12,6 @@ import ManageCandidatesWrapper from '../../components/ManageCandidatesWrapper';
 import MyAccounts from '../../components/MyAccounts';
 
 const DashboardContent: React.FC = () => {
-  const { theme } = useTheme();
-  const colors = getThemeColors(theme);
   const [currentView, setCurrentView] = useState('view_opening');
   const [showJobSpecificDashboard, setShowJobSpecificDashboard] = useState(false);
   const [selectedJobTitle, setSelectedJobTitle] = useState('');
@@ -53,10 +50,25 @@ const DashboardContent: React.FC = () => {
     );
   }
 
-  const handleLogout = () => {
-    sessionStorage.clear();
-    localStorage.clear();
-    window.location.reload();
+  const handleLogout = async () => {
+    try {
+      const token = sessionStorage.getItem('fluidjobs_token');
+      if (token) {
+        await fetch('http://localhost:8000/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      sessionStorage.clear();
+      localStorage.clear();
+      window.location.reload();
+    }
   };
 
   const handleBackToDashboard = () => {
@@ -79,13 +91,13 @@ const DashboardContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen antialiased" style={{ backgroundColor: colors.bgMain, color: colors.textPrimary, width: '100%', fontFamily: 'Poppins' }}>
+    <div className="min-h-screen antialiased bg-gray-100" style={{ width: '100%', fontFamily: 'Poppins' }}>
       <DashboardHeader />
       
       <div className="flex" style={{ minHeight: 'calc(100vh - 4rem)' }}>
         <Sidebar currentView={currentView} onNavigate={setCurrentView} onLogout={handleLogout} />
         
-        <main className="flex-1 overflow-y-auto" style={{ backgroundColor: colors.bgMain, fontFamily: 'Poppins' }}>
+        <main className="flex-1 overflow-y-auto bg-gray-100" style={{ fontFamily: 'Poppins' }}>
           {currentView === 'view_opening' && (
             <JobOpeningsViewNew />
           )}
@@ -114,9 +126,7 @@ const DashboardContent: React.FC = () => {
 const CompanyDashboard: React.FC = () => {
   return (
     <JobsProvider>
-      <ThemeProvider>
-        <DashboardContent />
-      </ThemeProvider>
+      <DashboardContent />
     </JobsProvider>
   );
 };

@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 const pool = require('../config/database');
+const { logAudit } = require('../middleware/auditLogger');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -35,6 +36,102 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
+// Update SuperAdmin Profile
+router.put('/profile', async (req, res) => {
+  try {
+    const { id, name, email, currentPassword, newPassword, profilePicture } = req.body;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'SuperAdmin ID is required' });
+    }
+
+    // Get current admin data
+    const adminResult = await pool.query('SELECT * FROM superadmins WHERE id = $1', [id]);
+    if (adminResult.rows.length === 0) {
+      return res.status(404).json({ error: 'SuperAdmin not found' });
+    }
+    
+    const admin = adminResult.rows[0];
+
+    // Check if email is being changed and if it already exists
+    if (email && email !== admin.email) {
+      const emailCheck = await pool.query('SELECT id FROM superadmins WHERE LOWER(email) = LOWER($1) AND id != $2', [email, id]);
+      if (emailCheck.rows.length > 0) {
+        return res.status(400).json({ error: 'Email already in use' });
+      }
+    }
+
+    // If changing password, verify current password
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password is required to set new password' });
+      }
+      
+      const validPassword = await bcrypt.compare(currentPassword, admin.password_hash);
+      if (!validPassword) {
+        return res.status(400).json({ error: 'Current password is incorrect' });
+      }
+      
+      if (newPassword.length < 8) {
+        return res.status(400).json({ error: 'New password must be at least 8 characters' });
+      }
+    }
+
+    // Build update query
+    let updateFields = [];
+    let updateValues = [];
+    let paramCount = 1;
+
+    if (name) {
+      updateFields.push(`name = $${paramCount}`);
+      updateValues.push(name);
+      paramCount++;
+    }
+
+    if (email) {
+      updateFields.push(`email = $${paramCount}`);
+      updateValues.push(email);
+      paramCount++;
+    }
+
+    if (newPassword) {
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      updateFields.push(`password_hash = $${paramCount}`);
+      updateValues.push(hashedPassword);
+      paramCount++;
+    }
+
+    if (profilePicture) {
+      updateFields.push(`profile_picture = $${paramCount}`);
+      updateValues.push(profilePicture);
+      paramCount++;
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    updateValues.push(id);
+    const updateQuery = `UPDATE superadmins SET ${updateFields.join(', ')} WHERE id = $${paramCount} RETURNING id, name, email, profile_picture`;
+    
+    const result = await pool.query(
+      'UPDATE superadmins SET ${updateFields.join(', ')} WHERE id = $${paramCount} RETURNING id, name, email, profile_picture',
+      updateValues
+    );
+    
+    await logAudit(id, result.rows[0].name, 'PROFILE_UPDATED', `Profile updated for: ${result.rows[0].name}`, 'superadmin', id, req);
+    
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      admin: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // SuperAdmin Login
 router.post('/login', async (req, res) => {
   try {
@@ -42,6 +139,7 @@ router.post('/login', async (req, res) => {
     
     const result = await pool.query('SELECT * FROM superadmins WHERE LOWER(email) = LOWER($1)', [email]);
     if (result.rows.length === 0) {
+      await logAudit(null, email, 'LOGIN_FAILED', `Failed login attempt for ${email}`, null, null, req);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
@@ -49,6 +147,7 @@ router.post('/login', async (req, res) => {
     const validPassword = await bcrypt.compare(password, admin.password_hash);
     
     if (!validPassword) {
+      await logAudit(admin.id, admin.name, 'LOGIN_FAILED', `Failed login attempt for ${email}`, null, null, req);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
@@ -58,6 +157,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: '24h' }
     );
     
+    await logAudit(admin.id, admin.name, 'LOGIN', `SuperAdmin logged in: ${admin.email}`, 'superadmin', admin.id, req);
     res.json({ token, admin: { id: admin.id, email: admin.email, name: admin.name } });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -143,7 +243,9 @@ router.get('/rejected-jobs', async (req, res) => {
 // Approve Job
 router.post('/approve-job/:id', async (req, res) => {
   try {
+    const jobResult = await pool.query('SELECT title FROM jobs_enhanced WHERE id = $1', [req.params.id]);
     await pool.query('UPDATE jobs_enhanced SET status = $1, approved_at = NOW(), is_republish = false WHERE id = $2', ['Published', req.params.id]);
+    await logAudit(null, 'SuperAdmin', 'JOB_APPROVED', `Approved job: ${jobResult.rows[0]?.title}`, 'job', req.params.id, req);
     res.json({ message: 'Job approved' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -153,7 +255,9 @@ router.post('/approve-job/:id', async (req, res) => {
 // Reject Job
 router.post('/reject-job/:id', async (req, res) => {
   try {
+    const jobResult = await pool.query('SELECT title FROM jobs_enhanced WHERE id = $1', [req.params.id]);
     await pool.query('UPDATE jobs_enhanced SET status = $1, approved_at = NOW() WHERE id = $2', ['rejected', req.params.id]);
+    await logAudit(null, 'SuperAdmin', 'JOB_REJECTED', `Rejected job: ${jobResult.rows[0]?.title}`, 'job', req.params.id, req);
     res.json({ message: 'Job rejected' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -192,6 +296,7 @@ router.put('/users/:id', async (req, res) => {
       [name, email, role, id]
     );
     
+    await logAudit(null, 'SuperAdmin', 'USER_UPDATED', `Updated user: ${name} (${email})`, 'user', id, req);
     res.json({ message: 'User updated successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -226,11 +331,12 @@ router.post('/upload-policy', upload.single('policy'), async (req, res) => {
     const filePath = req.file.path;
     const fileName = req.file.originalname;
     
-    // Store policy info in database
     await pool.query(
       'INSERT INTO ai_policies (type, file_name, file_path, uploaded_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (type) DO UPDATE SET file_name = $2, file_path = $3, uploaded_at = NOW()',
       [type, fileName, filePath]
     );
+    
+    await logAudit(null, 'SuperAdmin', 'POLICY_UPLOADED', `Uploaded ${type} policy: ${fileName}`, 'policy', type, req);
     
     res.json({ 
       message: 'Policy uploaded successfully',
@@ -252,6 +358,7 @@ router.get('/accounts', async (req, res) => {
         a.account_id,
         a.account_name,
         a.status,
+        a.locations,
         a.created_at,
         COUNT(DISTINCT CASE WHEN j.status = 'Published' THEN j.id END) as active_jobs,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email)) 
@@ -260,7 +367,7 @@ router.get('/accounts', async (req, res) => {
       LEFT JOIN jobs_enhanced j ON j.account_id = a.account_id
       LEFT JOIN account_users au ON au.account_id = a.account_id
       LEFT JOIN users u ON u.id = au.user_id
-      GROUP BY a.account_id, a.account_name, a.status, a.created_at
+      GROUP BY a.account_id, a.account_name, a.status, a.locations, a.created_at
       ORDER BY a.created_at DESC
     `);
     
@@ -268,6 +375,7 @@ router.get('/accounts', async (req, res) => {
       id: row.account_id,
       name: row.account_name,
       status: row.status || 'Active',
+      locations: row.locations || null,
       activeJobs: parseInt(row.active_jobs) || 0,
       dateCreated: new Date(row.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-'),
       assignedUsers: row.assigned_users
@@ -306,6 +414,7 @@ router.put('/accounts/:id', async (req, res) => {
     }
     
     await client.query('COMMIT');
+    await logAudit(null, 'SuperAdmin', 'ACCOUNT_UPDATED', `Updated account: ${name}`, 'account', id, req);
     res.json({ message: 'Account updated successfully' });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -371,12 +480,19 @@ router.post('/users/:id/transfer-accounts', async (req, res) => {
       return res.status(400).json({ error: 'Target user ID is required' });
     }
     
-    // Update all account assignments from old user to new user
+    const accountsResult = await pool.query(
+      'SELECT a.account_name FROM account_users au JOIN accounts a ON au.account_id = a.account_id WHERE au.user_id = $1',
+      [id]
+    );
+    
     await pool.query(`
       UPDATE account_users 
       SET user_id = $1 
       WHERE user_id = $2
     `, [targetUserId, id]);
+    
+    const accountNames = accountsResult.rows.map(r => r.account_name).join(', ');
+    await logAudit(null, 'SuperAdmin', 'ACCOUNTS_TRANSFERRED', `Transferred accounts (${accountNames}) from user ${id} to user ${targetUserId}`, 'user', id, req);
     
     res.json({ message: 'Accounts transferred successfully' });
   } catch (error) {
@@ -427,13 +543,21 @@ router.post('/accounts/:id/transfer-users', async (req, res) => {
   }
 });
 
-// Delete Account
+// Delete Account (Soft Delete - Set to Inactive)
 router.delete('/accounts/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query('DELETE FROM accounts WHERE account_id = $1', [id]);
-    res.json({ message: 'Account deleted successfully' });
+    
+    await pool.query(
+      'UPDATE accounts SET status = $1 WHERE account_id = $2',
+      ['Inactive', id]
+    );
+    
+    await logAudit(null, 'SuperAdmin', 'ACCOUNT_DELETED', `Account set to inactive: ${id}`, 'account', id, req);
+    
+    res.json({ message: 'Account set to inactive successfully' });
   } catch (error) {
+    console.error('Error updating account status:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -442,8 +566,10 @@ router.delete('/accounts/:id', async (req, res) => {
 router.delete('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const userResult = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
     
     await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    await logAudit(null, 'SuperAdmin', 'USER_DELETED', `Deleted user: ${userResult.rows[0]?.name} (${userResult.rows[0]?.email})`, 'user', id, req);
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     if (error.code === '23503') {
@@ -483,6 +609,7 @@ router.post('/accounts', async (req, res) => {
     }
     
     await client.query('COMMIT');
+    await logAudit(null, 'SuperAdmin', 'ACCOUNT_CREATED', `Created account: ${name}`, 'account', accountId, req);
     res.json({ message: 'Account created successfully', accountId });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -505,11 +632,12 @@ router.post('/create-user', async (req, res) => {
     const tempPassword = 'Fluid@123';
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
     
-    await pool.query(
-      'INSERT INTO users (name, email, role, password_hash, created_at) VALUES ($1, $2, $3, $4, NOW())',
+    const result = await pool.query(
+      'INSERT INTO users (name, email, role, password_hash, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING id',
       [name, email, role, hashedPassword]
     );
     
+    await logAudit(null, 'SuperAdmin', 'USER_CREATED', `Created user: ${name} (${email}) with role ${role}`, 'user', result.rows[0].id, req);
     res.json({ 
       message: 'User created successfully',
       tempPassword: tempPassword
@@ -520,6 +648,228 @@ router.post('/create-user', async (req, res) => {
     } else {
       res.status(500).json({ error: error.message });
     }
+  }
+});
+
+// Create Job by SuperAdmin (auto-approved)
+router.post('/create-job', async (req, res) => {
+  try {
+    const {
+      job_title,
+      job_domain,
+      job_type,
+      locations,
+      mode_of_job,
+      min_experience,
+      max_experience,
+      skills,
+      min_salary,
+      max_salary,
+      show_salary_to_candidate,
+      job_description,
+      selected_image,
+      jd_attachment_name,
+      registration_opening_date,
+      registration_closing_date,
+      no_of_openings,
+      account_id,
+      created_by_user_id
+    } = req.body;
+
+    const accountResult = await pool.query('SELECT account_name FROM accounts WHERE account_id = $1', [account_id]);
+    const company = accountResult.rows[0]?.account_name || 'Company';
+
+    const salary_range = `${min_salary}-${max_salary}`;
+    const experience_level = `${min_experience}-${max_experience} years`;
+
+    let finalUserId = created_by_user_id;
+    if (!finalUserId) {
+      const userResult = await pool.query(
+        'SELECT user_id FROM account_users WHERE account_id = $1 LIMIT 1',
+        [account_id]
+      );
+      finalUserId = userResult.rows[0]?.user_id || null;
+    }
+
+    const result = await pool.query(
+      `INSERT INTO jobs_enhanced (
+        title, company, location, description, job_type,
+        salary_range, experience_level, jd_pdf_url,
+        job_domain, mode_of_job, min_experience, max_experience,
+        skills, min_salary, max_salary, show_salary_to_candidate,
+        locations, selected_image, jd_attachment_name,
+        registration_opening_date, registration_closing_date,
+        no_of_openings, account_id, created_by_user_id,
+        status, approved_at, created_at, posted_date
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+        $21, $22, $23, $24, 'Published', NOW(), NOW(), NOW()
+      ) RETURNING id`,
+      [
+        job_title, company, Array.isArray(locations) ? locations[0] : locations,
+        job_description, job_type, salary_range, experience_level,
+        jd_attachment_name, job_domain, mode_of_job, min_experience,
+        max_experience, skills, min_salary, max_salary,
+        show_salary_to_candidate, locations, selected_image,
+        jd_attachment_name, registration_opening_date,
+        registration_closing_date, no_of_openings, account_id,
+        finalUserId
+      ]
+    );
+
+    await logAudit(null, 'SuperAdmin', 'JOB_CREATED', `Created and published job: ${job_title} for account ${company}`, 'job', result.rows[0].id, req);
+
+    res.json({
+      success: true,
+      message: 'Job created and published successfully',
+      jobId: result.rows[0].id
+    });
+  } catch (error) {
+    console.error('Error creating job:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get Audit Logs
+router.get('/audit-logs', async (req, res) => {
+  try {
+    const { search, actionType, startDate, endDate, page = 1, limit = 50 } = req.query;
+    const offset = (page - 1) * limit;
+    
+    let query = 'SELECT * FROM audit_logs WHERE 1=1';
+    let countQuery = 'SELECT COUNT(*) FROM audit_logs WHERE 1=1';
+    let params = [];
+    let paramCount = 1;
+    
+    if (search) {
+      query += ` AND (user_name ILIKE $${paramCount} OR action_description ILIKE $${paramCount})`;
+      countQuery += ` AND (user_name ILIKE $${paramCount} OR action_description ILIKE $${paramCount})`;
+      params.push(`%${search}%`);
+      paramCount++;
+    }
+    
+    if (actionType) {
+      query += ` AND action_type = $${paramCount}`;
+      countQuery += ` AND action_type = $${paramCount}`;
+      params.push(actionType);
+      paramCount++;
+    }
+    
+    if (startDate) {
+      query += ` AND created_at >= $${paramCount}`;
+      countQuery += ` AND created_at >= $${paramCount}`;
+      params.push(startDate);
+      paramCount++;
+    }
+    
+    if (endDate) {
+      query += ` AND created_at <= $${paramCount}`;
+      countQuery += ` AND created_at <= $${paramCount}`;
+      params.push(endDate);
+      paramCount++;
+    }
+    
+    query += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    params.push(limit, offset);
+    
+    const [logs, count] = await Promise.all([
+      pool.query(query, params),
+      pool.query(countQuery, params.slice(0, -2))
+    ]);
+    
+    res.json({
+      logs: logs.rows,
+      total: parseInt(count.rows[0].count),
+      page: parseInt(page),
+      totalPages: Math.ceil(count.rows[0].count / limit)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Export Audit Logs
+router.get('/audit-logs/export', async (req, res) => {
+  try {
+    const { startDate, endDate, actionType } = req.query;
+    
+    let query = 'SELECT * FROM audit_logs WHERE 1=1';
+    let params = [];
+    let paramCount = 1;
+    
+    if (actionType) {
+      query += ` AND action_type = $${paramCount}`;
+      params.push(actionType);
+      paramCount++;
+    }
+    
+    if (startDate) {
+      query += ` AND created_at >= $${paramCount}`;
+      params.push(startDate);
+      paramCount++;
+    }
+    
+    if (endDate) {
+      query += ` AND created_at <= $${paramCount}`;
+      params.push(endDate);
+      paramCount++;
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    
+    const result = await pool.query(query, params);
+    res.json({ logs: result.rows });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get Audit Settings
+router.get('/audit-settings', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM audit_settings LIMIT 1');
+    res.json(result.rows[0] || { retention_days: 90, auto_purge_enabled: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update Audit Settings
+router.put('/audit-settings', async (req, res) => {
+  try {
+    const { retention_days, auto_purge_enabled } = req.body;
+    
+    await pool.query(
+      'UPDATE audit_settings SET retention_days = $1, auto_purge_enabled = $2, updated_at = NOW()',
+      [retention_days, auto_purge_enabled]
+    );
+    
+    await logAudit(null, 'SuperAdmin', 'AUDIT_SETTINGS_UPDATED', `Updated audit settings: retention=${retention_days} days, auto_purge=${auto_purge_enabled}`, 'settings', null, req);
+    
+    res.json({ message: 'Settings updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Purge Old Logs
+router.delete('/audit-logs/purge', async (req, res) => {
+  try {
+    const { days } = req.query;
+    const retentionDays = parseInt(days) || 90;
+    
+    const result = await pool.query(
+      `DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '${retentionDays} days' RETURNING id`
+    );
+    
+    res.json({ 
+      message: 'Logs purged successfully',
+      deleted: result.rowCount 
+    });
+  } catch (error) {
+    console.error('Error purging logs:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

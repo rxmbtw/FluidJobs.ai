@@ -7,18 +7,19 @@ interface ForgotPasswordModalProps {
   onClose: () => void;
 }
 
-type Step = 'email' | 'verification' | 'reset' | 'success';
+const API_BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 
 const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClose }) => {
-  const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const handleSendCode = async () => {
     if (!email) {
@@ -30,8 +31,8 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
     setError('');
     
     try {
-      await axios.post('http://localhost:8000/api/forgot-password/send-code', { email });
-      setStep('verification');
+      await axios.post(`${API_BASE}/api/auth/forgot-password`, { email });
+      setCodeSent(true);
     } catch (error: any) {
       setError(error.response?.data?.error || 'Failed to send verification code');
     } finally {
@@ -39,27 +40,10 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
     }
   };
 
-  const handleVerifyCode = async () => {
-    if (!code) {
-      setError('Please enter the verification code');
-      return;
-    }
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    setLoading(true);
-    setError('');
-    
-    try {
-      await axios.post('http://localhost:8000/api/forgot-password/verify-code', { email, code });
-      setStep('reset');
-    } catch (error: any) {
-      setError(error.response?.data?.error || 'Invalid verification code');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResetPassword = async () => {
-    if (!newPassword || !confirmPassword) {
+    if (!email || !code || !newPassword || !confirmPassword) {
       setError('Please fill in all fields');
       return;
     }
@@ -78,12 +62,12 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
     setError('');
     
     try {
-      await axios.post('http://localhost:8000/api/forgot-password/reset-password', {
+      await axios.post(`${API_BASE}/api/auth/reset-password`, {
         email,
         code,
         newPassword
       });
-      setStep('success');
+      setSuccess(true);
     } catch (error: any) {
       setError(error.response?.data?.error || 'Failed to reset password');
     } finally {
@@ -92,12 +76,13 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
   };
 
   const resetModal = () => {
-    setStep('email');
     setEmail('');
     setCode('');
     setNewPassword('');
     setConfirmPassword('');
     setError('');
+    setCodeSent(false);
+    setSuccess(false);
     onClose();
   };
 
@@ -110,145 +95,124 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
           <X className="w-6 h-6" />
         </button>
 
-        {step === 'email' && (
-          <>
-            <div className="text-center mb-6">
-              <Mail className="w-12 h-12 text-blue-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-800">Forgot Password?</h2>
-              <p className="text-gray-600 mt-2">Enter your email to receive a verification code</p>
-            </div>
-
-            <div className="space-y-4">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              
-              {error && <p className="text-red-500 text-sm">{error}</p>}
-              
-              <button
-                onClick={handleSendCode}
-                disabled={loading}
-                className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 disabled:opacity-50"
-              >
-                {loading ? 'Sending...' : 'Send Verification Code'}
-              </button>
-            </div>
-          </>
-        )}
-
-        {step === 'verification' && (
-          <>
-            <div className="text-center mb-6">
-              <Key className="w-12 h-12 text-blue-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-800">Enter Verification Code</h2>
-              <p className="text-gray-600 mt-2">We sent a 6-digit code to {email}</p>
-            </div>
-
-            <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Enter 6-digit code"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl tracking-widest"
-                maxLength={6}
-              />
-              
-              {error && <p className="text-red-500 text-sm">{error}</p>}
-              
-              <button
-                onClick={handleVerifyCode}
-                disabled={loading}
-                className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 disabled:opacity-50"
-              >
-                {loading ? 'Verifying...' : 'Verify Code'}
-              </button>
-              
-              <button
-                onClick={() => setStep('email')}
-                className="w-full text-blue-500 py-2 text-sm hover:underline"
-              >
-                Back to Email
-              </button>
-            </div>
-          </>
-        )}
-
-        {step === 'reset' && (
+        {!success ? (
           <>
             <div className="text-center mb-6">
               <Key className="w-12 h-12 text-blue-500 mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-gray-800">Reset Password</h2>
-              <p className="text-gray-600 mt-2">Enter your new password</p>
+              <p className="text-gray-600 mt-2">Enter your details to reset your password</p>
             </div>
 
-            <div className="space-y-4">
-              <div className="relative">
+            <form className="space-y-4" onSubmit={handleResetPassword}>
+              <div>
                 <input
-                  type={showNewPassword ? "text" : "password"}
-                  placeholder="New password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                  disabled={codeSent}
                 />
+              </div>
+
+              {!codeSent ? (
                 <button
                   type="button"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  onClick={handleSendCode}
+                  disabled={loading}
+                  className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 disabled:opacity-50"
                 >
-                  {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {loading ? 'Sending...' : 'Send Verification Code'}
                 </button>
-              </div>
-              
-              <div className="relative">
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirm new password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                >
-                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
+              ) : (
+                <>
+                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-lg text-sm">
+                    ✓ Verification code sent to {email}
+                  </div>
+
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Enter 6-digit code"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl tracking-widest"
+                      maxLength={6}
+                      required
+                    />
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      placeholder="New password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 disabled:opacity-50"
+                  >
+                    {loading ? 'Resetting...' : 'Reset Password'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCodeSent(false)}
+                    className="w-full text-blue-500 py-2 text-sm hover:underline"
+                  >
+                    Change Email
+                  </button>
+                </>
+              )}
               
               {error && <p className="text-red-500 text-sm">{error}</p>}
-              
-              <button
-                onClick={handleResetPassword}
-                disabled={loading}
-                className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 disabled:opacity-50"
-              >
-                {loading ? 'Resetting...' : 'Reset Password'}
-              </button>
-            </div>
+            </form>
           </>
-        )}
-
-        {step === 'success' && (
-          <>
-            <div className="text-center">
-              <Check className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-800">Password Reset Successfully!</h2>
-              <p className="text-gray-600 mt-2 mb-6">You can now login with your new password</p>
-              
-              <button
-                onClick={resetModal}
-                className="w-full bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600"
-              >
-                Continue to Login
-              </button>
-            </div>
-          </>
+        ) : (
+          <div className="text-center">
+            <Check className="w-16 h-16 text-green-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800">Password Reset Successfully!</h2>
+            <p className="text-gray-600 mt-2 mb-6">You can now login with your new password</p>
+            
+            <button
+              onClick={resetModal}
+              className="w-full bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600"
+            >
+              Continue to Login
+            </button>
+          </div>
         )}
       </div>
     </div>

@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const session = require('express-session');
 const passport = require('./config/passport');
 const { testConnection, setupDatabase } = require('./utils/dbSetup');
+const { startAuditLogPurgeScheduler } = require('./utils/auditScheduler');
 const path = require('path');
 require('dotenv').config();
 
@@ -142,6 +143,8 @@ app.listen(PORT, async () => {
   const dbConnected = await testConnection();
   if (dbConnected) {
     console.log('🗄️ Database connection successful');
+    // Start audit log purge scheduler
+    startAuditLogPurgeScheduler();
     // Uncomment the next line to setup database schema on first run
     // await setupDatabase();
   }

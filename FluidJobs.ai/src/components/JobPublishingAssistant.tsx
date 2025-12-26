@@ -18,6 +18,7 @@ import {
 import { useJobs } from '../contexts/JobsProvider';
 import MultiSelectDropdown from './MultiSelectDropdown';
 import jobsEnhancedService from '../services/jobsEnhancedService';
+import SuccessModal from './SuccessModal';
 
 const defaultImages = [
   'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
@@ -123,6 +124,8 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
   const [aiGenerated, setAiGenerated] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const [isEditorFocused, setIsEditorFocused] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
 
   useEffect(() => {
     const loadDraft = async () => {
@@ -451,8 +454,15 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
         addJob(jobData);
         // Refresh jobs across all components
         window.dispatchEvent(new CustomEvent('jobCreated'));
-        alert('🎉 Job opening created successfully!');
-        onBack();
+        setSuccessMessage({
+          title: 'Success!',
+          message: '🎉 Job opening created successfully!'
+        });
+        setShowSuccessModal(true);
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          onBack();
+        }, 2000);
       } else {
         alert('Failed to create job opening. Please try again.');
       }
@@ -1447,6 +1457,18 @@ const JobPublishingAssistant: React.FC<JobPublishingAssistantProps> = ({ onBack 
           </div>
         </div>
       </div>
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          onBack();
+        }}
+        title={successMessage.title}
+        message={successMessage.message}
+        autoClose={false}
+      />
     </div>
   );
 };

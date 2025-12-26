@@ -14,12 +14,14 @@ import {
 } from 'lucide-react';
 import { indianCities } from '../data/indianCities';
 import './JobCreationForm.css';
+import SuccessModal from './SuccessModal';
 
 interface JobCreationFormProps {
   onBack: () => void;
+  isSuperAdmin?: boolean;
 }
 
-const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
+const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin = false }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const [currentStep, setCurrentStep] = useState(0);
@@ -65,15 +67,20 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
   const [uploadedPdfFile, setUploadedPdfFile] = useState<File | null>(null);
   const [isGeneratingFromPdf, setIsGeneratingFromPdf] = useState(false);
   const [isUserEditing, setIsUserEditing] = useState(false);
+  const [showPdfSuccessModal, setShowPdfSuccessModal] = useState(false);
 
   // Fetch accounts and current admin on mount
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token') || localStorage.getItem('superadmin_token');
         if (!token) return;
         
-        const response = await fetch('http://localhost:8000/api/auth/my-accounts', {
+        const endpoint = isSuperAdmin 
+          ? 'http://localhost:8000/api/superadmin/accounts'
+          : 'http://localhost:8000/api/auth/my-accounts';
+        
+        const response = await fetch(endpoint, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -86,10 +93,15 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
         const data = await response.json();
         
         // Transform data to match expected format
-        const transformedAccounts = data.map((account: any) => ({
-          account_id: account.account_id,
-          account_name: account.account_name
-        }));
+        const transformedAccounts = isSuperAdmin
+          ? data.map((account: any) => ({
+              account_id: account.id,
+              account_name: account.name
+            }))
+          : data.map((account: any) => ({
+              account_id: account.account_id,
+              account_name: account.account_name
+            }));
         
         setAccounts(transformedAccounts);
       } catch (error) {
@@ -97,7 +109,10 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
       }
     };
 
-    const userStr = sessionStorage.getItem('fluidjobs_user');
+    const userStr = isSuperAdmin 
+      ? localStorage.getItem('superadmin')
+      : sessionStorage.getItem('fluidjobs_user');
+    
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
@@ -108,7 +123,7 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
     }
 
     fetchAccounts();
-  }, []);
+  }, [isSuperAdmin]);
 
   const jobImages = [
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=250&fit=crop',
@@ -359,10 +374,14 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
           job_close_days: 30,
           no_of_openings: parseInt(formData.no_of_openings),
           account_id: parseInt(selectedAccount),
-          created_by_user_id: currentAdmin?.id
+          created_by_user_id: currentAdmin?.id || null
         };
 
-        const response = await fetch('http://localhost:8000/api/jobs-enhanced/create', {
+        const endpoint = isSuperAdmin
+          ? 'http://localhost:8000/api/superadmin/create-job'
+          : 'http://localhost:8000/api/jobs-enhanced/create';
+
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -410,7 +429,7 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack }) => {
           setIsUserEditing(false);
           setFormData(prev => ({ ...prev, job_description: generateData.jobDescription }));
           setErrors(prev => ({ ...prev, job_description: '' }));
-          alert('✅ Job description generated from PDF!');
+          setShowPdfSuccessModal(true);
         } else {
           alert('Failed to generate description from PDF');
         }
@@ -1079,7 +1098,7 @@ What We Offer:
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Job Description <span className="text-red-500">*</span>
                     </label>
-                    <div className="space-y-3">
+                    <div className="space-y-1">
                       <div className="flex justify-end">
                         <button
                           type="button"
@@ -1263,6 +1282,14 @@ What We Offer:
           </div>
         </div>
       )}
+
+      {/* PDF Generation Success Modal */}
+      <SuccessModal
+        isOpen={showPdfSuccessModal}
+        onClose={() => setShowPdfSuccessModal(false)}
+        title="Success!"
+        message="✅ Job description generated from PDF successfully!"
+      />
     </div>
   );
 };

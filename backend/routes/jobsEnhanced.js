@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { PDFParse } = require('pdf-parse');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { logAudit } = require('../middleware/auditLogger');
 const router = express.Router();
 
 // Create uploads directory if it doesn't exist
@@ -69,6 +70,7 @@ router.get('/list', async (req, res) => {
       jd_attachment_name: job.jd_attachment_name,
       registration_opening_date: job.registration_opening_date,
       registration_closing_date: job.registration_closing_date,
+      number_of_openings: job.no_of_openings,
       status: job.status,
       created_at: job.created_at,
       account_name: job.account_name,
@@ -275,6 +277,8 @@ router.post('/upload-jd', upload.single('jdFile'), async (req, res) => {
     const fileUrl = `/uploads/job-descriptions/${req.file.filename}`;
     console.log('✅ JD uploaded to VPS:', fileUrl);
     
+    await logAudit(req.body.userId, req.body.userName || 'User', 'FILE_UPLOAD', `Uploaded JD file: ${req.file.originalname}`, 'file', null, req);
+    
     res.json({ 
       success: true, 
       filename: fileUrl,
@@ -400,8 +404,9 @@ router.put('/update/:id', async (req, res) => {
         show_salary_to_candidate = $12,
         registration_opening_date = $13,
         registration_closing_date = $14,
+        no_of_openings = $15,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $15
+      WHERE id = $16
       RETURNING *;
     `, [
       jobData.job_title,
@@ -418,12 +423,15 @@ router.put('/update/:id', async (req, res) => {
       jobData.show_salary_to_candidate,
       jobData.registration_opening_date,
       jobData.registration_closing_date,
+      jobData.no_of_openings,
       id
     ]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
+    
+    await logAudit(jobData.userId, jobData.userName || 'User', 'JOB_UPDATED', `Updated job: ${jobData.job_title}`, 'job', id, req);
     
     res.json({ 
       success: true, 
@@ -495,6 +503,8 @@ router.post('/create', async (req, res) => {
     if (jobData.userId) {
       await pool.query('DELETE FROM job_drafts WHERE user_id = $1', [jobData.userId]);
     }
+    
+    await logAudit(jobData.created_by_user_id, jobData.userName || 'User', 'JOB_CREATED', `Created job: ${jobData.job_title}`, 'job', result.rows[0].id, req);
     
     res.json({ 
       success: true, 

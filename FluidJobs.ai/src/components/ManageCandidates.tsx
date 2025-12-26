@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Filter, Users, FileText, Eye, MoreVertical, Download, Mail, Phone, MapPin, Calendar, Building, DollarSign, Linkedin, User, Clock, Briefcase, Plus, Trash2, Ban, Check } from 'lucide-react';
 import { indianCities } from '../data/indianCities';
+import SuccessModal from './SuccessModal';
 
 interface Candidate {
   id: string;
@@ -28,9 +29,10 @@ interface Candidate {
 
 interface ManageCandidatesProps {
   isJobSpecific?: boolean;
+  isSuperAdmin?: boolean;
 }
 
-const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = false }) => {
+const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = false, isSuperAdmin = false }) => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,6 +56,8 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
   const [selectedJobForNotification, setSelectedJobForNotification] = useState('');
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
   const [sendingNotification, setSendingNotification] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
 
   // Fetch available jobs
   const fetchAvailableJobs = async () => {
@@ -93,9 +97,13 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
       });
 
       if (response.ok) {
-        alert(`Job notification sent successfully to ${selectedCandidate.name}!`);
         setShowJobNotificationModal(false);
         setSelectedJobForNotification('');
+        setSuccessMessage({
+          title: 'Success!',
+          message: `Job notification sent successfully to ${selectedCandidate.name}!`
+        });
+        setShowSuccessModal(true);
       } else {
         const error = await response.json();
         alert(`Failed to send notification: ${error.error || 'Unknown error'}`);
@@ -127,7 +135,11 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
       });
       
       if (response.ok) {
-        alert(`Invite sent successfully to ${selectedCandidate.name}!`);
+        setSuccessMessage({
+          title: 'Success!',
+          message: `Invite sent successfully to ${selectedCandidate.name}!`
+        });
+        setShowSuccessModal(true);
       } else {
         const error = await response.json();
         alert(`Failed to send invite: ${error.error || 'Unknown error'}`);
@@ -161,7 +173,11 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
         setCandidates(prev => prev.map(c => 
           c.id === candidateId ? { ...c, resumeScore: data.score } : c
         ));
-        alert(`AI Review Complete! Score: ${data.score}/100`);
+        setSuccessMessage({
+          title: 'AI Review Complete!',
+          message: `Score: ${data.score}/100`
+        });
+        setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error reviewing resume:', error);
@@ -227,8 +243,9 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
   };
 
   // Helper functions
-  const getPositionFromEmail = (email: string) => {
+  const getPositionFromEmail = (email: string | null | undefined) => {
     const positions = ['Software Engineer', 'Senior Software Engineer', 'Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'Data Scientist', 'DevOps Engineer'];
+    if (!email) return positions[0];
     return positions[email.length % positions.length];
   };
 
@@ -314,7 +331,11 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
         setIsRestricted(true);
         setShowRestrictModal(false);
         setRestrictReason('');
-        alert('Candidate restricted successfully');
+        setSuccessMessage({
+          title: 'Success!',
+          message: 'Candidate restricted successfully'
+        });
+        setShowSuccessModal(true);
       } else {
         alert('Failed to restrict candidate');
       }
@@ -351,7 +372,11 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
         setIsRestricted(false);
         setShowUnrestrictModal(false);
         setUnrestrictReason('');
-        alert('Candidate unrestricted successfully');
+        setSuccessMessage({
+          title: 'Success!',
+          message: 'Candidate unrestricted successfully'
+        });
+        setShowSuccessModal(true);
       } else {
         alert('Failed to unrestrict candidate');
       }
@@ -443,25 +468,8 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
       <div className="w-[35%] bg-white border-r border-gray-200 flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <button 
-                onClick={fetchCandidates}
-                className="p-2 hover:bg-gray-100 rounded border border-gray-300"
-                title="Refresh candidates"
-              >
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-            </div>
-            <button className="p-2 hover:bg-gray-100 rounded">
-              <User className="w-4 h-4 text-gray-600" />
-            </button>
-          </div>
-          
           <h2 className="text-sm font-medium text-gray-900 mb-4">
-            {candidates.length > 0 && candidates[0].source === 'Database' ? 'Database Candidates' : 'Sample Candidates'} ({filteredCandidates.length})
+            Candidates ({filteredCandidates.length})
           </h2>
           
           {/* Filter Button, Sort Dropdown and Search Bar */}
@@ -626,7 +634,7 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
             <div className="bg-white border-b border-gray-100 p-3">
               {/* Action Buttons */}
               <div className="flex justify-between items-center mb-6">
-                {userRole === 'Admin' && (
+                {(userRole === 'Admin' || isSuperAdmin) && (
                   <div className="flex space-x-3">
                     <button 
                       onClick={handleRestrictClick}
@@ -656,7 +664,7 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
                     </button>
                   </div>
                 )}
-                {userRole !== 'Admin' && <div></div>}
+                {(userRole !== 'Admin' && !isSuperAdmin) && <div></div>}
                 <div className="flex space-x-3">
                   <button 
                     className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-medium ${
@@ -1128,6 +1136,13 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
           </div>
         </div>
       )}
+
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title={successMessage.title}
+        message={successMessage.message}
+      />
     </div>
   );
 };

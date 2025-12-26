@@ -215,6 +215,9 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (loading) return; // Prevent duplicate submissions
+        
         setError('');
         setLoading(true);
         try {

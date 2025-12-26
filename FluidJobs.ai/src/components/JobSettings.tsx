@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { indianCities } from '../data/indianCities';
+import SuccessModal from './SuccessModal';
 
 interface JobSettingsProps {
   jobTitle?: string;
@@ -12,9 +13,12 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isPublished, setIsPublished] = useState(true);
+  const [jobStatus, setJobStatus] = useState('');
   const [showUnpublishModal, setShowUnpublishModal] = useState(false);
   const [unpublishReason, setUnpublishReason] = useState('');
   const [userRole, setUserRole] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
 
   // Get user role
   React.useEffect(() => {
@@ -30,6 +34,7 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
     min_experience: '',
     max_experience: '',
     job_type: '',
+    no_of_openings: '',
     min_salary: '',
     max_salary: '',
     show_salary_to_candidate: true,
@@ -40,6 +45,8 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
     skills: '',
     job_description: ''
   });
+  const [originalFormData, setOriginalFormData] = useState<any>(null);
+  const [hasChanges, setHasChanges] = useState(false);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [locationInput, setLocationInput] = useState('');
@@ -47,6 +54,7 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
 
   const experienceOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
   const jobTypeOptions = ['Full-time', 'Part-time', 'Contract', 'Internship'];
+  const openingsOptions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '10+'];
   const modeOptions = ['Work From Home', 'Hybrid', 'On-site'];
   const domainSuggestions = [
     'Software Development', 'Data Science', 'Machine Learning', 'Web Development',
@@ -107,12 +115,13 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
           }
         }
         
-        setFormData({
+        const newFormData = {
           job_title: job.job_title || '',
           job_domain: job.job_domain || '',
           min_experience: job.min_experience?.toString() || '',
           max_experience: job.max_experience?.toString() || '',
           job_type: job.job_type || '',
+          no_of_openings: (job.number_of_openings || job.no_of_openings)?.toString() || '',
           min_salary: job.min_salary?.toString() || '',
           max_salary: job.max_salary?.toString() || '',
           show_salary_to_candidate: true,
@@ -122,12 +131,17 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
           mode_of_job: job.mode_of_job || '',
           skills: skillsArray.join(', '),
           job_description: job.job_description || ''
-        });
+        };
+        
+        setFormData(newFormData);
+        setOriginalFormData(JSON.parse(JSON.stringify(newFormData)));
         
         setSelectedSkills(skillsArray);
         const locs = locationsArray;
         setSelectedLocations(locs);
+        setJobStatus(job.status || '');
         setIsPublished(job.status === 'Published');
+        setHasChanges(false);
       } else {
         console.error('Failed to fetch job data. Status:', response.status);
         const errorText = await response.text();
@@ -147,12 +161,14 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
     } else {
       setFormData((prev: any) => ({ ...prev, [name]: value }));
     }
+    setHasChanges(true);
   };
 
   const removeSkill = (skillToRemove: string) => {
     const updated = selectedSkills.filter(s => s !== skillToRemove);
     setSelectedSkills(updated);
     setFormData((prev: any) => ({ ...prev, skills: updated.join(', ') }));
+    setHasChanges(true);
   };
 
   const handlePublishToggle = () => {
@@ -161,7 +177,11 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
     } else {
       // Re-publish: Send for approval
       updateJobStatus('pending');
-      alert('Re-publish request sent to SuperAdmin for approval');
+      setSuccessMessage({
+        title: 'Request Sent!',
+        message: 'Re-publish request sent to SuperAdmin for approval'
+      });
+      setShowSuccessModal(true);
     }
   };
 
@@ -200,6 +220,11 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
     setShowUnpublishModal(false);
     await updateJobStatus('unpublished');
     setUnpublishReason('');
+    setSuccessMessage({
+      title: 'Success!',
+      message: 'Job unpublished successfully'
+    });
+    setShowSuccessModal(true);
   };
 
   const handleSaveUpdates = async () => {
@@ -217,6 +242,7 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
           job_title: formData.job_title,
           job_domain: formData.job_domain,
           job_type: formData.job_type,
+          no_of_openings: formData.no_of_openings,
           locations: selectedLocations,
           mode_of_job: formData.mode_of_job,
           min_experience: formData.min_experience,
@@ -233,10 +259,17 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
       });
 
       if (response.ok) {
-        alert('Job updated successfully!');
+        setSuccessMessage({
+          title: 'Success!',
+          message: 'Job updated successfully!'
+        });
+        setShowSuccessModal(true);
+        setHasChanges(false);
         fetchJobData();
       } else {
-        throw new Error('Failed to update job');
+        const errorData = await response.json();
+        console.error('Backend error:', errorData);
+        throw new Error(errorData.error || 'Failed to update job');
       }
     } catch (error) {
       console.error('Error saving updates:', error);
@@ -281,11 +314,13 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-semibold text-gray-700">Job Publish Status</h3>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">{isPublished ? 'Published' : 'Republish'}</span>
+                      {jobStatus === 'Published' && <span className="text-sm text-gray-600">Published</span>}
+                      {jobStatus === 'unpublished' && <span className="text-sm text-gray-600">Republish</span>}
                       <button
                         onClick={handlePublishToggle}
+                        disabled={jobStatus === 'pending'}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          isPublished ? 'bg-indigo-600' : 'bg-gray-300'
+                          jobStatus === 'pending' ? 'bg-gray-200 cursor-not-allowed opacity-50' : isPublished ? 'bg-indigo-600' : 'bg-gray-300'
                         }`}
                       >
                         <span
@@ -385,6 +420,22 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
                   <option value="">Select Type</option>
                   {jobTypeOptions.map(type => (
                     <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  No of Openings <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="no_of_openings"
+                  value={formData.no_of_openings}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {openingsOptions.map(num => (
+                    <option key={num} value={num}>{num}</option>
                   ))}
                 </select>
               </div>
@@ -629,8 +680,10 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
             {/* Save Button */}
             <button
               onClick={handleSaveUpdates}
-              disabled={saving}
-              className="w-full py-3 bg-gray-300 text-gray-600 rounded-lg font-semibold hover:bg-gray-400 transition disabled:opacity-50"
+              disabled={saving || !hasChanges}
+              className={`w-full py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                hasChanges ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-300 text-gray-600'
+              }`}
             >
               {saving ? 'Saving...' : 'Save Updates'}
             </button>
@@ -647,6 +700,14 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
       </div>
     </div>
 
+
+    {/* Success Modal */}
+    <SuccessModal
+      isOpen={showSuccessModal}
+      onClose={() => setShowSuccessModal(false)}
+      title={successMessage.title}
+      message={successMessage.message}
+    />
 
     {/* Unpublish Confirmation Modal */}
     {showUnpublishModal && (

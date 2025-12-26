@@ -7,7 +7,7 @@ const ThemedBulkImport: React.FC = () => {
   const colors = getThemeColors(theme);
 
   return (
-    <div style={{ backgroundColor: colors.bgMain, minHeight: '100vh', padding: '2rem' }}>
+    <div style={{ minHeight: '100vh', padding: '2rem' }}>
       <style>{`
         .bg-white { background-color: ${colors.bgCard} !important; }
         .text-gray-900 { color: ${colors.textPrimary} !important; }

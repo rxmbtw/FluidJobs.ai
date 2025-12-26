@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Users, Zap, Settings, MessageCircle, TestTube } from 'lucide-react';
 import ManageCandidatesJobSpecific from './ManageCandidatesJobSpecific';
 import JobSettings from './JobSettings';
+import SuccessModal from './SuccessModal';
 
 interface JobSpecificDashboardProps {
   jobTitle: string;
@@ -35,6 +36,11 @@ interface Candidate {
 const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, jobId, onBack, onJobUpdate }) => {
   console.log('JobSpecificDashboard received props:', { jobTitle, jobId });
   const [currentJobTitle, setCurrentJobTitle] = useState(jobTitle);
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
+  const [showSelectionModal, setShowSelectionModal] = useState(false);
+  const [finalSelectedCandidates, setFinalSelectedCandidates] = useState<string[]>([]);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [numberOfOpenings, setNumberOfOpenings] = useState(0);
   
   // Debug: Log jobId to ensure it's being passed correctly
   console.log('JobSpecificDashboard jobId for JobSettings:', jobId);
@@ -43,6 +49,24 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
     setCurrentJobTitle(updatedJob.title);
     if (onJobUpdate) {
       onJobUpdate(updatedJob);
+    }
+  };
+
+  // Fetch job details including number of openings
+  const fetchJobDetails = async () => {
+    if (!jobId) return;
+    
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/list`);
+      if (response.ok) {
+        const data = await response.json();
+        const job = data.jobs?.find((j: any) => j.job_id.toString() === jobId.toString());
+        if (job && job.number_of_openings) {
+          setNumberOfOpenings(parseInt(job.number_of_openings) || 0);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching job details:', error);
     }
   };
 
@@ -116,8 +140,16 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
   };
 
   React.useEffect(() => {
+    fetchJobDetails();
     fetchCandidateStages();
   }, [jobId]);
+
+  const showToastNotification = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
+
   // Get user role from sessionStorage
   const getUserRole = () => {
     try {
@@ -150,6 +182,10 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
   const [checkedCandidates, setCheckedCandidates] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
   const [selectedCandidateDetails, setSelectedCandidateDetails] = useState<Candidate | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   const allMenuItems = [
     { id: 'manage-candidates', label: 'Manage Candidates', icon: Users, roles: ['Admin', 'HR'] },
@@ -179,6 +215,7 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
                 });
                 if (response.ok) {
                   setShortlistedCandidates([...shortlistedCandidates, candidate]);
+                  showToastNotification('Candidate shortlisted successfully');
                 }
               } catch (error) {
                 console.error('Error shortlisting candidate:', error);
@@ -191,6 +228,7 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
                 });
                 if (response.ok) {
                   setShortlistedCandidates(shortlistedCandidates.filter(c => c.id !== candidateId));
+                  showToastNotification('Candidate removed from shortlist');
                 }
               } catch (error) {
                 console.error('Error removing from shortlist:', error);
@@ -235,6 +273,7 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
             setShortlistedCandidates(shortlistedCandidates.filter(c => !checkedCandidates.includes(c.id)));
             setCheckedCandidates([]);
             setSelectAll(false);
+            showToastNotification(`${movedCandidates.length} candidate${movedCandidates.length !== 1 ? 's' : ''} moved to selected`);
           } catch (error) {
             console.error('Error bulk selecting candidates:', error);
           }
@@ -316,6 +355,7 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
                             if (response.ok) {
                               setSelectedCandidates([...selectedCandidates, candidate]);
                               setShortlistedCandidates(shortlistedCandidates.filter(c => c.id !== candidate.id));
+                              showToastNotification('Candidate selected successfully');
                             }
                           } catch (error) {
                             console.error('Error selecting candidate:', error);
@@ -334,6 +374,7 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
                             });
                             if (response.ok) {
                               setShortlistedCandidates(shortlistedCandidates.filter(c => c.id !== candidate.id));
+                              showToastNotification('Candidate removed from shortlist');
                             }
                           } catch (error) {
                             console.error('Error removing from shortlist:', error);
@@ -452,6 +493,7 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
                           if (response.ok) {
                             setShortlistedCandidates([...shortlistedCandidates, candidate]);
                             setSelectedCandidates(selectedCandidates.filter(c => c.id !== candidate.id));
+                            showToastNotification('Candidate moved back to shortlisted');
                           }
                         } catch (error) {
                           console.error('Error moving back to shortlist:', error);
@@ -555,7 +597,41 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm font-medium">Back to Openings</span>
           </button>
-          <h1 className="text-xl font-bold text-gray-900">{currentJobTitle}</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-bold text-gray-900">{currentJobTitle}</h1>
+            <div className="flex items-center space-x-3">
+              <span className="text-sm text-gray-600">
+                {selectedCandidates.length}/{numberOfOpenings} positions filled
+              </span>
+              <div className="relative group">
+                <button
+                  onClick={() => {
+                    if (selectedCandidates.length < numberOfOpenings || isCompleted) return;
+                    if (selectedCandidates.length > numberOfOpenings) {
+                      setShowSelectionModal(true);
+                      setFinalSelectedCandidates([]);
+                    } else {
+                      setShowCompletedModal(true);
+                    }
+                  }}
+                  disabled={selectedCandidates.length < numberOfOpenings || isCompleted}
+                  className="px-6 py-2 rounded-lg text-sm font-semibold transition-all"
+                  style={{
+                    backgroundColor: isCompleted ? '#10B981' : selectedCandidates.length >= numberOfOpenings ? '#E5E7EB' : '#F3F4F6',
+                    color: isCompleted ? '#FFFFFF' : selectedCandidates.length >= numberOfOpenings ? '#374151' : '#9CA3AF',
+                    cursor: selectedCandidates.length < numberOfOpenings || isCompleted ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isCompleted ? '✓ Job Completed' : 'Mark as Completed'}
+                </button>
+                {selectedCandidates.length < numberOfOpenings && !isCompleted && (
+                  <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    Need {numberOfOpenings - selectedCandidates.length} more selected candidate{numberOfOpenings - selectedCandidates.length > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Tabs Navigation */}
@@ -583,6 +659,149 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
           {renderContent()}
         </div>
       </div>
+
+      {/* Candidate Selection Modal */}
+      {showSelectionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Select {numberOfOpenings} Candidates</h2>
+              <button
+                onClick={() => setShowSelectionModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-6">
+              You have selected {selectedCandidates.length} candidates but only {numberOfOpenings} position{numberOfOpenings > 1 ? 's are' : ' is'} available. Please select exactly {numberOfOpenings} candidate{numberOfOpenings > 1 ? 's' : ''} to proceed.
+            </p>
+
+            <div className="space-y-3 mb-6">
+              {selectedCandidates.map((candidate) => (
+                <div key={candidate.id} className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={finalSelectedCandidates.includes(candidate.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        if (finalSelectedCandidates.length < numberOfOpenings) {
+                          setFinalSelectedCandidates([...finalSelectedCandidates, candidate.id]);
+                        }
+                      } else {
+                        setFinalSelectedCandidates(finalSelectedCandidates.filter(id => id !== candidate.id));
+                      }
+                    }}
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-semibold text-sm">
+                    {candidate.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">{candidate.name}</h3>
+                    <p className="text-sm text-gray-600">{candidate.email}</p>
+                    <p className="text-xs text-gray-500">{candidate.experience} Yrs | {candidate.currentCompany}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">
+                Selected: {finalSelectedCandidates.length}/{numberOfOpenings}
+              </span>
+              <button
+                onClick={() => {
+                  if (finalSelectedCandidates.length === numberOfOpenings) {
+                    setShowSelectionModal(false);
+                    setShowCompletedModal(true);
+                  }
+                }}
+                disabled={finalSelectedCandidates.length !== numberOfOpenings}
+                className="px-6 py-3 rounded-lg font-semibold transition"
+                style={{
+                  backgroundColor: finalSelectedCandidates.length === numberOfOpenings ? '#3B82F6' : '#E5E7EB',
+                  color: finalSelectedCandidates.length === numberOfOpenings ? '#FFFFFF' : '#9CA3AF',
+                  cursor: finalSelectedCandidates.length === numberOfOpenings ? 'pointer' : 'not-allowed'
+                }}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Completed Confirmation Modal */}
+      {showCompletedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Mark Job as Completed</h2>
+              <button
+                onClick={() => setShowCompletedModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-sm text-gray-600">
+                Are you sure you want to mark <strong>"{currentJobTitle}"</strong> as completed?
+              </p>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowCompletedModal(false)}
+                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setIsCompleted(true);
+                  setShowCompletedModal(false);
+                  setSuccessMessage({
+                    title: 'Job Completed!',
+                    message: `Job "${currentJobTitle}" marked as completed successfully. All positions have been filled.`
+                  });
+                  setShowSuccessModal(true);
+                }}
+                className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title={successMessage.title}
+        message={successMessage.message}
+      />
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed bottom-8 right-8 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in">
+          <div className="flex items-center space-x-2">
+            <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>{toastMessage}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

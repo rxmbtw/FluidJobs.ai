@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
+const { logAudit } = require('../middleware/auditLogger');
 // const { authenticateToken } = require('./auth');
 
 // Get all candidates
@@ -141,6 +142,8 @@ router.post('/', async (req, res) => {
       currently_employed, previous_company, expected_ctc, experience_years
     ]);
 
+    await logAudit(null, 'System', 'CANDIDATE_CREATED', `New candidate: ${full_name} (${email})`, 'candidate', candidateId, req);
+
     res.status(201).json({
       status: 'success',
       data: result.rows[0]
@@ -262,6 +265,8 @@ router.post('/send-invite', async (req, res) => {
     };
     
     await transporter.sendMail(mailOptions);
+    
+    await logAudit(null, 'System', 'INVITATION_SENT', `Invitation sent to: ${name} (${email})`, 'invitation', null, req);
     
     res.json({ message: 'Invite sent successfully' });
   } catch (error) {

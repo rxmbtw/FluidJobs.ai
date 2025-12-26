@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import { Plus, Eye, Users, Upload, LogOut, User, Mail, X, Globe } from 'lucide-react';
-import { useTheme, getThemeColors } from '../candidate-dashboard/ThemeContext';
+import ChangePasswordModal from '../candidate-dashboard/change-password/ChangePasswordModal';
 
 interface SidebarProps {
   currentView: string;
@@ -10,8 +10,6 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) => {
-  const { theme } = useTheme();
-  const colors = getThemeColors(theme);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -23,10 +21,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
   const [jobs, setJobs] = useState<any[]>([]);
   const [sendingInvite, setSendingInvite] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [changingPassword, setChangingPassword] = useState(false);
   const [userEmail, setUserEmail] = useState('ram@fluid.live');
   const [userName, setUserName] = useState('Shriram Surse');
   const [userRole, setUserRole] = useState('HR');
@@ -198,8 +192,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
         width: isCollapsed ? '80px' : '297px', 
         top: '4rem', 
         height: 'calc(100vh - 4rem)', 
-        backgroundColor: colors.bgSidebar, 
-        borderRight: `1px solid ${colors.border}`, 
+        backgroundColor: '#FFFFFF', 
+        borderRight: '1px solid #D9D9D9', 
         overflow: 'hidden' 
       }}
     >
@@ -208,17 +202,15 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
         <div className="relative mt-4 mb-2 new-dropdown-container">
           <button
             onClick={() => setIsNewDropdownOpen(!isNewDropdownOpen)}
-            className="w-full flex items-center justify-center space-x-3 px-4 py-3 bg-white rounded-full shadow-md hover:shadow-lg transition-all duration-200"
-            style={{ border: `1px solid ${colors.border}` }}
+            className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200"
           >
-            <Plus className="w-5 h-5" style={{ color: colors.textPrimary }} />
-            {!isCollapsed && <span className="font-semibold text-base" style={{ color: colors.textPrimary }}>New</span>}
+            <Plus className="w-5 h-5" />
+            {!isCollapsed && <span className="text-sm font-semibold whitespace-nowrap">New</span>}
           </button>
 
           {!isCollapsed && isNewDropdownOpen && (
             <div 
-              className="absolute top-full left-0 w-full mt-2 rounded-xl shadow-2xl overflow-hidden z-20"
-              style={{ backgroundColor: colors.bgCard, border: `1px solid ${colors.border}` }}
+              className="absolute top-full left-0 w-full mt-2 rounded-xl shadow-2xl overflow-hidden z-20 bg-white border border-gray-200"
             >
               <nav className="p-2">
                 {newMenuItems.map((item) => (
@@ -235,9 +227,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
                         setIsNewDropdownOpen(false);
                       }
                     }}
-                    className="flex items-center space-x-3 p-3 rounded-lg transition duration-150 hover:bg-opacity-10"
-                    style={{ color: colors.textPrimary }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.activeItemBg}
+                    className="flex items-center space-x-3 p-3 rounded-lg transition duration-150"
+                    style={{ color: '#374151' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#EFF6FF'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     <item.icon className="w-5 h-5" />
@@ -255,23 +247,20 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
               key={item.id}
               href="#" 
               onClick={(e) => { e.preventDefault(); onNavigate(item.id); }}
-              className="flex items-center space-x-3 p-3 transition duration-200" 
+              className="flex items-center space-x-3 p-3 transition duration-200 rounded-lg" 
               style={{ 
-                borderRadius: '40px', 
-                backgroundColor: currentView === item.id ? colors.activeItemBg : 'transparent', 
-                color: currentView === item.id ? colors.accent : colors.iconColor,
+                backgroundColor: currentView === item.id ? '#EFF6FF' : 'transparent', 
+                color: currentView === item.id ? '#2563EB' : '#374151',
                 justifyContent: isCollapsed ? 'center' : 'flex-start'
               }}
               onMouseEnter={(e) => {
                 if (currentView !== item.id) {
-                  e.currentTarget.style.backgroundColor = colors.activeItemBg;
-                  e.currentTarget.style.color = colors.accent;
+                  e.currentTarget.style.backgroundColor = '#F9FAFB';
                 }
               }}
               onMouseLeave={(e) => {
                 if (currentView !== item.id) {
                   e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = colors.iconColor;
                 }
               }}
             >
@@ -281,28 +270,30 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
           ))}
         </nav>
 
-        <div className="my-6 mx-3" style={{ borderTop: `1px solid ${colors.border}` }}></div>
+        <div className="my-6 mx-3" style={{ borderTop: '1px solid #D9D9D9' }}></div>
 
         <div className="relative mb-4 profile-container">
           <div 
-            className="p-3 flex items-center justify-between cursor-pointer hover:opacity-90 transition" 
-            style={{ backgroundColor: colors.activeItemBg, borderRadius: '40px' }}
+            className="p-3 flex items-center justify-between cursor-pointer hover:opacity-90 transition rounded-lg"
             onClick={() => {
               setIsProfileOpen(!isProfileOpen);
               setIsLogoutOpen(false);
             }}
           >
             {isCollapsed ? (
-              <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: '#000000' }}>
-                <User className="w-6 h-6" style={{ color: '#FFFFFF' }} />
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold" style={{ backgroundColor: '#3B82F6' }}>
+                {userName.charAt(0) || 'S'}
               </div>
             ) : (
               <>
                 <div className="flex items-center space-x-3 flex-1">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: '#000000' }}>
-                    <User className="w-6 h-6" style={{ color: '#FFFFFF' }} />
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold" style={{ backgroundColor: '#3B82F6' }}>
+                    {userName.charAt(0) || 'S'}
                   </div>
-                  <span className="font-semibold text-lg" style={{ color: colors.textPrimary }}>{userName}</span>
+                  <div>
+                    <span className="font-medium text-sm block text-gray-900">{userName}</span>
+                    <span className="text-xs text-blue-600">{userRole}</span>
+                  </div>
                 </div>
                 <button onClick={(e) => { 
                   e.stopPropagation(); 
@@ -316,36 +307,35 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
           </div>
 
           {!isCollapsed && isProfileOpen && (
-            <div className="absolute bottom-full left-0 w-full mb-2 rounded-2xl shadow-2xl overflow-hidden z-20" style={{ backgroundColor: colors.bgCard, border: `1px solid ${colors.border}` }}>
+            <div className="absolute bottom-full left-0 w-full mb-2 rounded-2xl shadow-2xl overflow-hidden z-20 bg-white border border-gray-200">
               <div className="p-6 space-y-3">
                 <div>
-                  <span className="font-semibold" style={{ color: colors.accent }}>User Role: </span>
-                  <span style={{ color: colors.textPrimary }}>{userRole}</span>
+                  <span className="font-semibold text-blue-600">User Role: </span>
+                  <span className="text-black">{userRole}</span>
                 </div>
                 <div>
-                  <span className="font-semibold" style={{ color: colors.accent }}>Email: </span>
-                  <span style={{ color: colors.textPrimary }}>{userEmail}</span>
+                  <span className="font-semibold text-blue-600">Email: </span>
+                  <span className="text-black">{userEmail}</span>
                 </div>
                 <div>
-                  <span className="font-semibold" style={{ color: colors.accent }}>Total Accounts: </span>
-                  <span style={{ color: colors.textPrimary }}>{String(accountCount).padStart(2, '0')}</span>
+                  <span className="font-semibold text-blue-600">Total Accounts: </span>
+                  <span className="text-black">{String(accountCount).padStart(2, '0')}</span>
                 </div>
-                <div 
-                  className="pt-3 border-t cursor-pointer hover:opacity-80 transition" 
-                  style={{ borderColor: colors.border }}
+                <button 
+                  className="w-full pt-3 border-t border-gray-200 cursor-pointer hover:opacity-80 transition text-left" 
                   onClick={() => {
                     setShowPasswordModal(true);
                     setIsProfileOpen(false);
                   }}
                 >
-                  <span className="font-semibold" style={{ color: colors.textPrimary }}>Change Password</span>
-                </div>
+                  <span className="font-semibold text-black">Change Password</span>
+                </button>
               </div>
             </div>
           )}
 
           {!isCollapsed && isLogoutOpen && (
-            <div className="absolute bottom-full left-0 w-full mb-1 rounded-xl shadow-2xl overflow-hidden z-20" style={{ backgroundColor: colors.bgCard, border: `1px solid ${colors.border}` }}>
+            <div className="absolute bottom-full left-0 w-full mb-1 rounded-xl shadow-2xl overflow-hidden z-20 bg-white border border-gray-200">
               <nav className="p-2">
                 <a href="#" onClick={(e) => { e.preventDefault(); onLogout?.(); }} className="flex items-center space-x-3 p-3 rounded-lg transition duration-150" style={{ color: '#EF4444' }}>
                   <LogOut className="w-5 h-5" style={{ color: '#EF4444' }} />
@@ -358,125 +348,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLogout }) 
       </div>
 
       {/* Change Password Modal */}
-      {showPasswordModal && ReactDOM.createPortal(
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-          style={{ zIndex: 9999 }}
-          onClick={() => setShowPasswordModal(false)}
-        >
-          <div 
-            className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => {
-                setShowPasswordModal(false);
-                setCurrentPassword('');
-                setNewPassword('');
-                setConfirmPassword('');
-              }}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
-            >
-              <X className="w-6 h-6" />
-            </button>
-
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Change Password</h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                />
-              </div>
-
-              <button
-                onClick={async () => {
-                  if (!currentPassword || !newPassword || !confirmPassword) {
-                    alert('Please fill all fields');
-                    return;
-                  }
-                  if (newPassword !== confirmPassword) {
-                    alert('New passwords do not match');
-                    return;
-                  }
-                  
-                  try {
-                    setChangingPassword(true);
-                    const token = localStorage.getItem('token');
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/auth/change-password`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                      },
-                      body: JSON.stringify({
-                        currentPassword,
-                        newPassword
-                      })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                      alert('Password changed successfully');
-                      setShowPasswordModal(false);
-                      setCurrentPassword('');
-                      setNewPassword('');
-                      setConfirmPassword('');
-                    } else {
-                      alert(data.error || 'Failed to change password');
-                    }
-                  } catch (error) {
-                    console.error('Error changing password:', error);
-                    alert('Failed to change password. Please try again.');
-                  } finally {
-                    setChangingPassword(false);
-                  }
-                }}
-                disabled={changingPassword}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-              >
-                {changingPassword ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    <span>Changing...</span>
-                  </>
-                ) : (
-                  <span>Change Password</span>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <ChangePasswordModal isOpen={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
 
       {/* Invitation Modal - Rendered at body level using portal */}
       {showInviteModal && ReactDOM.createPortal(

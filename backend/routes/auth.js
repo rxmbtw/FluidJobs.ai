@@ -7,6 +7,7 @@ const fetch = require('node-fetch');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const rateLimit = require('express-rate-limit');
+const { logAudit } = require('../middleware/auditLogger');
 const router = express.Router();
 
 // Rate limiter for login attempts (5 attempts per 15 minutes)
@@ -145,6 +146,8 @@ router.post('/signup', signupLimiter, async (req, res) => {
       { expiresIn: '7d' }
     );
     
+    await logAudit(user.candidate_id, user.full_name, 'SIGNUP', `New candidate registered: ${user.email}`, 'candidate', user.candidate_id, req);
+    
     res.json({
       user: {
         id: user.candidate_id,
@@ -190,6 +193,7 @@ router.post('/admin/login', loginLimiter, async (req, res) => {
     );
     
     if (result.rows.length === 0) {
+      await logAudit(null, email, 'LOGIN_FAILED', `Failed admin login attempt for ${email}`, null, null, req);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
@@ -202,6 +206,7 @@ router.post('/admin/login', loginLimiter, async (req, res) => {
     
     const isValidPassword = await bcrypt.compare(password, admin.password_hash);
     if (!isValidPassword) {
+      await logAudit(admin.id, admin.name, 'LOGIN_FAILED', `Failed admin login attempt for ${email}`, 'user', admin.id, req);
       return res.status(401).json({ error: 'Invalid password' });
     }
     
@@ -215,6 +220,8 @@ router.post('/admin/login', loginLimiter, async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+    
+    await logAudit(admin.id, admin.name, 'LOGIN', `Admin logged in: ${admin.email}`, 'user', admin.id, req);
     
     res.json({
       user: {
@@ -243,6 +250,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     );
     
     if (result.rows.length === 0) {
+      await logAudit(null, email, 'LOGIN_FAILED', `Failed candidate login attempt for ${email}`, null, null, req);
       return res.status(401).json({ error: 'That email doesn\'t look right. Please check and try again.' });
     }
     
@@ -255,6 +263,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
+      await logAudit(user.candidate_id, user.full_name, 'LOGIN_FAILED', `Failed candidate login attempt for ${email}`, 'candidate', user.candidate_id, req);
       return res.status(401).json({ error: 'Invalid password. Please check your credentials and try again.' });
     }
     
@@ -268,6 +277,8 @@ router.post('/login', loginLimiter, async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+    
+    await logAudit(user.candidate_id, user.full_name, 'LOGIN', `Candidate logged in: ${user.email}`, 'candidate', user.candidate_id, req);
     
     res.json({
       user: {
@@ -512,7 +523,10 @@ router.get('/test-linkedin', (req, res) => {
 });
 
 // Logout route
-router.post('/logout', (req, res) => {
+router.post('/logout', authenticateToken, (req, res) => {
+  const user = req.user || { email: 'Unknown' };
+  logAudit(user.id || null, user.name || user.email, 'LOGOUT', `User logged out: ${user.email}`, null, null, req);
+  
   req.logout((err) => {
     if (err) {
       return res.status(500).json({ error: 'Logout failed' });
@@ -554,17 +568,31 @@ router.post('/forgot-password', async (req, res) => {
       });
     }
     
-    // Check if user exists
-    const result = await pool.query(
-      'SELECT candidate_id, full_name, email FROM candidates WHERE email = $1',
+    // Check if user exists in users table (Admin/HR/Sales)
+    let user;
+    let userType = 'candidate';
+    
+    const companyUserResult = await pool.query(
+      'SELECT id, name, email FROM users WHERE LOWER(email) = LOWER($1)',
       [email]
     );
     
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'No account found with this email address' });
+    if (companyUserResult.rows.length > 0) {
+      user = { ...companyUserResult.rows[0], full_name: companyUserResult.rows[0].name };
+      userType = 'company';
+    } else {
+      // Check candidates table
+      const candidateResult = await pool.query(
+        'SELECT candidate_id, full_name, email FROM candidates WHERE LOWER(email) = LOWER($1)',
+        [email]
+      );
+      
+      if (candidateResult.rows.length === 0) {
+        return res.status(404).json({ error: 'No account found with this email address' });
+      }
+      
+      user = candidateResult.rows[0];
     }
-    
-    const user = result.rows[0];
     
     // Generate 6-digit verification code
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -655,9 +683,9 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ error: passwordValidation.message });
     }
     
-    // Verify code again
+    // Verify code
     const codeResult = await pool.query(
-      'SELECT * FROM password_reset_codes WHERE email = $1 AND code = $2 AND expires_at > CURRENT_TIMESTAMP',
+      'SELECT * FROM password_reset_codes WHERE LOWER(email) = LOWER($1) AND code = $2 AND expires_at > CURRENT_TIMESTAMP',
       [email, code]
     );
     
@@ -668,17 +696,33 @@ router.post('/reset-password', async (req, res) => {
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     
-    // Update password
-    await pool.query(
-      'UPDATE candidates SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE email = $2',
-      [hashedPassword, email]
+    // Check if user is in users table (Admin/HR/Sales) or candidates table
+    const companyUserResult = await pool.query(
+      'SELECT id FROM users WHERE LOWER(email) = LOWER($1)',
+      [email]
     );
+    
+    if (companyUserResult.rows.length > 0) {
+      // Update password in users table
+      await pool.query(
+        'UPDATE users SET password_hash = $1 WHERE LOWER(email) = LOWER($2)',
+        [hashedPassword, email]
+      );
+    } else {
+      // Update password in candidates table
+      await pool.query(
+        'UPDATE candidates SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE LOWER(email) = LOWER($2)',
+        [hashedPassword, email]
+      );
+    }
     
     // Delete used verification code
     await pool.query(
-      'DELETE FROM password_reset_codes WHERE email = $1',
+      'DELETE FROM password_reset_codes WHERE LOWER(email) = LOWER($1)',
       [email]
     );
+    
+    await logAudit(null, email, 'PASSWORD_RESET', `Password reset for: ${email}`, 'user', null, req);
     
     res.json({ message: 'Password reset successfully' });
   } catch (error) {
@@ -749,6 +793,8 @@ router.post('/change-password', authenticateToken, async (req, res) => {
         [hashedPassword, req.user.candidateId]
       );
     }
+    
+    await logAudit(userId, userEmail, 'PASSWORD_CHANGED', `Password changed for: ${userEmail}`, 'user', userId, req);
     
     res.json({ message: 'Password changed successfully' });
   } catch (error) {

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, FileText, AlertCircle, CheckCircle, Download, X } from 'lucide-react';
+import SuccessModal from './SuccessModal';
 
 const BulkImportSection: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -7,6 +8,8 @@ const BulkImportSection: React.FC = () => {
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [statusMessage, setStatusMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [importSummary, setImportSummary] = useState({ success: 0, duplicates: 0, errors: 0 });
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -111,6 +114,8 @@ const BulkImportSection: React.FC = () => {
       if (errorCount > 0) message += `, ${errorCount} errors`;
       
       setStatusMessage(message);
+      setImportSummary({ success: successCount, duplicates: duplicateCount, errors: errorCount });
+      setShowSuccessModal(true);
       
       if (errors.length > 0 && errors.length <= 5) {
         setStatusMessage(message + '\n\nErrors:\n' + errors.slice(0, 5).join('\n'));
@@ -133,8 +138,8 @@ const BulkImportSection: React.FC = () => {
       <div className="bg-white rounded-2xl shadow-xl p-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <Upload className="w-16 h-16 text-indigo-500 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Bulk Import Candidates</h1>
+          <Upload className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+          <h1 className="text-3xl font-semibold text-gray-900 mb-2">Bulk Import Candidates</h1>
           <p className="text-gray-600">Upload a CSV file to create multiple candidate profiles at once</p>
         </div>
 
@@ -177,7 +182,7 @@ const BulkImportSection: React.FC = () => {
               <p className="text-gray-500 mb-4">Choose a CSV file with candidate data</p>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Browse Files
               </button>
@@ -240,13 +245,28 @@ Jane Smith,jane.smith@email.com,+91 9876543211,Female,Married,Software Inc,60 Da
             className={`px-8 py-3 rounded-lg font-semibold transition-colors ${
               !selectedFile || isImporting
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
             }`}
           >
             {isImporting ? 'Importing...' : 'Start Import'}
           </button>
         </div>
       </div>
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          setSelectedFile(null);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+        }}
+        title="Import Completed!"
+        message={`Successfully imported ${importSummary.success} candidate${importSummary.success !== 1 ? 's' : ''}${importSummary.duplicates > 0 ? `, ${importSummary.duplicates} duplicate${importSummary.duplicates !== 1 ? 's' : ''} skipped` : ''}${importSummary.errors > 0 ? `, ${importSummary.errors} error${importSummary.errors !== 1 ? 's' : ''}` : ''}`}
+        autoCloseDelay={4000}
+      />
     </div>
   );
 };
