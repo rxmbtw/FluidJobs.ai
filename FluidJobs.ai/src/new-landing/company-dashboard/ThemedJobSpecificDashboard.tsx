@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Users, Zap, Settings, TestTube, User } from 'lucide-react';
-import { useTheme, getThemeColors } from '../candidate-dashboard/ThemeContext';
 import ManageCandidates from '../../components/ManageCandidates';
 
 interface ThemedJobSpecificDashboardProps {
@@ -9,8 +8,6 @@ interface ThemedJobSpecificDashboardProps {
 }
 
 const ThemedJobSpecificDashboard: React.FC<ThemedJobSpecificDashboardProps> = ({ jobTitle, onBack }) => {
-  const { theme } = useTheme();
-  const colors = getThemeColors(theme);
   const [activeSection, setActiveSection] = useState('manage-candidates');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
@@ -27,34 +24,15 @@ const ThemedJobSpecificDashboard: React.FC<ThemedJobSpecificDashboardProps> = ({
     switch (activeSection) {
       case 'manage-candidates':
         return (
-          <div style={{ backgroundColor: colors.bgMain, minHeight: '100vh' }}>
-            <style>{`
-              .bg-white { background-color: ${colors.bgCard} !important; }
-              .text-gray-900 { color: ${colors.textPrimary} !important; }
-              .text-gray-800 { color: ${colors.textPrimary} !important; }
-              .text-gray-700 { color: ${colors.textPrimary} !important; }
-              .text-gray-600 { color: ${colors.textSecondary} !important; }
-              .text-gray-500 { color: ${colors.textSecondary} !important; }
-              .border-gray-200 { border-color: ${colors.border} !important; }
-              .border-gray-300 { border-color: ${colors.border} !important; }
-              input, select, textarea { 
-                background-color: ${colors.bgCard} !important; 
-                color: ${colors.textPrimary} !important;
-                border-color: ${colors.border} !important;
-              }
-              input::placeholder, textarea::placeholder {
-                color: ${colors.textSecondary} !important;
-                opacity: 1 !important;
-              }
-            `}</style>
+          <div className="bg-gray-100 min-h-screen">
             <ManageCandidates isJobSpecific={true} />
           </div>
         );
       case 'hiring-automation':
         return (
-          <div style={{ backgroundColor: colors.bgMain, minHeight: '100vh' }}>
+          <div className="bg-gray-100 min-h-screen">
             <div className="p-8">
-              <h2 className="text-2xl font-bold mb-4" style={{ color: colors.textPrimary }}>Hiring Automation</h2>
+              <h2 className="text-2xl font-bold mb-4 text-gray-900">Hiring Automation</h2>
             </div>
             <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 120px)' }}>
               <h2 className="text-4xl font-bold text-gray-400">Coming Soon !</h2>
@@ -63,16 +41,16 @@ const ThemedJobSpecificDashboard: React.FC<ThemedJobSpecificDashboardProps> = ({
         );
       case 'job-settings':
         return (
-          <div className="p-8" style={{ backgroundColor: colors.bgMain, minHeight: '100vh' }}>
-            <h2 className="text-2xl font-bold mb-4" style={{ color: colors.textPrimary }}>Job Settings</h2>
-            <p style={{ color: colors.textSecondary }}>Job configuration and settings.</p>
+          <div className="p-8 bg-gray-100 min-h-screen">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Job Settings</h2>
+            <p className="text-gray-600">Job configuration and settings.</p>
           </div>
         );
       case 'testing-environment':
         return (
-          <div style={{ backgroundColor: colors.bgMain, minHeight: '100vh' }}>
+          <div className="bg-gray-100 min-h-screen">
             <div className="p-8">
-              <h2 className="text-2xl font-bold mb-4" style={{ color: colors.textPrimary }}>Testing Environment</h2>
+              <h2 className="text-2xl font-bold mb-4 text-gray-900">Testing Environment</h2>
             </div>
             <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 120px)' }}>
               <h2 className="text-4xl font-bold text-gray-400">Coming Soon !</h2>
@@ -85,33 +63,28 @@ const ThemedJobSpecificDashboard: React.FC<ThemedJobSpecificDashboardProps> = ({
   };
 
   return (
-    <div className="flex h-screen" style={{ backgroundColor: colors.bgMain }}>
+    <div className="flex h-screen bg-gray-100">
       <div 
-        className="flex flex-col transition-all duration-300 ease-in-out"
-        style={{ 
-          width: isCollapsed ? '80px' : '297px',
-          backgroundColor: colors.bgSidebar,
-          borderRight: `1px solid ${colors.border}`
-        }}
+        className="flex flex-col transition-all duration-300 ease-in-out bg-white border-r border-gray-200"
+        style={{ width: isCollapsed ? '80px' : '297px' }}
         onMouseEnter={() => isCollapsed && setIsCollapsed(false)}
         onMouseLeave={() => setIsCollapsed(true)}
       >
-        <div className="p-6" style={{ borderBottom: `1px solid ${colors.border}` }}>
+        <div className="p-6 border-b border-gray-200">
           <div className={`flex items-center w-full ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
             <img 
-              src={theme === 'dark' ? "/images/Fluid Live Icon.png" : "/images/FLuid Live Icon light theme.png"}
+              src="/images/FLuid Live Icon light theme.png"
               alt="FluidJobs.ai Logo" 
               className="object-contain flex-shrink-0"
-              style={{ width: theme === 'dark' ? '2rem' : '1.75rem', height: theme === 'dark' ? '2rem' : '1.75rem' }}
+              style={{ width: '1.75rem', height: '1.75rem' }}
             />
-            {!isCollapsed && <span className="text-xl font-bold" style={{ color: colors.accent }}>FluidJobs.ai</span>}
+            {!isCollapsed && <span className="text-xl font-bold text-blue-600">FluidJobs.ai</span>}
           </div>
           {!isCollapsed && (
             <>
               <button
                 onClick={onBack}
-                className="flex items-center space-x-2 hover:opacity-80 w-full text-left mt-4 transition"
-                style={{ color: colors.textPrimary }}
+                className="flex items-center space-x-2 hover:opacity-80 w-full text-left mt-4 transition text-gray-900"
               >
                 <ArrowLeft className="w-4 h-4 flex-shrink-0" />
                 <h1 className="text-sm font-medium leading-tight">
@@ -120,11 +93,11 @@ const ThemedJobSpecificDashboard: React.FC<ThemedJobSpecificDashboardProps> = ({
               </button>
               <button
                 onClick={() => setShowCompletedModal(true)}
-                className="mt-3 w-full px-4 py-2 rounded-lg text-sm font-semibold transition-all"
-                style={{
-                  backgroundColor: isCompleted ? '#10B981' : '#E5E7EB',
-                  color: isCompleted ? '#FFFFFF' : '#374151'
-                }}
+                className={`mt-3 w-full px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  isCompleted 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
               >
                 {isCompleted ? '✓ Completed' : 'Mark as Completed'}
               </button>
@@ -138,12 +111,11 @@ const ThemedJobSpecificDashboard: React.FC<ThemedJobSpecificDashboardProps> = ({
               <button
                 key={item.id}
                 onClick={() => setActiveSection(item.id)}
-                className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} px-4 py-3 rounded-lg text-left transition-colors`}
-                style={{
-                  backgroundColor: activeSection === item.id ? colors.activeItemBg : 'transparent',
-                  color: activeSection === item.id ? colors.accent : colors.iconColor,
-                  borderRadius: '40px'
-                }}
+                className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} px-4 py-3 rounded-full text-left transition-colors ${
+                  activeSection === item.id 
+                    ? 'bg-blue-50 text-blue-600' 
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
                 title={isCollapsed ? item.label : ''}
               >
                 <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -153,12 +125,12 @@ const ThemedJobSpecificDashboard: React.FC<ThemedJobSpecificDashboardProps> = ({
           </div>
         </nav>
 
-        <div className="p-4" style={{ borderTop: `1px solid ${colors.border}` }}>
+        <div className="p-4 border-t border-gray-200">
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0" style={{ backgroundColor: colors.accent }}>
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-semibold text-sm flex-shrink-0">
               <User className="w-5 h-5 text-white" />
             </div>
-            {!isCollapsed && <span className="text-sm font-medium" style={{ color: colors.accent }}>HR Manager</span>}
+            {!isCollapsed && <span className="text-sm font-medium text-blue-600">HR Manager</span>}
           </div>
         </div>
       </div>

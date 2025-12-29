@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import DashboardHeader from './DashboardHeader';
 import Sidebar from './Sidebar';
 import { JobsProvider } from '../../contexts/JobsProvider';
-import { ThemeProvider } from '../candidate-dashboard/ThemeContext';
 import ThemedJobPublishing from './ThemedJobPublishing';
 import JobOpeningsViewNew from '../../components/JobOpeningsView_new';
 import ThemedManageCandidates from './ThemedManageCandidates';
@@ -126,11 +125,9 @@ const DashboardContent: React.FC = () => {
 
 const CompanyDashboard: React.FC = () => {
   return (
-    <ThemeProvider>
-      <JobsProvider>
-        <DashboardContent />
-      </JobsProvider>
-    </ThemeProvider>
+    <JobsProvider>
+      <DashboardContent />
+    </JobsProvider>
   );
 };
 
