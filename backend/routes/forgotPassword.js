@@ -1,21 +1,12 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
 const { Pool } = require('pg');
+const { sendEmail } = require('../utils/emailService');
 const router = express.Router();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL
-});
-
-// Email transporter setup
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
 });
 
 // Send verification code
@@ -40,8 +31,7 @@ router.post('/send-code', async (req, res) => {
     );
     
     // Send email
-    await transporter.sendMail({
-      from: `"FluidJobs.ai" <${process.env.EMAIL_USER}>`,
+    await sendEmail('noreply', {
       to: email,
       subject: 'FluidJobs.ai - Password Reset Code',
       html: `

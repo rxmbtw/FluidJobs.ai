@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, Calendar, Users as UsersIcon, MapPin, Upload, Edit, CheckCircle, ArrowLeft } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Users as UsersIcon, MapPin, Upload, Edit, CheckCircle, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useProfileCompletionContext } from '../../contexts/ProfileCompletionContext';
@@ -16,6 +16,7 @@ const MobileEditProfilePage: React.FC = () => {
   const [workStatus, setWorkStatus] = useState<'yes' | 'no' | 'fresher'>('yes');
   const [initialWorkStatus, setInitialWorkStatus] = useState<'yes' | 'no' | 'fresher'>('yes');
   const [showDiscardModal, setShowDiscardModal] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -154,6 +155,89 @@ const MobileEditProfilePage: React.FC = () => {
     setShowDiscardModal(false);
     navigate('/mobile-profile');
   };
+
+  const toggleDropdown = (field: string) => {
+    setOpenDropdown(openDropdown === field ? null : field);
+  };
+
+  const selectOption = (field: string, value: string) => {
+    setFormData({...formData, [field]: value});
+    setOpenDropdown(null);
+  };
+
+  const CustomDropdown = ({ label, field, value, options, icon: Icon }: any) => (
+    <div style={{ position: 'relative' }}>
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="w-5 h-5" style={{ color: '#6E6E6E' }} />
+        <label style={{
+          fontFamily: 'Poppins',
+          fontWeight: 500,
+          fontSize: '13px',
+          color: '#6E6E6E'
+        }}>
+          {label}
+        </label>
+      </div>
+      <div
+        onClick={() => toggleDropdown(field)}
+        style={{
+          width: '100%',
+          height: '32px',
+          padding: '0 12px',
+          border: `1px solid ${openDropdown === field ? '#4285F4' : 'rgba(0, 0, 0, 0.5)'}`,
+          borderRadius: '5px',
+          fontFamily: 'Poppins',
+          fontSize: '12px',
+          color: value ? '#080808' : '#6E6E6E',
+          cursor: 'pointer',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: '#FFFFFF'
+        }}
+      >
+        <span>{value || `Select ${label}`}</span>
+        {openDropdown === field ? 
+          <ChevronUp style={{ width: '16px', height: '16px', color: '#6E6E6E' }} /> :
+          <ChevronDown style={{ width: '16px', height: '16px', color: '#6E6E6E' }} />
+        }
+      </div>
+      {openDropdown === field && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          background: '#FFFFFF',
+          border: '1px solid #E5E7EB',
+          borderRadius: '8px',
+          marginTop: '4px',
+          zIndex: 1000,
+          maxHeight: '200px',
+          overflowY: 'auto',
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+        }}>
+          {options.map((option: string, index: number) => (
+            <div
+              key={index}
+              onClick={() => selectOption(field, option)}
+              style={{
+                padding: '12px 16px',
+                fontFamily: 'Poppins',
+                fontSize: '12px',
+                color: '#6E6E6E',
+                cursor: 'pointer',
+                background: value === option ? '#DBEAFE' : '#FFFFFF',
+                borderBottom: index < options.length - 1 ? '1px solid #F3F4F6' : 'none'
+              }}
+            >
+              {option}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div style={{ background: '#F1F1F1', height: '100vh', overflow: 'auto', paddingBottom: '120px', position: 'fixed', width: '100%', top: 0, left: 0 }}>
@@ -387,72 +471,21 @@ const MobileEditProfilePage: React.FC = () => {
               />
             </div>
 
-            {/* Gender */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <User className="w-5 h-5" style={{ color: '#6E6E6E' }} />
-                <label style={{
-                  fontFamily: 'Poppins',
-                  fontWeight: 500,
-                  fontSize: '13px',
-                  color: '#6E6E6E'
-                }}>
-                  Gender
-                </label>
-              </div>
-              <select
-                value={formData.gender}
-                onChange={(e) => setFormData({...formData, gender: e.target.value})}
-                style={{
-                  width: '100%',
-                  height: '32px',
-                  border: '1px solid rgba(0, 0, 0, 0.5)',
-                  borderRadius: '5px',
-                  padding: '0 8px',
-                  fontFamily: 'Poppins',
-                  fontSize: '12px',
-                  color: '#080808'
-                }}
-              >
-                <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Others">Others</option>
-              </select>
-            </div>
+            <CustomDropdown
+              label="Gender"
+              field="gender"
+              value={formData.gender}
+              options={['Male', 'Female', 'Others']}
+              icon={User}
+            />
 
-            {/* Marital Status */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <UsersIcon className="w-5 h-5" style={{ color: '#6E6E6E' }} />
-                <label style={{
-                  fontFamily: 'Poppins',
-                  fontWeight: 500,
-                  fontSize: '13px',
-                  color: '#6E6E6E'
-                }}>
-                  Marital Status
-                </label>
-              </div>
-              <select
-                value={formData.maritalStatus}
-                onChange={(e) => setFormData({...formData, maritalStatus: e.target.value})}
-                style={{
-                  width: '100%',
-                  height: '32px',
-                  border: '1px solid rgba(0, 0, 0, 0.5)',
-                  borderRadius: '5px',
-                  padding: '0 8px',
-                  fontFamily: 'Poppins',
-                  fontSize: '12px',
-                  color: '#080808'
-                }}
-              >
-                <option value="">Select Status</option>
-                <option value="Unmarried">Unmarried</option>
-                <option value="Married">Married</option>
-              </select>
-            </div>
+            <CustomDropdown
+              label="Marital Status"
+              field="maritalStatus"
+              value={formData.maritalStatus}
+              options={['Unmarried', 'Married']}
+              icon={UsersIcon}
+            />
 
             {/* Current City */}
             <div>
@@ -634,7 +667,7 @@ const MobileEditProfilePage: React.FC = () => {
               </div>
 
               {/* Work Mode */}
-              <div className="mb-4">
+              <div className="mb-4" style={{ position: 'relative' }}>
                 <label style={{
                   fontFamily: 'Poppins',
                   fontWeight: 500,
@@ -645,29 +678,64 @@ const MobileEditProfilePage: React.FC = () => {
                 }}>
                   Work Mode*
                 </label>
-                <select
-                  value={formData.workMode}
-                  onChange={(e) => setFormData({...formData, workMode: e.target.value})}
+                <div
+                  onClick={() => toggleDropdown('workMode')}
                   style={{
                     width: '100%',
                     height: '32px',
-                    border: '1px solid rgba(0, 0, 0, 0.5)',
+                    padding: '0 12px',
+                    border: `1px solid ${openDropdown === 'workMode' ? '#4285F4' : 'rgba(0, 0, 0, 0.5)'}`,
                     borderRadius: '5px',
-                    padding: '0 8px',
                     fontFamily: 'Poppins',
                     fontSize: '12px',
                     color: formData.workMode ? '#000000' : '#6E6E6E',
-                    background: '#FFFFFF',
-                    appearance: 'auto',
-                    WebkitAppearance: 'menulist',
-                    MozAppearance: 'menulist'
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    background: '#FFFFFF'
                   }}
                 >
-                  <option value="" disabled>Select Work Mode</option>
-                  <option value="Remote">Remote</option>
-                  <option value="On-site">On-site</option>
-                  <option value="Hybrid">Hybrid</option>
-                </select>
+                  <span>{formData.workMode || 'Select Work Mode'}</span>
+                  {openDropdown === 'workMode' ? 
+                    <ChevronUp style={{ width: '16px', height: '16px', color: '#6E6E6E' }} /> :
+                    <ChevronDown style={{ width: '16px', height: '16px', color: '#6E6E6E' }} />
+                  }
+                </div>
+                {openDropdown === 'workMode' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    marginTop: '4px',
+                    zIndex: 1000,
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}>
+                    {['Remote', 'On-site', 'Hybrid'].map((option, index) => (
+                      <div
+                        key={index}
+                        onClick={() => selectOption('workMode', option)}
+                        style={{
+                          padding: '12px 16px',
+                          fontFamily: 'Poppins',
+                          fontSize: '12px',
+                          color: '#6E6E6E',
+                          cursor: 'pointer',
+                          background: formData.workMode === option ? '#DBEAFE' : '#FFFFFF',
+                          borderBottom: index < 2 ? '1px solid #F3F4F6' : 'none'
+                        }}
+                      >
+                        {option}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Current CTC */}
@@ -825,7 +893,7 @@ const MobileEditProfilePage: React.FC = () => {
               </div>
 
               {/* Work Mode */}
-              <div>
+              <div style={{ position: 'relative' }}>
                 <label style={{
                   fontFamily: 'Poppins',
                   fontWeight: 500,
@@ -836,26 +904,64 @@ const MobileEditProfilePage: React.FC = () => {
                 }}>
                   Work Mode*
                 </label>
-                <select
-                  value={formData.workMode}
-                  onChange={(e) => setFormData({...formData, workMode: e.target.value})}
+                <div
+                  onClick={() => toggleDropdown('workModeNo')}
                   style={{
                     width: '100%',
                     height: '32px',
-                    border: '1px solid rgba(0, 0, 0, 0.5)',
+                    padding: '0 12px',
+                    border: `1px solid ${openDropdown === 'workModeNo' ? '#4285F4' : 'rgba(0, 0, 0, 0.5)'}`,
                     borderRadius: '5px',
-                    padding: '0 8px',
                     fontFamily: 'Poppins',
                     fontSize: '12px',
                     color: formData.workMode ? '#000000' : '#6E6E6E',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                     background: '#FFFFFF'
                   }}
                 >
-                  <option value="" disabled>Select Work Mode</option>
-                  <option value="on-site">On-site</option>
-                  <option value="Work-from-home">Work-from-home</option>
-                  <option value="hybrid">Hybrid</option>
-                </select>
+                  <span>{formData.workMode || 'Select Work Mode'}</span>
+                  {openDropdown === 'workModeNo' ? 
+                    <ChevronUp style={{ width: '16px', height: '16px', color: '#6E6E6E' }} /> :
+                    <ChevronDown style={{ width: '16px', height: '16px', color: '#6E6E6E' }} />
+                  }
+                </div>
+                {openDropdown === 'workModeNo' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    marginTop: '4px',
+                    zIndex: 1000,
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}>
+                    {['on-site', 'Work-from-home', 'hybrid'].map((option, index) => (
+                      <div
+                        key={index}
+                        onClick={() => selectOption('workMode', option)}
+                        style={{
+                          padding: '12px 16px',
+                          fontFamily: 'Poppins',
+                          fontSize: '12px',
+                          color: '#6E6E6E',
+                          cursor: 'pointer',
+                          background: formData.workMode === option ? '#DBEAFE' : '#FFFFFF',
+                          borderBottom: index < 2 ? '1px solid #F3F4F6' : 'none'
+                        }}
+                      >
+                        {option}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -895,7 +1001,7 @@ const MobileEditProfilePage: React.FC = () => {
               </div>
 
               {/* Preferred Work Mode */}
-              <div>
+              <div style={{ position: 'relative' }}>
                 <label style={{
                   fontFamily: 'Poppins',
                   fontWeight: 500,
@@ -906,26 +1012,64 @@ const MobileEditProfilePage: React.FC = () => {
                 }}>
                   Preferred Work Mode*
                 </label>
-                <select
-                  value={formData.workMode}
-                  onChange={(e) => setFormData({...formData, workMode: e.target.value})}
+                <div
+                  onClick={() => toggleDropdown('workModeFresher')}
                   style={{
                     width: '100%',
                     height: '32px',
-                    border: '1px solid rgba(0, 0, 0, 0.5)',
+                    padding: '0 12px',
+                    border: `1px solid ${openDropdown === 'workModeFresher' ? '#4285F4' : 'rgba(0, 0, 0, 0.5)'}`,
                     borderRadius: '5px',
-                    padding: '0 8px',
                     fontFamily: 'Poppins',
                     fontSize: '12px',
                     color: formData.workMode ? '#000000' : '#6E6E6E',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                     background: '#FFFFFF'
                   }}
                 >
-                  <option value="" disabled>Select Work Mode</option>
-                  <option value="on-site">On-site</option>
-                  <option value="Work-from-home">Work-from-home</option>
-                  <option value="hybrid">Hybrid</option>
-                </select>
+                  <span>{formData.workMode || 'Select Work Mode'}</span>
+                  {openDropdown === 'workModeFresher' ? 
+                    <ChevronUp style={{ width: '16px', height: '16px', color: '#6E6E6E' }} /> :
+                    <ChevronDown style={{ width: '16px', height: '16px', color: '#6E6E6E' }} />
+                  }
+                </div>
+                {openDropdown === 'workModeFresher' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    marginTop: '4px',
+                    zIndex: 1000,
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}>
+                    {['on-site', 'Work-from-home', 'hybrid'].map((option, index) => (
+                      <div
+                        key={index}
+                        onClick={() => selectOption('workMode', option)}
+                        style={{
+                          padding: '12px 16px',
+                          fontFamily: 'Poppins',
+                          fontSize: '12px',
+                          color: '#6E6E6E',
+                          cursor: 'pointer',
+                          background: formData.workMode === option ? '#DBEAFE' : '#FFFFFF',
+                          borderBottom: index < 2 ? '1px solid #F3F4F6' : 'none'
+                        }}
+                      >
+                        {option}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           )}

@@ -28,7 +28,7 @@ const Loader: React.FC<LoaderProps> = ({ themeState = 'light' }) => {
   return (
     <div className="flex flex-col items-center justify-center w-full h-full">
       {/* Logo */}
-      <div className="flex items-center mb-12">
+      <div className="flex items-center mb-6">
         <img 
           src="/images/FLuid Live Icon light theme.png" 
           alt="FluidJobs" 
@@ -36,7 +36,7 @@ const Loader: React.FC<LoaderProps> = ({ themeState = 'light' }) => {
         />
         <h1 style={{
           fontFamily: 'Poppins',
-          fontWeight: 700,
+          fontWeight: 600,
           fontSize: '30px',
           lineHeight: '45px',
           color: '#4285F4'

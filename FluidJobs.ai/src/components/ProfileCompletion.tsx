@@ -37,18 +37,18 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
   return (
     <div className="w-full mx-auto px-5 py-5 rounded-[25px] relative flex flex-col overflow-hidden" style={{ backgroundColor: bgColor, height: '100%' }}>
       {/* Title */}
-      <h2 className="text-[25px] font-extrabold leading-[29px] mb-4" style={{ fontFamily: 'Roboto, sans-serif', color: textPrimary }}>
+      <h2 className="text-[25px] font-semibold leading-[29px] mb-4" style={{ fontFamily: 'Poppins, sans-serif', color: textPrimary }}>
         Complete your profile
       </h2>
       
       {/* Description */}
-      <p className="text-[14px] font-semibold leading-[16px] mb-6" style={{ fontFamily: 'Roboto, sans-serif', color: textSecondary }}>
+      <p className="text-[14px] font-medium leading-[16px] mb-6" style={{ fontFamily: 'Poppins, sans-serif', color: textSecondary }}>
         By completing your profile you can start applying to job openings in one click...
       </p>
       
       {/* Progress */}
       <div className="mb-6">
-        <span className="text-[20px] font-semibold leading-[23px]" style={{ fontFamily: 'Roboto, sans-serif', color: textPrimary }}>
+        <span className="text-[20px] font-semibold leading-[23px]" style={{ fontFamily: 'Poppins, sans-serif', color: textPrimary }}>
           {profileCompletion.completionPercentage}%
         </span>
         <div className="relative w-full mt-3">
@@ -99,7 +99,7 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
             </div>
             
             {/* Label */}
-            <span className="text-[14px] font-semibold leading-[16px] flex-grow" style={{ fontFamily: 'Roboto, sans-serif', color: item.completed ? '#10B981' : textSecondary }}>
+            <span className="text-[14px] font-medium leading-[16px] flex-grow" style={{ fontFamily: 'Poppins, sans-serif', color: item.completed ? '#10B981' : textSecondary }}>
               {item.label}
             </span>
             

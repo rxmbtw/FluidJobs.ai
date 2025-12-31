@@ -35,7 +35,7 @@ const MyResumeView: React.FC<MyResumeViewProps> = ({ themeState = 'light' }) => 
 
   return (
     <div style={{ backgroundColor: bgColor, height: 'calc(100vh - 116px)', padding: '12px 40px', overflow: 'hidden' }}>
-      <h1 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '24px', color: textPrimary, marginBottom: '12px' }}>My Resume</h1>
+      <h1 style={{ fontFamily: 'Poppins', fontWeight: 600, fontSize: '24px', color: textPrimary, marginBottom: '12px' }}>My Resume</h1>
       
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px', marginBottom: '12px', height: 'calc(50% - 30px)' }}>
         {/* Profile Card */}
@@ -123,7 +123,7 @@ const MyResumeView: React.FC<MyResumeViewProps> = ({ themeState = 'light' }) => 
 
         {/* Work Experience */}
         <div style={{ backgroundColor: cardBg, borderRadius: '20px', padding: '16px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' }}>
-          <h3 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '16px', color: textPrimary, marginBottom: '12px' }}>Work Experience</h3>
+          <h3 style={{ fontFamily: 'Poppins', fontWeight: 600, fontSize: '16px', color: textPrimary, marginBottom: '12px' }}>Work Experience</h3>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
               <div>
@@ -151,7 +151,7 @@ const MyResumeView: React.FC<MyResumeViewProps> = ({ themeState = 'light' }) => 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px', height: 'calc(50% - 30px)' }}>
         {/* Information */}
         <div style={{ backgroundColor: cardBg, borderRadius: '20px', padding: '16px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' }}>
-          <h3 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '16px', color: textPrimary, marginBottom: '12px' }}>Information</h3>
+          <h3 style={{ fontFamily: 'Poppins', fontWeight: 600, fontSize: '16px', color: textPrimary, marginBottom: '12px' }}>Information</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -203,14 +203,14 @@ const MyResumeView: React.FC<MyResumeViewProps> = ({ themeState = 'light' }) => 
 
         {/* Resume & Skills - Merged */}
         <div style={{ backgroundColor: cardBg, borderRadius: '20px', padding: '16px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' }}>
-          <h3 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '16px', color: textPrimary, marginBottom: '12px' }}>Resume</h3>
+          <h3 style={{ fontFamily: 'Poppins', fontWeight: 600, fontSize: '16px', color: textPrimary, marginBottom: '12px' }}>Resume</h3>
           
           {/* Resume upload area will go here */}
           
           {/* Separator Line */}
           <div style={{ width: '100%', height: '1px', background: '#E0E0E0', margin: '60px 0 24px 0' }} />
           
-          <h3 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '16px', color: textPrimary, marginBottom: '12px' }}>Skills</h3>
+          <h3 style={{ fontFamily: 'Poppins', fontWeight: 600, fontSize: '16px', color: textPrimary, marginBottom: '12px' }}>Skills</h3>
           <div style={{ display: 'flex', gap: '12px' }}>
             {['Python', 'C/C++', 'Java'].map((skill) => (
               <div key={skill} style={{

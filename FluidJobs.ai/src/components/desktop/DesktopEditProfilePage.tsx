@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Phone, Calendar, MapPin, User as UserIcon, Edit, Upload } from 'lucide-react';
+import { Mail, Phone, Calendar, MapPin, User as UserIcon, Edit, Upload, ChevronDown, ChevronUp } from 'lucide-react';
 import axios from 'axios';
 import ImageCropperModal from '../../new-landing/candidate-dashboard/ImageCropperModal';
 import LocationAutocomplete from '../../new-landing/candidate-dashboard/LocationAutocomplete';
@@ -11,12 +11,32 @@ import { useProfileCompletionContext } from '../../contexts/ProfileCompletionCon
 
 interface EditProfilePageProps {
   themeState: 'light' | 'dark';
+  onTabChange?: (hasChanges: boolean) => void;
+  saveRef?: React.MutableRefObject<(() => Promise<void>) | null>;
 }
 
-const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
+const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState, onTabChange, saveRef }) => {
   const { triggerRefresh } = useProfileCompletionContext();
   const [workStatus, setWorkStatus] = useState<'yes' | 'no' | 'fresher'>('yes');
+  const [initialWorkStatus, setInitialWorkStatus] = useState<'yes' | 'no' | 'fresher'>('yes');
   const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    gender: '',
+    maritalStatus: '',
+    currentCity: '',
+    currentCompany: '',
+    noticePeriod: '',
+    workMode: '',
+    currentCTC: '',
+    lastCompany: '',
+    previousCTC: '',
+    college: '',
+    joiningDate: '',
+    leavingDate: ''
+  });
+  const [initialFormData, setInitialFormData] = useState({
     fullName: '',
     email: '',
     phone: '',
@@ -39,6 +59,7 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
   const [showNotification, setShowNotification] = useState(false);
   const [cropperOpen, setCropperOpen] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string>('');
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProfile();
@@ -54,7 +75,7 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
       console.log('Loaded profile from database:', profile);
       
       // Handle NULL values and convert to empty strings
-      setFormData({
+      const profileData = {
         fullName: profile.full_name || '',
         email: profile.email || '',
         phone: (profile.phone || profile.phone_number || '').trim(),
@@ -70,7 +91,10 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
         college: (profile.college || '').trim(),
         joiningDate: (profile.joining_date || '').trim(),
         leavingDate: (profile.leaving_date || '').trim()
-      });
+      };
+      
+      setFormData(profileData);
+      setInitialFormData(profileData);
       
       const imageUrl = profile.profile_image_url;
       if (imageUrl && imageUrl.trim()) {
@@ -80,7 +104,9 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
       
       // Handle work status - default to 'yes' if empty
       const status = (profile.work_status || '').trim();
-      setWorkStatus(status === 'no' || status === 'fresher' ? status : 'yes');
+      const workStatusValue = status === 'no' || status === 'fresher' ? status : 'yes';
+      setWorkStatus(workStatusValue);
+      setInitialWorkStatus(workStatusValue);
       
       console.log('Profile data loaded into form');
     } catch (error) {
@@ -88,8 +114,33 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
     }
   };
 
+  const hasChanges = () => {
+    return JSON.stringify(formData) !== JSON.stringify(initialFormData) || workStatus !== initialWorkStatus;
+  };
+
+  useEffect(() => {
+    if (onTabChange) {
+      onTabChange(hasChanges());
+    }
+  }, [formData, workStatus, initialFormData, initialWorkStatus]);
+
+  useEffect(() => {
+    if (saveRef) {
+      saveRef.current = handleSaveProfile;
+    }
+  }, [formData, workStatus]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const toggleDropdown = (field: string) => {
+    setOpenDropdown(openDropdown === field ? null : field);
+  };
+
+  const selectOption = (field: string, value: string) => {
+    handleInputChange(field, value);
+    setOpenDropdown(null);
   };
 
   const handleProfileImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -285,29 +336,138 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between" style={{ position: 'relative' }}>
                 <div className="flex items-center gap-3 w-[140px]">
                   <UserIcon className="w-5 h-5 text-[#6E6E6E]" />
                   <span className="text-[13px] font-medium font-['Poppins'] text-[#6E6E6E]">Gender</span>
                 </div>
-                <select value={formData.gender} onChange={(e) => handleInputChange('gender', e.target.value)} className="w-[211px] h-[28px] px-2 border border-[rgba(0,0,0,0.5)] rounded-[5px] text-[12px] font-medium font-['Poppins']" style={inputStyle}>
-                  <option value="">Select Gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Others">Others</option>
-                </select>
+                <div style={{ width: '211px', position: 'relative' }}>
+                  <div
+                    onClick={() => toggleDropdown('gender')}
+                    style={{
+                      width: '100%',
+                      height: '28px',
+                      padding: '0 8px',
+                      border: `1px solid ${openDropdown === 'gender' ? '#4285F4' : 'rgba(0, 0, 0, 0.5)'}`,
+                      borderRadius: '5px',
+                      fontFamily: 'Poppins',
+                      fontSize: '12px',
+                      color: formData.gender ? (themeState === 'light' ? '#000000' : '#E5E7EB') : '#6E6E6E',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      backgroundColor: themeState === 'light' ? '#FFFFFF' : '#374151'
+                    }}
+                  >
+                    <span>{formData.gender || 'Select Gender'}</span>
+                    {openDropdown === 'gender' ? 
+                      <ChevronUp style={{ width: '16px', height: '16px', color: '#6E6E6E' }} /> :
+                      <ChevronDown style={{ width: '16px', height: '16px', color: '#6E6E6E' }} />
+                    }
+                  </div>
+                  {openDropdown === 'gender' && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: 0,
+                      right: 0,
+                      background: themeState === 'light' ? '#FFFFFF' : '#374151',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                      marginBottom: '4px',
+                      zIndex: 1000,
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                    }}>
+                      {['Male', 'Female', 'Others'].map((option, index) => (
+                        <div
+                          key={index}
+                          onClick={() => selectOption('gender', option)}
+                          style={{
+                            padding: '8px 12px',
+                            fontFamily: 'Poppins',
+                            fontSize: '12px',
+                            color: themeState === 'light' ? '#6E6E6E' : '#E5E7EB',
+                            cursor: 'pointer',
+                            background: formData.gender === option ? '#DBEAFE' : (themeState === 'light' ? '#FFFFFF' : '#374151'),
+                            borderBottom: index < 2 ? '1px solid #F3F4F6' : 'none'
+                          }}
+                        >
+                          {option}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between" style={{ position: 'relative' }}>
                 <div className="flex items-center gap-3 w-[140px]">
                   <UserIcon className="w-5 h-5 text-[#6E6E6E]" />
                   <span className="text-[13px] font-medium font-['Poppins'] text-[#6E6E6E]">Marital Status</span>
                 </div>
-                <select value={formData.maritalStatus} onChange={(e) => handleInputChange('maritalStatus', e.target.value)} className="w-[211px] h-[28px] px-2 border border-[rgba(0,0,0,0.5)] rounded-[5px] text-[12px] font-medium font-['Poppins']" style={inputStyle}>
-                  <option value="">Select Status</option>
-                  <option value="Unmarried">Unmarried</option>
-                  <option value="Married">Married</option>
-                </select>
+                <div style={{ width: '211px', position: 'relative' }}>
+                  <div
+                    onClick={() => toggleDropdown('maritalStatus')}
+                    style={{
+                      width: '100%',
+                      height: '28px',
+                      padding: '0 8px',
+                      border: `1px solid ${openDropdown === 'maritalStatus' ? '#4285F4' : 'rgba(0, 0, 0, 0.5)'}`,
+                      borderRadius: '5px',
+                      fontFamily: 'Poppins',
+                      fontSize: '12px',
+                      color: formData.maritalStatus ? (themeState === 'light' ? '#000000' : '#E5E7EB') : '#6E6E6E',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      backgroundColor: themeState === 'light' ? '#FFFFFF' : '#374151'
+                    }}
+                  >
+                    <span>{formData.maritalStatus || 'Select Status'}</span>
+                    {openDropdown === 'maritalStatus' ? 
+                      <ChevronUp style={{ width: '16px', height: '16px', color: '#6E6E6E' }} /> :
+                      <ChevronDown style={{ width: '16px', height: '16px', color: '#6E6E6E' }} />
+                    }
+                  </div>
+                  {openDropdown === 'maritalStatus' && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: 0,
+                      right: 0,
+                      background: themeState === 'light' ? '#FFFFFF' : '#374151',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                      marginBottom: '4px',
+                      zIndex: 1000,
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                    }}>
+                      {['Unmarried', 'Married'].map((option, index) => (
+                        <div
+                          key={index}
+                          onClick={() => selectOption('maritalStatus', option)}
+                          style={{
+                            padding: '8px 12px',
+                            fontFamily: 'Poppins',
+                            fontSize: '12px',
+                            color: themeState === 'light' ? '#6E6E6E' : '#E5E7EB',
+                            cursor: 'pointer',
+                            background: formData.maritalStatus === option ? '#DBEAFE' : (themeState === 'light' ? '#FFFFFF' : '#374151'),
+                            borderBottom: index < 1 ? '1px solid #F3F4F6' : 'none'
+                          }}
+                        >
+                          {option}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-between">
@@ -358,14 +518,68 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
                     <input value={formData.noticePeriod} onChange={(e) => handleInputChange('noticePeriod', e.target.value)} placeholder="e.g., 30 days" className="w-[263px] h-[28px] px-2 border border-[rgba(0,0,0,0.5)] rounded-[5px] text-[12px] font-medium font-['Poppins'] placeholder:text-[#6E6E6E]" style={inputStyle} />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between" style={{ position: 'relative' }}>
                     <label className="text-[13px] font-medium font-['Poppins']" style={labelStyle}>Work Mode*</label>
-                    <select value={formData.workMode} onChange={(e) => handleInputChange('workMode', e.target.value)} className="w-[263px] h-[28px] px-2 border border-[rgba(0,0,0,0.5)] rounded-[5px] text-[12px] font-medium font-['Poppins']" style={inputStyle}>
-                      <option value="">Select Work Mode</option>
-                      <option value="on-site">On-site</option>
-                      <option value="Work-from-home">Work-from-home</option>
-                      <option value="hybrid">Hybrid</option>
-                    </select>
+                    <div style={{ width: '263px', position: 'relative' }}>
+                      <div
+                        onClick={() => toggleDropdown('workModeYes')}
+                        style={{
+                          width: '100%',
+                          height: '28px',
+                          padding: '0 8px',
+                          border: `1px solid ${openDropdown === 'workModeYes' ? '#4285F4' : 'rgba(0, 0, 0, 0.5)'}`,
+                          borderRadius: '5px',
+                          fontFamily: 'Poppins',
+                          fontSize: '12px',
+                          color: formData.workMode ? (themeState === 'light' ? '#000000' : '#E5E7EB') : '#6E6E6E',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          backgroundColor: themeState === 'light' ? '#FFFFFF' : '#374151'
+                        }}
+                      >
+                        <span>{formData.workMode || 'Select Work Mode'}</span>
+                        {openDropdown === 'workModeYes' ? 
+                          <ChevronUp style={{ width: '16px', height: '16px', color: '#6E6E6E' }} /> :
+                          <ChevronDown style={{ width: '16px', height: '16px', color: '#6E6E6E' }} />
+                        }
+                      </div>
+                      {openDropdown === 'workModeYes' && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '100%',
+                          left: 0,
+                          right: 0,
+                          background: themeState === 'light' ? '#FFFFFF' : '#374151',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          marginBottom: '4px',
+                          zIndex: 1000,
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                        }}>
+                          {['on-site', 'Work-from-home', 'hybrid'].map((option, index) => (
+                            <div
+                              key={index}
+                              onClick={() => selectOption('workMode', option)}
+                              style={{
+                                padding: '8px 12px',
+                                fontFamily: 'Poppins',
+                                fontSize: '12px',
+                                color: themeState === 'light' ? '#6E6E6E' : '#E5E7EB',
+                                cursor: 'pointer',
+                                background: formData.workMode === option ? '#DBEAFE' : (themeState === 'light' ? '#FFFFFF' : '#374151'),
+                                borderBottom: index < 2 ? '1px solid #F3F4F6' : 'none'
+                              }}
+                            >
+                              {option}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -392,14 +606,68 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
                     <input value={formData.leavingDate} onChange={(e) => handleInputChange('leavingDate', e.target.value)} placeholder="dd-mm-yyyy" className="w-[263px] h-[28px] px-2 border border-[rgba(0,0,0,0.5)] rounded-[5px] text-[12px] font-medium font-['Poppins'] placeholder:text-[#6E6E6E]" style={inputStyle} />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between" style={{ position: 'relative' }}>
                     <label className="text-[13px] font-medium font-['Poppins']" style={labelStyle}>Work Mode*</label>
-                    <select value={formData.workMode} onChange={(e) => handleInputChange('workMode', e.target.value)} className="w-[263px] h-[28px] px-2 border border-[rgba(0,0,0,0.5)] rounded-[5px] text-[12px] font-medium font-['Poppins']" style={inputStyle}>
-                      <option value="">Select Work Mode</option>
-                      <option value="on-site">On-site</option>
-                      <option value="Work-from-home">Work-from-home</option>
-                      <option value="hybrid">Hybrid</option>
-                    </select>
+                    <div style={{ width: '263px', position: 'relative' }}>
+                      <div
+                        onClick={() => toggleDropdown('workModeNo')}
+                        style={{
+                          width: '100%',
+                          height: '28px',
+                          padding: '0 8px',
+                          border: `1px solid ${openDropdown === 'workModeNo' ? '#4285F4' : 'rgba(0, 0, 0, 0.5)'}`,
+                          borderRadius: '5px',
+                          fontFamily: 'Poppins',
+                          fontSize: '12px',
+                          color: formData.workMode ? (themeState === 'light' ? '#000000' : '#E5E7EB') : '#6E6E6E',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          backgroundColor: themeState === 'light' ? '#FFFFFF' : '#374151'
+                        }}
+                      >
+                        <span>{formData.workMode || 'Select Work Mode'}</span>
+                        {openDropdown === 'workModeNo' ? 
+                          <ChevronUp style={{ width: '16px', height: '16px', color: '#6E6E6E' }} /> :
+                          <ChevronDown style={{ width: '16px', height: '16px', color: '#6E6E6E' }} />
+                        }
+                      </div>
+                      {openDropdown === 'workModeNo' && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '100%',
+                          left: 0,
+                          right: 0,
+                          background: themeState === 'light' ? '#FFFFFF' : '#374151',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          marginBottom: '4px',
+                          zIndex: 1000,
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                        }}>
+                          {['on-site', 'Work-from-home', 'hybrid'].map((option, index) => (
+                            <div
+                              key={index}
+                              onClick={() => selectOption('workMode', option)}
+                              style={{
+                                padding: '8px 12px',
+                                fontFamily: 'Poppins',
+                                fontSize: '12px',
+                                color: themeState === 'light' ? '#6E6E6E' : '#E5E7EB',
+                                cursor: 'pointer',
+                                background: formData.workMode === option ? '#DBEAFE' : (themeState === 'light' ? '#FFFFFF' : '#374151'),
+                                borderBottom: index < 2 ? '1px solid #F3F4F6' : 'none'
+                              }}
+                            >
+                              {option}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -423,14 +691,68 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState }) => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between" style={{ position: 'relative' }}>
                     <label className="text-[13px] font-medium font-['Poppins']" style={labelStyle}>Preferred Work Mode*</label>
-                    <select value={formData.workMode} onChange={(e) => handleInputChange('workMode', e.target.value)} className="w-[263px] h-[28px] px-2 border border-[rgba(0,0,0,0.5)] rounded-[5px] text-[12px] font-medium font-['Poppins']" style={inputStyle}>
-                      <option value="">Select Work Mode</option>
-                      <option value="on-site">On-site</option>
-                      <option value="Work-from-home">Work-from-home</option>
-                      <option value="hybrid">Hybrid</option>
-                    </select>
+                    <div style={{ width: '263px', position: 'relative' }}>
+                      <div
+                        onClick={() => toggleDropdown('workModeFresher')}
+                        style={{
+                          width: '100%',
+                          height: '28px',
+                          padding: '0 8px',
+                          border: `1px solid ${openDropdown === 'workModeFresher' ? '#4285F4' : 'rgba(0, 0, 0, 0.5)'}`,
+                          borderRadius: '5px',
+                          fontFamily: 'Poppins',
+                          fontSize: '12px',
+                          color: formData.workMode ? (themeState === 'light' ? '#000000' : '#E5E7EB') : '#6E6E6E',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          backgroundColor: themeState === 'light' ? '#FFFFFF' : '#374151'
+                        }}
+                      >
+                        <span>{formData.workMode || 'Select Work Mode'}</span>
+                        {openDropdown === 'workModeFresher' ? 
+                          <ChevronUp style={{ width: '16px', height: '16px', color: '#6E6E6E' }} /> :
+                          <ChevronDown style={{ width: '16px', height: '16px', color: '#6E6E6E' }} />
+                        }
+                      </div>
+                      {openDropdown === 'workModeFresher' && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '100%',
+                          left: 0,
+                          right: 0,
+                          background: themeState === 'light' ? '#FFFFFF' : '#374151',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          marginBottom: '4px',
+                          zIndex: 1000,
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                        }}>
+                          {['on-site', 'Work-from-home', 'hybrid'].map((option, index) => (
+                            <div
+                              key={index}
+                              onClick={() => selectOption('workMode', option)}
+                              style={{
+                                padding: '8px 12px',
+                                fontFamily: 'Poppins',
+                                fontSize: '12px',
+                                color: themeState === 'light' ? '#6E6E6E' : '#E5E7EB',
+                                cursor: 'pointer',
+                                background: formData.workMode === option ? '#DBEAFE' : (themeState === 'light' ? '#FFFFFF' : '#374151'),
+                                borderBottom: index < 2 ? '1px solid #F3F4F6' : 'none'
+                              }}
+                            >
+                              {option}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

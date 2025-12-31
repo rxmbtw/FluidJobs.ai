@@ -12,6 +12,10 @@ import { useProfileCompletionContext } from '../../contexts/ProfileCompletionCon
 
 const DesktopCandidateDashboard: React.FC = () => {
   const [newUiTab, setNewUiTab] = useState<'alerts' | 'jobs' | 'resume' | 'contact' | 'profile' | 'editProfile'>('alerts');
+  const [pendingTab, setPendingTab] = useState<'alerts' | 'jobs' | 'resume' | 'contact' | 'profile' | 'editProfile' | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showDiscardModal, setShowDiscardModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [themeState, setThemeState] = useState<'light' | 'dark'>('light');
   const [userName, setUserName] = useState('Loading User...');
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
@@ -20,6 +24,7 @@ const DesktopCandidateDashboard: React.FC = () => {
   const { profileCompletion, loading } = useProfileCompletion();
   const { triggerRefresh } = useProfileCompletionContext();
   const isProfileComplete = !loading && profileCompletion.completionPercentage === 100;
+  const editProfileSaveRef = React.useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     if (newUiTab === 'alerts') {
@@ -33,6 +38,46 @@ const DesktopCandidateDashboard: React.FC = () => {
 
   const handleNavigateToResume = () => {
     setNewUiTab('resume');
+  };
+
+  const handleTabChange = (targetTab: 'alerts' | 'jobs' | 'resume' | 'contact' | 'profile' | 'editProfile') => {
+    if (newUiTab === 'editProfile' && hasUnsavedChanges) {
+      setPendingTab(targetTab);
+      setShowDiscardModal(true);
+    } else {
+      setNewUiTab(targetTab);
+    }
+  };
+
+  const handleDiscard = () => {
+    setShowDiscardModal(false);
+    if (pendingTab) {
+      setNewUiTab(pendingTab);
+      setPendingTab(null);
+      setHasUnsavedChanges(false);
+    }
+  };
+
+  const handleSaveAndContinue = async () => {
+    if (editProfileSaveRef.current) {
+      setIsSaving(true);
+      await editProfileSaveRef.current();
+      setIsSaving(false);
+      setShowDiscardModal(false);
+      // Wait for notification to show before switching tabs
+      setTimeout(() => {
+        if (pendingTab) {
+          setNewUiTab(pendingTab);
+          setPendingTab(null);
+          setHasUnsavedChanges(false);
+        }
+      }, 2000);
+    }
+  };
+
+  const handleCancelDiscard = () => {
+    setShowDiscardModal(false);
+    setPendingTab(null);
   };
 
   useEffect(() => {
@@ -78,25 +123,20 @@ const DesktopCandidateDashboard: React.FC = () => {
     <div className="h-screen overflow-hidden" style={{ backgroundColor: bgColor, fontFamily: 'Poppins, sans-serif' }}>
       {/* Header */}
       <header className="flex shadow-sm h-[116px] px-8 lg:px-12 items-center justify-between z-10 gap-4" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937', borderBottom: themeState === 'dark' ? '1px solid #374151' : 'none' }}>
-        <div className="flex items-center space-x-3 flex-shrink-0">
+        <div className="flex items-center flex-shrink-0">
           <img 
             src='/images/FLuid Live Icon light theme.png' 
             alt="FluidJobs" 
-            className="w-[59px] h-[59px]"
+            className="object-contain"
+            style={{ width: '3rem', height: '3rem' }}
           />
-          <h1 className="text-xl font-semibold" style={{
-            fontFamily: 'Poppins, sans-serif',
-            backgroundImage: 'linear-gradient(90deg, #4285F4 0%, #0060FF 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text'
-          }}>FluidJobs.ai</h1>
+          <h1 className="text-xl md:text-3xl font-medium text-blue-600" style={{ fontFamily: 'Poppins, sans-serif' }}>FluidJobs.ai</h1>
         </div>
 
         {/* Navigation Tabs */}
         <nav className="flex space-x-6 text-base lg:text-lg font-semibold flex-1 max-w-md">
           <button 
-            onClick={() => setNewUiTab('alerts')} 
+            onClick={() => handleTabChange('alerts')} 
             className="flex items-center space-x-2 px-4 py-2 rounded-full transition-all font-semibold whitespace-nowrap"
             style={{
               backgroundColor: newUiTab === 'alerts' ? (themeState === 'light' ? '#DBEAFE' : 'rgba(37, 99, 235, 0.2)') : 'transparent',
@@ -107,7 +147,7 @@ const DesktopCandidateDashboard: React.FC = () => {
             <span>Alerts</span>
           </button>
           <button 
-            onClick={() => setNewUiTab('jobs')} 
+            onClick={() => handleTabChange('jobs')} 
             className="flex items-center space-x-2 px-4 py-2 rounded-full transition-all font-semibold whitespace-nowrap"
             style={{
               backgroundColor: newUiTab === 'jobs' ? (themeState === 'light' ? '#DBEAFE' : 'rgba(37, 99, 235, 0.2)') : 'transparent',
@@ -118,7 +158,7 @@ const DesktopCandidateDashboard: React.FC = () => {
             <span>My Jobs</span>
           </button>
           <button 
-            onClick={() => setNewUiTab('resume')} 
+            onClick={() => handleTabChange('resume')} 
             className="flex items-center space-x-2 px-4 py-2 rounded-full transition-all font-semibold whitespace-nowrap"
             style={{
               backgroundColor: newUiTab === 'resume' ? (themeState === 'light' ? '#DBEAFE' : 'rgba(37, 99, 235, 0.2)') : 'transparent',
@@ -138,18 +178,18 @@ const DesktopCandidateDashboard: React.FC = () => {
           <button
             onClick={() => {
               setInitialFilter('saved');
-              setNewUiTab('jobs');
+              handleTabChange('jobs');
             }}
-            className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300"
+            className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200"
             style={{
-              backgroundColor: '#FFFFFF',
-              border: '2px solid #6E6E6E'
+              backgroundColor: newUiTab === 'jobs' && initialFilter === 'saved' ? '#DBEAFE' : (themeState === 'light' ? '#F3F4F6' : '#374151'),
+              border: `1px solid ${newUiTab === 'jobs' && initialFilter === 'saved' ? '#2563EB' : (themeState === 'light' ? '#E5E7EB' : '#4B5563')}`
             }}
           >
             <Bookmark 
               className="w-5 h-5" 
               style={{ 
-                color: '#6E6E6E',
+                color: newUiTab === 'jobs' && initialFilter === 'saved' ? '#2563EB' : (themeState === 'light' ? '#6B7280' : '#9CA3AF'),
                 strokeWidth: 2
               }} 
             />
@@ -178,7 +218,7 @@ const DesktopCandidateDashboard: React.FC = () => {
               }}>
                 <a 
                   href="#" 
-                  onClick={(e) => { e.preventDefault(); setNewUiTab('profile'); setIsLogoutOpen(false); }} 
+                  onClick={(e) => { e.preventDefault(); handleTabChange('profile'); setIsLogoutOpen(false); }} 
                   className="flex items-center space-x-3 p-3 font-semibold transition-colors" 
                   style={{ color: textColor }}
                 >
@@ -187,7 +227,7 @@ const DesktopCandidateDashboard: React.FC = () => {
                 </a>
                 <a 
                   href="#" 
-                  onClick={(e) => { e.preventDefault(); setNewUiTab('contact'); setIsLogoutOpen(false); }}
+                  onClick={(e) => { e.preventDefault(); handleTabChange('contact'); setIsLogoutOpen(false); }}
                   className="flex items-center space-x-3 p-3 font-semibold transition-colors" 
                   style={{ color: textColor }}
                 >
@@ -221,9 +261,13 @@ const DesktopCandidateDashboard: React.FC = () => {
       {/* Main Content */}
       <main style={{ height: 'calc(100vh - 116px)', backgroundColor: bgColor, overflow: 'hidden' }}>
         {newUiTab === 'editProfile' ? (
-          <DesktopEditProfilePage themeState={themeState} />
+          <DesktopEditProfilePage 
+            themeState={themeState} 
+            onTabChange={setHasUnsavedChanges}
+            saveRef={editProfileSaveRef}
+          />
         ) : newUiTab === 'profile' ? (
-          <DesktopViewProfilePage themeState={themeState} onChangePassword={() => setIsChangePasswordOpen(true)} onEditProfile={() => setNewUiTab('editProfile')} />
+          <DesktopViewProfilePage themeState={themeState} onChangePassword={() => setIsChangePasswordOpen(true)} onEditProfile={() => handleTabChange('editProfile')} />
         ) : newUiTab === 'contact' ? (
           <DesktopContactSupport themeState={themeState} />
         ) : newUiTab === 'jobs' ? (
@@ -240,6 +284,94 @@ const DesktopCandidateDashboard: React.FC = () => {
           />
         )}
       </main>
+
+      {/* Unsaved Changes Modal */}
+      {showDiscardModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999
+          }}
+          onClick={handleCancelDiscard}
+        >
+          <div
+            style={{
+              background: themeState === 'light' ? '#FFFFFF' : '#1F2937',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '400px',
+              boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.15)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{
+              fontFamily: 'Poppins',
+              fontWeight: 700,
+              fontSize: '18px',
+              color: themeState === 'light' ? '#000000' : '#FFFFFF',
+              marginBottom: '12px',
+              textAlign: 'center'
+            }}>
+              Unsaved Changes
+            </h3>
+            <p style={{
+              fontFamily: 'Poppins',
+              fontWeight: 400,
+              fontSize: '14px',
+              color: '#6E6E6E',
+              marginBottom: '24px',
+              textAlign: 'center'
+            }}>
+              You have unsaved changes. Do you want to save them before leaving?
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={handleDiscard}
+                disabled={isSaving}
+                style={{
+                  flex: 1,
+                  height: '44px',
+                  background: themeState === 'light' ? '#FFFFFF' : '#374151',
+                  border: '1px solid #EF4444',
+                  borderRadius: '10px',
+                  fontFamily: 'Poppins',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  color: '#EF4444',
+                  cursor: 'pointer',
+                  opacity: isSaving ? 0.5 : 1
+                }}
+              >
+                Discard
+              </button>
+              <button
+                onClick={handleSaveAndContinue}
+                disabled={isSaving}
+                style={{
+                  flex: 1,
+                  height: '44px',
+                  background: '#4285F4',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontFamily: 'Poppins',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  color: '#FFFFFF',
+                  cursor: 'pointer',
+                  opacity: isSaving ? 0.5 : 1
+                }}
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} themeState={themeState} />
     </div>

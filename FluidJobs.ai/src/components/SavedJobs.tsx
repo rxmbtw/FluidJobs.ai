@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bookmark, MapPin, DollarSign, Clock, Trash2 } from 'lucide-react';
+import { Heart, MapPin, DollarSign, Clock, Trash2 } from 'lucide-react';
 import savedJobsService, { SavedJob } from '../services/savedJobsService';
 
 const SavedJobs: React.FC = () => {
@@ -57,7 +57,7 @@ const SavedJobs: React.FC = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center mb-6">
-          <Bookmark className="h-8 w-8 text-blue-600 mr-3" />
+          <Heart className="h-8 w-8 text-blue-600 mr-3" />
           <h1 className="text-3xl font-bold text-gray-900">Saved Jobs</h1>
           <span className="ml-3 bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded-full">
             {savedJobs.length}
@@ -66,7 +66,7 @@ const SavedJobs: React.FC = () => {
 
         {savedJobs.length === 0 ? (
           <div className="text-center py-12">
-            <Bookmark className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <Heart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-medium text-gray-900 mb-2">No saved jobs yet</h3>
             <p className="text-gray-500">Start saving jobs you're interested in to view them here.</p>
           </div>

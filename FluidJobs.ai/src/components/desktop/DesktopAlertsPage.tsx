@@ -35,9 +35,9 @@ const DesktopAlertsPage: React.FC<DesktopAlertsPageProps> = ({
               style={{ color: themeState === 'light' ? '#000000' : '#f9fafb' }} 
             />
             <h2 
-              className="text-3xl font-extrabold" 
+              className="text-3xl font-semibold" 
               style={{ 
-                fontFamily: 'Roboto, sans-serif', 
+                fontFamily: 'Poppins, sans-serif', 
                 color: themeState === 'light' ? '#000000' : '#f9fafb' 
               }}
             >
@@ -50,9 +50,9 @@ const DesktopAlertsPage: React.FC<DesktopAlertsPageProps> = ({
               style={{ color: themeState === 'light' ? '#D1D5DB' : '#4B5563' }} 
             />
             <p 
-              className="text-lg font-semibold" 
+              className="text-lg font-medium" 
               style={{ 
-                fontFamily: 'Roboto, sans-serif', 
+                fontFamily: 'Poppins, sans-serif', 
                 color: themeState === 'light' ? '#6E6E6E' : '#9ca3af' 
               }}
             >

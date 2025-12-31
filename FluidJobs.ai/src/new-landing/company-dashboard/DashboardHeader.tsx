@@ -11,7 +11,7 @@ const DashboardHeader: React.FC = () => {
             className="object-contain" 
             style={{ width: '3rem', height: '3rem' }}
           />
-          <h1 className="text-xl font-semibold text-blue-600" style={{ fontFamily: 'Poppins' }}>FluidJobs.ai</h1>
+          <h1 className="text-xl md:text-3xl font-medium text-blue-600" style={{ fontFamily: 'Poppins, sans-serif' }}>FluidJobs.ai</h1>
         </div>
       </div>
     </header>

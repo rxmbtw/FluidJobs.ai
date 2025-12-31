@@ -52,8 +52,8 @@ const MobileLoginPage: React.FC = () => {
           alt="FluidJobs.ai" 
           className="h-16 w-16 mx-auto mb-4"
         />
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-        <p className="text-gray-600">Sign in to continue</p>
+        <h1 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '30px', color: '#111827', marginBottom: '8px' }}>Welcome Back</h1>
+        <p style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: '14px', color: '#4B5563' }}>Sign in to continue</p>
       </div>
 
       {/* Form */}
@@ -67,7 +67,7 @@ const MobileLoginPage: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Email Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: '14px', color: '#374151', display: 'block', marginBottom: '8px' }}>
               Email or Phone
             </label>
             <div className="relative">
@@ -77,6 +77,7 @@ const MobileLoginPage: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                style={{ fontFamily: 'Poppins', fontSize: '14px' }}
                 placeholder="Enter your email"
                 required
               />
@@ -85,7 +86,7 @@ const MobileLoginPage: React.FC = () => {
 
           {/* Password Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: '14px', color: '#374151', display: 'block', marginBottom: '8px' }}>
               Password
             </label>
             <div className="relative">
@@ -95,6 +96,7 @@ const MobileLoginPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                style={{ fontFamily: 'Poppins', fontSize: '14px' }}
                 placeholder="Enter your password"
                 required
               />
@@ -110,7 +112,7 @@ const MobileLoginPage: React.FC = () => {
 
           {/* Forgot Password */}
           <div className="text-right">
-            <button type="button" className="text-sm text-blue-500 font-medium">
+            <button type="button" style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: '14px', color: '#3B82F6', background: 'none', border: 'none', cursor: 'pointer' }}>
               Forgot Password?
             </button>
           </div>
@@ -118,7 +120,8 @@ const MobileLoginPage: React.FC = () => {
           {/* Login Button */}
           <button
             type="submit"
-            className="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors"
+            className="w-full bg-blue-500 text-white py-3 rounded-xl hover:bg-blue-600 transition-colors"
+            style={{ fontFamily: 'Poppins', fontWeight: 600, fontSize: '15px' }}
           >
             Log In
           </button>
@@ -127,7 +130,7 @@ const MobileLoginPage: React.FC = () => {
         {/* Divider */}
         <div className="flex items-center my-6">
           <div className="flex-1 border-t border-gray-300"></div>
-          <span className="px-4 text-sm text-gray-500">Or continue with</span>
+          <span style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: '14px', color: '#6B7280', padding: '0 16px' }}>Or continue with</span>
           <div className="flex-1 border-t border-gray-300"></div>
         </div>
 
@@ -137,13 +140,13 @@ const MobileLoginPage: React.FC = () => {
           className="w-full flex items-center justify-center space-x-3 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
         >
           <GoogleIcon />
-          <span className="font-medium text-gray-700">Sign in with Google</span>
+          <span style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: '14px', color: '#374151' }}>Sign in with Google</span>
         </button>
 
         {/* Sign Up Link */}
-        <div className="mt-8 text-center text-sm">
-          <span className="text-gray-600">Don't have an account? </span>
-          <button className="text-blue-500 font-semibold">Sign Up</button>
+        <div className="mt-8 text-center">
+          <span style={{ fontFamily: 'Poppins', fontWeight: 400, fontSize: '14px', color: '#4B5563' }}>Don't have an account? </span>
+          <button style={{ fontFamily: 'Poppins', fontWeight: 600, fontSize: '14px', color: '#3B82F6', background: 'none', border: 'none', cursor: 'pointer' }}>Sign Up</button>
         </div>
       </div>
     </div>
