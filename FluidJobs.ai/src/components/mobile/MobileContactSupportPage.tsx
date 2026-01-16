@@ -48,7 +48,7 @@ const MobileContactSupportPage: React.FC = () => {
         }}>
           {/* Back Button */}
           <button
-            onClick={() => navigate('/mobile-profile')}
+            onClick={() => navigate('/candidate-dashboard', { state: { activeTab: 'profile' } })}
             style={{
               position: 'absolute',
               top: '20px',

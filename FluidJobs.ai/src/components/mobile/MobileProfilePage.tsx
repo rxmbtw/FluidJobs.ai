@@ -35,7 +35,7 @@ const MobileProfilePage: React.FC = () => {
 
   const handleEditProfile = () => {
     console.log('Navigating to edit profile');
-    navigate('/edit-profile');
+    navigate('/candidate-dashboard', { state: { showEditProfile: true } });
   };
 
   return (
@@ -539,7 +539,7 @@ const MobileProfilePage: React.FC = () => {
       <div className="px-4 pb-4 flex gap-3">
         <button 
           type="button"
-          onClick={() => navigate('/mobile-contact-support')}
+          onClick={() => navigate('/candidate-dashboard', { state: { showContactSupport: true } })}
           style={{
           width: '207px',
           height: '44px',

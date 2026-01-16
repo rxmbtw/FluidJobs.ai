@@ -1,7 +1,7 @@
 import React from 'react';
 import { useIsMobile } from '../components/mobile/MobileDetector';
 import MobileMyJobs from '../components/mobile/MobileMyJobs';
-import DesktopMyJobs from '../components/desktop/DesktopMyJobs';
+import MyJobsView from '../new-landing/candidate-dashboard/my-jobs/MyJobsView';
 
 const MyJobs: React.FC = () => {
   const isMobile = useIsMobile();
@@ -10,7 +10,7 @@ const MyJobs: React.FC = () => {
     return <MobileMyJobs />;
   }
   
-  return <DesktopMyJobs />;
+  return <MyJobsView themeState="light" />;
 };
 
 export default MyJobs;

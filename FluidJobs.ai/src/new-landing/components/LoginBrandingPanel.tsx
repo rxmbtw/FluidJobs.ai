@@ -6,8 +6,6 @@ interface LoginBrandingPanelProps {
 }
 
 const LoginBrandingPanel: React.FC<LoginBrandingPanelProps> = ({ onNavigateHome }) => {
-    const logoUrl = '/images/FLuid Live Icon light theme.png';
-
     return (
         <div className="hidden md:flex flex-col w-1/2 relative items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, rgba(66, 133, 244, 1) 0%, rgba(0, 96, 255, 1) 100%)' }}>
             <div className="relative z-10 flex-grow flex flex-col justify-center items-center">

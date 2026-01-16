@@ -1,5 +1,6 @@
 import React from 'react';
-import { User, Bell, Briefcase, FileText } from 'lucide-react';
+import { User } from 'lucide-react';
+import { Notification, Work, Paper } from 'react-iconly';
 
 interface MobileBottomNavProps {
   activeTab: string;
@@ -8,10 +9,10 @@ interface MobileBottomNavProps {
 
 const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTab, onTabChange }) => {
   const tabs = [
-    { id: 'alerts', label: 'Alerts', icon: Bell },
-    { id: 'jobs', label: 'My Jobs', icon: Briefcase },
-    { id: 'resume', label: 'My\u00A0Resume', icon: FileText },
-    { id: 'profile', label: 'Profile', icon: User },
+    { id: 'alerts', label: 'Alerts', icon: 'Notification' },
+    { id: 'jobs', label: 'My Jobs', icon: 'Work' },
+    { id: 'resume', label: 'My\u00A0Resume', icon: 'Paper' },
+    { id: 'profile', label: 'Profile', icon: 'Profile' },
   ];
 
   return (
@@ -35,7 +36,6 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTab, onTabChang
     >
       <div className="flex justify-around items-center h-full px-3">
         {tabs.map((tab, index) => {
-          const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           
           return (
@@ -67,15 +67,12 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTab, onTabChang
                   }}
                 ></div>
               )}
-              <Icon 
-                className="relative z-10 mb-1.5" 
-                style={{ 
-                  width: '24px', 
-                  height: '24px',
-                  color: isActive ? '#4285F4' : '#1F2937',
-                  strokeWidth: isActive ? 2.5 : 2
-                }} 
-              />
+              <div className="relative z-10 mb-1.5">
+                {tab.icon === 'Notification' && <Notification set="bulk" primaryColor={isActive ? '#4285F4' : '#1F2937'} size={30} />}
+                {tab.icon === 'Work' && <Work set="bulk" primaryColor={isActive ? '#4285F4' : '#1F2937'} size={25} />}
+                {tab.icon === 'Paper' && <Paper set="bulk" primaryColor={isActive ? '#4285F4' : '#1F2937'} size={25} />}
+                {tab.icon === 'Profile' && <User style={{ width: '25px', height: '25px', color: isActive ? '#4285F4' : '#1F2937', strokeWidth: isActive ? 2.5 : 2 }} />}
+              </div>
               <span 
                 className="relative z-10"
                 style={{

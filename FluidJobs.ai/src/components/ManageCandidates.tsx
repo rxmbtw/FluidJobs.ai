@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, Filter, Users, FileText, Eye, MoreVertical, Download, Mail, Phone, MapPin, Calendar, Building, DollarSign, Linkedin, User, Clock, Briefcase, Plus, Trash2, Ban, Check } from 'lucide-react';
 import { indianCities } from '../data/indianCities';
 import SuccessModal from './SuccessModal';
+import Loader from './Loader';
 
 interface Candidate {
   id: string;
@@ -58,6 +59,17 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
   const [sendingNotification, setSendingNotification] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
+  
+  // Custom dropdown states
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [selectedPosition, setSelectedPosition] = useState('All Jobs');
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [selectedExperience, setSelectedExperience] = useState('All Experience');
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [selectedSort, setSelectedSort] = useState('Default');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [locationSearch, setLocationSearch] = useState('');
+  const [skillsSearch, setSkillsSearch] = useState('');
 
   // Fetch available jobs
   const fetchAvailableJobs = async () => {
@@ -191,6 +203,9 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
   const fetchCandidates = async () => {
     try {
       setLoading(true);
+      // Add 2 second delay for loader
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidates?page=1&limit=1000`, {
         headers: {
           'Content-Type': 'application/json'
@@ -427,27 +442,227 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
       fetchRestrictionStatus(selectedCandidate.id);
     }
   }, [selectedCandidate]);
+  
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.custom-dropdown')) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Multi-Select Dropdown Component
+  const MultiSelectDropdown: React.FC<{
+    label: string;
+    selectedItems: string[];
+    options: string[];
+    onChange: (items: string[]) => void;
+    dropdownKey: string;
+    searchValue: string;
+    onSearchChange: (value: string) => void;
+    placeholder: string;
+  }> = ({ label, selectedItems, options, onChange, dropdownKey, searchValue, onSearchChange, placeholder }) => {
+    const isOpen = openDropdown === dropdownKey;
+    
+    const filteredOptions = searchValue
+      ? options.filter(option => option.toLowerCase().includes(searchValue.toLowerCase()))
+      : options;
+    
+    const handleToggleItem = (item: string) => {
+      if (selectedItems.includes(item)) {
+        onChange(selectedItems.filter(i => i !== item));
+      } else {
+        onChange([...selectedItems, item]);
+      }
+    };
+    
+    const handleRemoveItem = (item: string) => {
+      onChange(selectedItems.filter(i => i !== item));
+    };
+    
+    const clearAll = () => {
+      onChange([]);
+      onSearchChange('');
+    };
+    
+    return (
+      <div className="custom-dropdown relative">
+        <label className="text-xs font-medium text-gray-700 block mb-1">{label}</label>
+        <div className="border border-gray-300 rounded-lg bg-white min-h-[40px] p-2">
+          {/* Selected items as tags */}
+          <div className="flex flex-wrap gap-1 mb-2">
+            {selectedItems.map((item) => (
+              <span
+                key={item}
+                className="inline-flex items-center px-2 py-1 rounded bg-blue-500 text-white text-xs"
+              >
+                {item}
+                <button
+                  onClick={() => handleRemoveItem(item)}
+                  className="ml-1 text-white hover:text-gray-200"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+          {/* Search input */}
+          <input
+            type="text"
+            value={searchValue}
+            onChange={(e) => onSearchChange(e.target.value)}
+            onFocus={() => setOpenDropdown(dropdownKey)}
+            placeholder={selectedItems.length === 0 ? placeholder : ''}
+            className="w-full text-xs outline-none bg-transparent"
+          />
+        </div>
+        {isOpen && (
+          <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {filteredOptions.length > 0 ? (
+              <>
+                {filteredOptions.map((option, index) => (
+                  <div
+                    key={index}
+                    onClick={() => handleToggleItem(option)}
+                    className={`px-3 py-2 text-xs cursor-pointer hover:bg-blue-50 transition flex items-center justify-between ${
+                      selectedItems.includes(option) ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                    }`}
+                  >
+                    <span>{option}</span>
+                    {selectedItems.includes(option) && (
+                      <span className="text-blue-600">✓</span>
+                    )}
+                  </div>
+                ))}
+                {selectedItems.length > 0 && (
+                  <div className="border-t border-gray-200 p-2">
+                    <button
+                      onClick={clearAll}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="px-3 py-2 text-xs text-gray-500">No results found</div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+  const CustomDropdown: React.FC<{
+    label: string;
+    value: string;
+    options: string[];
+    onChange: (value: string) => void;
+    dropdownKey: string;
+    searchable?: boolean;
+  }> = ({ label, value, options, onChange, dropdownKey, searchable = false }) => {
+    const isOpen = openDropdown === dropdownKey;
+    const [localSearch, setLocalSearch] = useState('');
+    
+    const filteredOptions = searchable && localSearch
+      ? options.filter(option => option.toLowerCase().includes(localSearch.toLowerCase()))
+      : options;
+    
+    return (
+      <div className="custom-dropdown relative">
+        <label className="text-xs font-medium text-gray-700 block mb-1">{label}</label>
+        {searchable ? (
+          <input
+            type="text"
+            value={isOpen ? localSearch : value}
+            onChange={(e) => {
+              setLocalSearch(e.target.value);
+              if (!isOpen) setOpenDropdown(dropdownKey);
+            }}
+            onFocus={() => setOpenDropdown(dropdownKey)}
+            placeholder={value}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white cursor-pointer hover:border-blue-400 transition focus:outline-none focus:border-blue-400"
+          />
+        ) : (
+          <div
+            onClick={() => setOpenDropdown(isOpen ? null : dropdownKey)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white cursor-pointer hover:border-blue-400 transition"
+          >
+            {value}
+          </div>
+        )}
+        {isOpen && (
+          <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <style>{`.custom-dropdown::-webkit-scrollbar { display: none; }`}</style>
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option, index) => (
+                <div
+                  key={index}
+                  onClick={() => {
+                    onChange(option);
+                    setOpenDropdown(null);
+                    setLocalSearch('');
+                  }}
+                  className={`px-3 py-2 text-xs cursor-pointer hover:bg-blue-100 transition ${
+                    value === option ? 'bg-blue-100 text-blue-600' : 'text-gray-700'
+                  }`}
+                >
+                  {option}
+                </div>
+              ))
+            ) : (
+              <div className="px-3 py-2 text-xs text-gray-500">No results found</div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const filteredCandidates = useMemo(() => {
-    const filtered = candidates.filter(candidate =>
-      candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      candidate.phone.includes(searchTerm)
-    );
+    let filtered = candidates.filter(candidate => {
+      // Search term filter
+      const matchesSearch = (candidate.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (candidate.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (candidate.phone || '').includes(searchTerm);
+      
+      // Position filter
+      const matchesPosition = selectedPosition === 'All Jobs' || candidate.position === selectedPosition;
+      
+      // Location filter
+      const matchesLocation = selectedLocations.length === 0 || 
+        selectedLocations.some(loc => candidate.location.toLowerCase().includes(loc.toLowerCase()));
+      
+      // Experience filter
+      const matchesExperience = selectedExperience === 'All Experience' || 
+        (selectedExperience === '0-2 years' && candidate.experience <= 2) ||
+        (selectedExperience === '3-5 years' && candidate.experience >= 3 && candidate.experience <= 5);
+      
+      // Skills filter (assuming candidate has skills property - you may need to adjust this)
+      const matchesSkills = selectedSkills.length === 0;
+      
+      return matchesSearch && matchesPosition && matchesLocation && matchesExperience && matchesSkills;
+    });
     
+    // Apply sorting
     return filtered.sort((a, b) => {
       if (sortOrder === 'asc') {
         return a.name.localeCompare(b.name);
-      } else {
+      } else if (sortOrder === 'desc') {
         return b.name.localeCompare(a.name);
       }
+      return 0;
     });
-  }, [candidates, searchTerm, sortOrder]);
+  }, [candidates, searchTerm, selectedPosition, selectedLocations, selectedExperience, selectedSkills, sortOrder]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center h-full bg-gray-50">
+        <Loader themeState="light" />
       </div>
     );
   }
@@ -463,32 +678,94 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
-      {/* Left Sidebar - Filters and Candidates List */}
-      <div className="w-[35%] bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+    <div className="flex bg-gray-50 font-sans overflow-hidden border-2 border-gray-200 rounded-lg" style={{ height: 'calc(100% - 16px)', margin: '8px' }}>
+      {/* New Filters Section - Leftmost */}
+      <div className="w-48 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+        <div className="p-3 border-b border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-900 flex items-center">
+            <Filter className="w-4 h-4 mr-2" />
+            Filters
+          </h3>
+        </div>
+        <div className="flex-1 overflow-y-auto p-3">
+          <div className="space-y-3">
+            <CustomDropdown
+              label="Position"
+              value={selectedPosition}
+              options={['All Jobs', 'Python Developer', 'Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'DevOps Engineer', 'Data Scientist']}
+              onChange={setSelectedPosition}
+              dropdownKey="position"
+              searchable={true}
+            />
+            
+            <MultiSelectDropdown
+              label="Location"
+              selectedItems={selectedLocations}
+              options={indianCities}
+              onChange={setSelectedLocations}
+              dropdownKey="location"
+              searchValue={locationSearch}
+              onSearchChange={setLocationSearch}
+              placeholder="Select locations..."
+            />
+            
+            <CustomDropdown
+              label="Experience"
+              value={selectedExperience}
+              options={['All Experience', '0-2 years', '3-5 years']}
+              onChange={setSelectedExperience}
+              dropdownKey="experience"
+            />
+            
+            <MultiSelectDropdown
+              label="Skills"
+              selectedItems={selectedSkills}
+              options={['React', 'Node.js', 'Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Angular', 'Vue.js', 'MongoDB', 'PostgreSQL', 'MySQL', 'AWS', 'Docker', 'Kubernetes']}
+              onChange={setSelectedSkills}
+              dropdownKey="skills"
+              searchValue={skillsSearch}
+              onSearchChange={setSkillsSearch}
+              placeholder="Select skills..."
+            />
+            
+            <CustomDropdown
+              label="Sort"
+              value={selectedSort}
+              options={['Default', 'A → Z', 'Z → A']}
+              onChange={(value) => {
+                setSelectedSort(value);
+                if (value === 'A → Z') setSortOrder('asc');
+                else if (value === 'Z → A') setSortOrder('desc');
+                else setSortOrder('');
+              }}
+              dropdownKey="sort"
+            />
+          </div>
+          
+          <div className="flex flex-col space-y-2 mt-4">
+            <button className="w-full px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700">
+              Apply
+            </button>
+            <button 
+              onClick={() => setSearchTerm('')}
+              className="w-full px-3 py-1.5 border border-gray-300 text-gray-700 rounded text-xs font-medium hover:bg-gray-50"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Left Sidebar - Candidates List */}
+      <div className="w-[30%] bg-white border-r border-gray-200 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="p-4">
+        <div className="flex-shrink-0 p-4">
           <h2 className="text-sm font-medium text-gray-900 mb-4">
             Candidates ({filteredCandidates.length})
           </h2>
           
-          {/* Filter Button, Sort Dropdown and Search Bar */}
-          <div className="flex items-center space-x-2 mb-4">
-            <button 
-              onClick={() => setShowFilters(!showFilters)}
-              className="p-2 hover:bg-gray-100 rounded border border-gray-300 flex-shrink-0"
-            >
-              <Filter className="w-4 h-4 text-gray-600" />
-            </button>
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex-shrink-0"
-            >
-              <option value="">Sort</option>
-              <option value="asc">Alphabetical Asc. (A → Z)</option>
-              <option value="desc">Alphabetical Desc. (Z → A)</option>
-            </select>
+          {/* Search Bar */}
+          <div className="flex items-center mb-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
@@ -504,93 +781,10 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
         
 
 
-        {/* Filter and Candidates Container */}
-        <div className="flex-1 flex relative">
-          {/* Filter Panel - Overlay */}
-          <div className={`absolute left-0 top-0 bottom-0 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 overflow-hidden z-10 ${showFilters ? 'w-64' : 'w-0'}`}>
-            {showFilters && (
-              <div className="p-4 w-64">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
-                  <button 
-                    onClick={() => setShowFilters(false)}
-                    className="p-1 hover:bg-gray-100 rounded"
-                  >
-                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs font-medium text-gray-700 block mb-1">Position</label>
-                    <select className="w-full px-2 py-1 border border-gray-300 rounded text-xs">
-                      <option>All Jobs</option>
-                      <option>Python Developer</option>
-                      <option>Frontend Developer</option>
-                      <option>Backend Developer</option>
-                      <option>Full Stack Developer</option>
-                      <option>DevOps Engineer</option>
-                      <option>Data Scientist</option>
-                      <option>UX Designer</option>
-                      <option>Java Developer</option>
-                      <option>React Developer</option>
-                      <option>Node.js Developer</option>
-                      <option>Software Engineer</option>
-                      <option>Senior Software Engineer</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="text-xs font-medium text-gray-700 block mb-1">Location</label>
-                    <select className="w-full px-2 py-1 border border-gray-300 rounded text-xs">
-                      <option>All Locations</option>
-                      {indianCities.map(city => (
-                        <option key={city} value={city}>{city}</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="text-xs font-medium text-gray-700 block mb-1">Experience</label>
-                    <select className="w-full px-2 py-1 border border-gray-300 rounded text-xs">
-                      <option>All Experience</option>
-                      <option>0-2 years</option>
-                      <option>3-5 years</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="text-xs font-medium text-gray-700 block mb-1">Skills</label>
-                    <select className="w-full px-2 py-1 border border-gray-300 rounded text-xs">
-                      <option>All Skills</option>
-                      <option>React</option>
-                      <option>Node.js</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div className="flex space-x-2 mt-4">
-                  <button 
-                    onClick={() => setShowFilters(false)}
-                    className="flex-1 px-3 py-1 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700"
-                  >
-                    Apply
-                  </button>
-                  <button 
-                    onClick={() => setSearchTerm('')}
-                    className="flex-1 px-3 py-1 border border-gray-300 text-gray-700 rounded text-xs font-medium hover:bg-gray-50"
-                  >
-                    Clear
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-          
+        {/* Candidates Container */}
+        <div className="flex-1 flex relative overflow-hidden">
           {/* Candidates List */}
-          <div className="flex-1 overflow-y-auto px-4" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+          <div className="flex-1 overflow-y-scroll px-4 pb-8" style={{ minHeight: 0, overflowX: 'hidden' }}>
 
           {filteredCandidates.map((candidate, index) => {
             const matchPercentage = candidate.resumeScore || 35;
@@ -631,7 +825,7 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
         {selectedCandidate && (
           <>
             {/* Top Header - Candidate Profile Card */}
-            <div className="bg-white border-b border-gray-100 p-3">
+            <div className="flex-shrink-0 bg-white border-b border-gray-100 p-3 shadow-sm" style={{ minHeight: 0 }}>
               {/* Action Buttons */}
               <div className="flex justify-between items-center mb-6">
                 {(userRole === 'Admin' || isSuperAdmin) && (
@@ -639,8 +833,8 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
                     <button 
                       onClick={handleRestrictClick}
                       disabled={isRestricted}
-                      className={`flex items-center space-x-2 px-6 py-2.5 text-sm font-medium transition ${
-                        isRestricted ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:text-gray-800'
+                      className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-medium transition border ${
+                        isRestricted ? 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                       }`}
                     >
                       <svg width="20" height="20" viewBox="0 0 26 26" fill="none" className="flex-shrink-0">
@@ -655,8 +849,8 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
                     <button 
                       onClick={handleUnrestrictClick}
                       disabled={!isRestricted}
-                      className={`flex items-center space-x-2 px-6 py-2.5 text-sm font-medium transition ${
-                        !isRestricted ? 'text-gray-400 cursor-not-allowed' : 'text-green-600 hover:text-green-800'
+                      className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-medium transition border ${
+                        !isRestricted ? 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed' : 'bg-white text-green-700 border-green-300 hover:bg-green-50'
                       }`}
                     >
                       <Check className="w-5 h-5" />
@@ -735,10 +929,9 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
 
 
             {/* Main Content */}
-            <div className="flex-1 bg-white overflow-y-auto">
-              <div className="h-full">
+            <div className="flex-1 overflow-y-scroll bg-gray-50 p-6" style={{ overflowX: 'hidden' }}>
                 {activeTab === 'Application' ? (
-                  <div className="p-6 space-y-3">
+                  <div className="space-y-3" style={{ paddingBottom: '3rem' }}>
                     {/* Work Experience - Full Width */}
                     <div className="bg-white rounded-lg border border-gray-200 p-3">
                       <h3 className="text-sm font-semibold text-gray-900 mb-2">Work Experience</h3>
@@ -988,7 +1181,6 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
                     </div>
                   </div>
                 )}
-              </div>
             </div>
           </>
         )}

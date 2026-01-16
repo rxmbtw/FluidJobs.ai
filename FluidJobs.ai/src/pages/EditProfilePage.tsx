@@ -650,7 +650,9 @@ const EditProfilePage: React.FC = () => {
 
       {cropperImage && (
         <ImageCropperModal
+          isOpen={true}
           imageSrc={cropperImage}
+          onClose={() => setCropperImage(null)}
           onCropComplete={handleCropComplete}
           onCancel={() => setCropperImage(null)}
         />

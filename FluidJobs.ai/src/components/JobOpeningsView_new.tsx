@@ -442,7 +442,7 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
         {/* Job Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {displayedJobs.map((job) => (
-            <div key={job.jobId} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div key={job.jobId} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105 hover:-translate-y-1 cursor-pointer">
               {/* Job Image */}
               <div className="h-40 bg-gray-200">
                 <img src={job.image} alt={job.title} className="w-full h-full object-cover" />

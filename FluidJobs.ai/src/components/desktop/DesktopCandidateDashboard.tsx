@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Briefcase, FileText, Sun, Moon, ChevronDown, User, MessageCircle, LogOut, Bookmark } from 'lucide-react';
+import { Sun, Moon, ChevronDown, User, MessageCircle, LogOut, Bookmark } from 'lucide-react';
+import { Notification, Work, Paper } from 'react-iconly';
 import DesktopAlertsPage from './DesktopAlertsPage';
 import MyJobsView from '../../new-landing/candidate-dashboard/my-jobs/MyJobsView';
 import MyResumeView from '../../new-landing/candidate-dashboard/my-resume/MyResumeView';
 import DesktopViewProfilePage from './DesktopViewProfilePage';
 import DesktopEditProfilePage from './DesktopEditProfilePage';
 import DesktopContactSupport from './DesktopContactSupport';
-import ChangePasswordModal from '../../new-landing/candidate-dashboard/change-password/ChangePasswordModal';
 import { useProfileCompletion } from '../../hooks/useProfileCompletion';
 import { useProfileCompletionContext } from '../../contexts/ProfileCompletionContext';
+import MobileChangePasswordModal from '../mobile/MobileChangePasswordModal';
 
 const DesktopCandidateDashboard: React.FC = () => {
   const [newUiTab, setNewUiTab] = useState<'alerts' | 'jobs' | 'resume' | 'contact' | 'profile' | 'editProfile'>('alerts');
@@ -113,7 +114,7 @@ const DesktopCandidateDashboard: React.FC = () => {
   const handleLogout = () => {
     sessionStorage.removeItem('fluidjobs_token');
     sessionStorage.removeItem('fluidjobs_user');
-    window.location.reload();
+    window.location.href = '/login';
   };
 
   const bgColor = themeState === 'light' ? '#F1F1F1' : '#1a1a1a';
@@ -143,7 +144,7 @@ const DesktopCandidateDashboard: React.FC = () => {
               color: newUiTab === 'alerts' ? '#2563EB' : (themeState === 'light' ? '#000000' : '#E5E7EB')
             }}
           >
-            <Bell className="w-5 h-5" />
+            <Notification set="bulk" primaryColor={newUiTab === 'alerts' ? '#2563EB' : (themeState === 'light' ? '#000000' : '#E5E7EB')} size={25} />
             <span>Alerts</span>
           </button>
           <button 
@@ -154,7 +155,7 @@ const DesktopCandidateDashboard: React.FC = () => {
               color: newUiTab === 'jobs' ? '#2563EB' : (themeState === 'light' ? '#000000' : '#E5E7EB')
             }}
           >
-            <Briefcase className="w-5 h-5" />
+            <Work set="bulk" primaryColor={newUiTab === 'jobs' ? '#2563EB' : (themeState === 'light' ? '#000000' : '#E5E7EB')} size={20} />
             <span>My Jobs</span>
           </button>
           <button 
@@ -165,7 +166,7 @@ const DesktopCandidateDashboard: React.FC = () => {
               color: newUiTab === 'resume' ? '#2563EB' : (themeState === 'light' ? '#000000' : '#E5E7EB')
             }}
           >
-            <FileText className="w-5 h-5" />
+            <Paper set="bulk" primaryColor={newUiTab === 'resume' ? '#2563EB' : (themeState === 'light' ? '#000000' : '#E5E7EB')} size={20} />
             <span>My Resume</span>
           </button>
         </nav>
@@ -271,7 +272,7 @@ const DesktopCandidateDashboard: React.FC = () => {
         ) : newUiTab === 'contact' ? (
           <DesktopContactSupport themeState={themeState} />
         ) : newUiTab === 'jobs' ? (
-          <MyJobsView themeState={themeState} initialFilter={initialFilter} onFilterChange={() => setInitialFilter('all')} />
+          <MyJobsView themeState={themeState} initialFilter={initialFilter} />
         ) : newUiTab === 'resume' ? (
           <MyResumeView themeState={themeState} />
         ) : (
@@ -373,7 +374,7 @@ const DesktopCandidateDashboard: React.FC = () => {
         </div>
       )}
 
-      <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} themeState={themeState} />
+      <MobileChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} themeState={themeState} />
     </div>
   );
 };

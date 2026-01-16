@@ -5,9 +5,12 @@ import 'react-easy-crop/react-easy-crop.css';
 import { X } from 'lucide-react';
 
 interface ImageCropperModalProps {
+  isOpen: boolean;
   imageSrc: string;
-  onCropComplete: (croppedImage: Blob) => void;
-  onCancel: () => void;
+  onClose: () => void;
+  onCropComplete: (croppedImage: Blob) => Promise<void>;
+  onCancel?: () => void; // For backward compatibility
+  themeState?: 'light' | 'dark';
 }
 
 const createImage = (url: string): Promise<HTMLImageElement> =>
@@ -45,7 +48,7 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: any, outputSize: numbe
   });
 };
 
-const ImageCropperModal: React.FC<ImageCropperModalProps> = ({ imageSrc, onCropComplete, onCancel }) => {
+const ImageCropperModal: React.FC<ImageCropperModalProps> = ({ isOpen, imageSrc, onClose, onCropComplete, onCancel, themeState = 'light' }) => {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
@@ -60,9 +63,12 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({ imageSrc, onCropC
   const handleCrop = async () => {
     if (croppedAreaPixels) {
       const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels, 800);
-      onCropComplete(croppedImage);
+      await onCropComplete(croppedImage);
+      onClose();
     }
   };
+
+  if (!isOpen) return null;
 
   const modalContent = (
     <>
@@ -73,7 +79,7 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({ imageSrc, onCropC
           opacity: 0.5,
           position: 'fixed'
         }}
-        onClick={onCancel}
+        onClick={onCancel || onClose}
       />
       <div 
         className="fixed top-1/2 left-1/2 bg-white rounded-xl p-6 shadow-2xl" 
@@ -87,7 +93,7 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({ imageSrc, onCropC
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Crop Profile Picture</h3>
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onCancel || onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -132,7 +138,7 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({ imageSrc, onCropC
 
         <div className="flex gap-3 mt-6">
           <button
-            onClick={onCancel}
+            onClick={onCancel || onClose}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             Cancel

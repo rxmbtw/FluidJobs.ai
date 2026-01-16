@@ -1,7 +1,12 @@
-import React from 'react';
-import { Calendar, BarChart, Users, MapPin, Clock, DollarSign, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, BarChart, Users, MapPin, Clock, DollarSign, Loader2, Filter } from 'lucide-react';
+import Loader from './Loader';
 
 const JobOpeningsView: React.FC = () => {
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState({ published: true, unpublished: true });
+  
   const jobOpenings = [
     {
       id: 'jpeueQhz',
@@ -33,8 +38,85 @@ const JobOpeningsView: React.FC = () => {
     }
   ];
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsInitialLoading(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.filter-dropdown')) {
+        setShowFilters(false);
+      }
+    };
+
+    if (showFilters) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showFilters]);
+
+  if (isInitialLoading) {
+    return <Loader />;
+  }
+
   return (
     <div className="p-8">
+      {/* Enhanced Filter Section */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+          <button className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">Clear All</button>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+          <div className="relative">
+            <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+              <span>All Status</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+          </div>
+          <div className="relative">
+            <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+              <span>All Domains</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+          </div>
+          <div className="relative">
+            <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+              <span>All Types</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+          </div>
+          <div className="relative">
+            <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+              <span>All Modes</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+          </div>
+          <div className="relative">
+            <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+              <span>All Ranges</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+          </div>
+          <div className="relative">
+            <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+              <span>All Time</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+          </div>
+          <div className="relative">
+            <input type="text" placeholder="Type skills..." className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900 text-sm" />
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center space-x-3 mb-8">
           <img 
             src="/images/FLuid Live Icon.png" 
@@ -45,7 +127,12 @@ const JobOpeningsView: React.FC = () => {
       </div>
 
       <div className="space-y-6">
-        {jobOpenings.map((job) => (
+        {jobOpenings
+          .filter(job => 
+            (statusFilter.published && job.status === 'Published') ||
+            (statusFilter.unpublished && job.status === 'Unpublished')
+          )
+          .map((job) => (
           <div key={job.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex justify-between items-start mb-4">
               <div>

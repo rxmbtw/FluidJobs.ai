@@ -5,8 +5,24 @@ export interface SidebarMenu {
 	icon?: React.ReactNode;
 }
 
-// Job entity
+// Job entity for services
 export interface Job {
+  id: string;
+  title: string;
+  postedDate: string;
+  jobType: string;
+  ctc: string;
+  industry: string;
+  location: string;
+  description: string;
+  skills: string[];
+  companyLogo?: string;
+  matchScore?: number;
+  applicationStatus?: string;
+}
+
+// Legacy Job entity
+export interface LegacyJob {
 	id: number;
 	title: string;
 	company: string;

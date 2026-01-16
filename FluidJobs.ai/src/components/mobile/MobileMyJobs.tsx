@@ -1,57 +1,124 @@
-import React, { useState, useEffect } from 'react';
-import { Bookmark, User } from 'lucide-react';
-import savedJobsService, { SavedJob } from '../../services/savedJobsService';
+import React, { useState, useEffect, useRef } from 'react';
+import { Bookmark, User, Info, CheckCircle } from 'lucide-react';
+import { jobsService } from '../../services/jobsService';
+import { Job } from '../../types';
 import MobileJobDetail from './MobileJobDetail';
+import MobileLoader from './MobileLoader';
 
 const MobileMyJobs: React.FC = () => {
   const [activeTab, setActiveTab] = useState('all');
-  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedJob, setSelectedJob] = useState<SavedJob | null>(null);
-  const [bookmarkedJobs, setBookmarkedJobs] = useState<Set<number>>(new Set());
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [bookmarkedJobs, setBookmarkedJobs] = useState<Set<string>>(new Set());
+  const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    fetchSavedJobs();
-  }, []);
+    fetchJobs();
+  }, [activeTab]);
 
-  const fetchSavedJobs = async () => {
+  useEffect(() => {
+    const handleJobCreated = () => {
+      if (activeTab === 'all') {
+        fetchJobs();
+      }
+    };
+    window.addEventListener('jobCreated', handleJobCreated);
+    return () => window.removeEventListener('jobCreated', handleJobCreated);
+  }, [activeTab]);
+
+  const fetchJobs = async () => {
     try {
       setLoading(true);
-      const jobs = await savedJobsService.getSavedJobs();
-      setSavedJobs(jobs);
+      let fetchedJobs: Job[] = [];
+      
+      switch (activeTab) {
+        case 'all':
+          fetchedJobs = await jobsService.getPublishedJobs();
+          break;
+        case 'saved':
+          fetchedJobs = await jobsService.getSavedJobs();
+          break;
+        case 'applied':
+          fetchedJobs = await jobsService.getAppliedJobs();
+          break;
+        case 'match':
+          fetchedJobs = await jobsService.getPublishedJobs();
+          break;
+      }
+      
+      setJobs(fetchedJobs);
+      
+      // Fetch saved and applied status
+      const savedJobsList = await jobsService.getSavedJobs();
+      setBookmarkedJobs(new Set(savedJobsList.map(j => j.id)));
+      
+      const appliedJobsList = await jobsService.getAppliedJobs();
+      setAppliedJobIds(new Set(appliedJobsList.map(j => j.id)));
     } catch (error) {
-      console.error('Error fetching saved jobs:', error);
-      // Show mock data when API fails
-      setSavedJobs([{
-        id: 1,
-        job_id: 1,
-        candidate_id: '1',
-        job_title: 'QA Engineer - Insurance',
-        company_name: 'FluidLive',
-        job_type: 'Full-Time',
-        location: 'Pune, Mumbai',
-        salary_range: 'Rs.6.0L-Rs.15.0L',
-        saved_at: '2025-10-30'
-      }]);
+      console.error('Error fetching jobs:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleBookmark = (jobId: number, e: React.MouseEvent) => {
+  const toggleBookmark = async (jobId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setBookmarkedJobs(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(jobId)) {
-        newSet.delete(jobId);
+    try {
+      const isBookmarked = bookmarkedJobs.has(jobId);
+      if (isBookmarked) {
+        await jobsService.unsaveJob(jobId);
+        setBookmarkedJobs(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(jobId);
+          return newSet;
+        });
+        // Remove from displayed jobs if on saved tab
+        if (activeTab === 'saved') {
+          setJobs(prev => prev.filter(job => job.id !== jobId));
+        }
       } else {
-        newSet.add(jobId);
+        await jobsService.saveJob(jobId);
+        setBookmarkedJobs(prev => {
+          const newSet = new Set(prev);
+          newSet.add(jobId);
+          return newSet;
+        });
+        // Add to displayed jobs if on saved tab
+        if (activeTab === 'saved') {
+          const allJobs = await jobsService.getPublishedJobs();
+          const jobToAdd = allJobs.find(job => job.id === jobId);
+          if (jobToAdd) {
+            setJobs(prev => [...prev, jobToAdd]);
+          }
+        }
       }
-      return newSet;
-    });
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+    }
   };
 
-  const renderJobCard = (job: SavedJob) => (
+  const handleApply = async (jobId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await jobsService.applyForJob(jobId);
+      setAppliedJobIds(prev => {
+        const newSet = new Set(prev);
+        newSet.add(jobId);
+        return newSet;
+      });
+      alert('Application submitted successfully!');
+      
+      if (activeTab === 'applied') {
+        fetchJobs();
+      }
+    } catch (error: any) {
+      console.error('Error applying:', error);
+      alert(error.message || 'Failed to apply');
+    }
+  };
+
+  const renderJobCard = (job: Job, isApplied: boolean = false) => (
     <div
       key={job.id}
       onClick={() => setSelectedJob(job)}
@@ -61,18 +128,20 @@ const MobileMyJobs: React.FC = () => {
         marginBottom: '16px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
         overflow: 'hidden',
-        cursor: 'pointer'
+        cursor: 'pointer',
+        minHeight: 'calc(100vh - 180px)',
+        display: 'flex',
+        flexDirection: 'column',
+        scrollSnapAlign: 'start'
       }}
     >
-      {/* Company Banner */}
       <div style={{
         margin: '20px',
         height: '145px',
-        background: '#C4C4C4',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         position: 'relative',
         borderRadius: '20px'
       }}>
-        {/* Company Logo Circle */}
         <div style={{
           position: 'absolute',
           bottom: '-35px',
@@ -87,82 +156,109 @@ const MobileMyJobs: React.FC = () => {
           justifyContent: 'center'
         }}>
           <img 
-            src="/images/FLuid Live Icon.png" 
+            src="/images/FLuid Live Icon light theme.png" 
             alt="Company Logo" 
             style={{ width: '50px', height: '50px', objectFit: 'contain' }}
           />
         </div>
-
-        {/* Apply Button & Bookmark - Positioned below banner */}
         <div style={{ 
           position: 'absolute', 
-          top: '155px', 
+          top: '170px', 
           right: '20px', 
           display: 'flex', 
-          gap: '8px',
+          gap: '4px',
           zIndex: 10
         }}>
-          <button style={{
-            background: '#4285F4',
-            color: 'white',
-            padding: '6px 12px',
-            borderRadius: '8px',
-            border: 'none',
-            fontFamily: 'Poppins',
-            fontWeight: 600,
-            fontSize: '11px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            cursor: 'pointer'
-          }}>
-            Apply Now <User style={{ width: '14px', height: '14px' }} />
-          </button>
-          <button 
-            onClick={(e) => toggleBookmark(job.id, e)}
-            style={{ 
-              background: '#FFFFFF', 
-              border: '2px solid #6E6E6E', 
-              padding: '6px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <Bookmark 
-              style={{ 
-                width: '16px', 
-                height: '16px', 
-                color: '#6E6E6E', 
-                strokeWidth: 2,
-                fill: bookmarkedJobs.has(job.id) ? '#000000' : 'none'
-              }} 
-            />
-          </button>
+          {appliedJobIds.has(job.id) ? (
+            <>
+              <button style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2px',
+                padding: '3px 6px',
+                borderRadius: '4px',
+                border: '1px solid #000000',
+                background: '#FFFFFF',
+                cursor: 'pointer'
+              }}>
+                <Info style={{ width: '10px', height: '10px', color: '#000000' }} />
+                <span style={{ fontFamily: 'Poppins', fontSize: '9px', fontWeight: 600, color: '#000000' }}>Under Review</span>
+              </button>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2px',
+                padding: '3px 6px',
+                borderRadius: '4px',
+                background: '#34A853'
+              }}>
+                <CheckCircle style={{ width: '10px', height: '10px', color: '#FFFFFF' }} />
+                <span style={{ fontFamily: 'Poppins', fontSize: '9px', fontWeight: 600, color: '#FFFFFF' }}>Applied</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <button 
+                onClick={(e) => handleApply(job.id, e)}
+                style={{
+                background: '#4285F4',
+                color: 'white',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                border: 'none',
+                fontFamily: 'Poppins',
+                fontWeight: 600,
+                fontSize: '9px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2px',
+                cursor: 'pointer'
+              }}>
+                Apply Now <User style={{ width: '10px', height: '10px' }} />
+              </button>
+              <button 
+                onClick={(e) => toggleBookmark(job.id, e)}
+                style={{ 
+                  background: '#FFFFFF', 
+                  border: '1px solid #6E6E6E', 
+                  padding: '3px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Bookmark 
+                  style={{ 
+                    width: '12px', 
+                    height: '12px', 
+                    color: '#6E6E6E', 
+                    strokeWidth: 2,
+                    fill: bookmarkedJobs.has(job.id) ? '#000000' : 'none'
+                  }} 
+                />
+              </button>
+            </>
+          )}
         </div>
       </div>
-
-      {/* Job Content */}
-      <div style={{ padding: '30px 20px 20px' }}>
-
-        {/* Job Title */}
-        <h3 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '18px', color: '#000000', marginBottom: '4px' }}>
-          {job.job_title}
-        </h3>
-        <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 500, color: '#6E6E6E', marginBottom: '16px' }}>
-          Posted on: {new Date(job.saved_at).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-        </p>
-
-        {/* Job Details Grid */}
+      <div style={{ padding: '30px 20px 20px', maxHeight: isApplied ? 'none' : 'calc(100vh - 400px)', overflowY: isApplied ? 'visible' : 'hidden' }}>
+        <div style={{ marginBottom: '16px' }}>
+          <h3 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '18px', color: '#000000', marginBottom: '4px' }}>
+            {job.title}
+          </h3>
+          <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 500, color: '#6E6E6E' }}>
+            Posted on: {job.postedDate}
+          </p>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
           <div>
             <p style={{ fontFamily: 'Poppins', fontSize: '10px', color: '#6E6E6E', fontWeight: 600, marginBottom: '2px' }}>
               JOB TYPE
             </p>
             <p style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 600, color: '#000000' }}>
-              {job.job_type}
+              {job.jobType}
             </p>
           </div>
           <div>
@@ -170,7 +266,7 @@ const MobileMyJobs: React.FC = () => {
               INDUSTRY
             </p>
             <p style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 600, color: '#000000' }}>
-              technology
+              {job.industry}
             </p>
           </div>
           <div>
@@ -178,7 +274,7 @@ const MobileMyJobs: React.FC = () => {
               CTC
             </p>
             <p style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 600, color: '#000000' }}>
-              {job.salary_range || 'Rs.6.0L-Rs.15.0L'}
+              {job.ctc}
             </p>
           </div>
           <div>
@@ -190,26 +286,36 @@ const MobileMyJobs: React.FC = () => {
             </p>
           </div>
         </div>
-
-        {/* Description */}
         <div style={{ marginBottom: '16px' }}>
           <p style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 700, color: '#000000', marginBottom: '8px' }}>
             DESCRIPTION
           </p>
-          <p style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 500, color: '#6E6E6E', lineHeight: '1.5' }}>
-            FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable, <span style={{ color: '#4285F4', fontWeight: 600 }}>more</span>
-          </p>
+          <div style={{ 
+            maxHeight: '120px', 
+            overflowY: 'auto',
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#4285F4 #f1f1f1'
+          }}>
+            <p style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 500, color: '#6E6E6E', lineHeight: '1.5', paddingRight: '8px' }}>
+              {isApplied ? job.description : `${job.description.substring(0, 150)}...`} 
+              {!isApplied && <span style={{ color: '#4285F4', fontWeight: 600 }}>more</span>}
+            </p>
+          </div>
         </div>
-
-        {/* Skills */}
         <div>
           <p style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 700, color: '#000000', marginBottom: '10px' }}>
             ELIGIBLE SKILLS
           </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-            {['Python', 'C/C++', 'Java'].map((skill) => (
+          <div style={{ 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            gap: '10px',
+            maxHeight: isApplied ? 'none' : '80px',
+            overflowY: isApplied ? 'visible' : 'hidden'
+          }} className={!isApplied ? 'skills-container' : ''}>
+            {(isApplied ? job.skills : job.skills.slice(0, 3)).map((skill, idx) => (
               <div
-                key={skill}
+                key={idx}
                 style={{
                   padding: '6px 16px',
                   borderRadius: '6px',
@@ -231,7 +337,8 @@ const MobileMyJobs: React.FC = () => {
   );
 
   if (selectedJob) {
-    return <MobileJobDetail job={selectedJob} onBack={() => setSelectedJob(null)} />;
+    const isJobApplied = appliedJobIds.has(selectedJob.id);
+    return <MobileJobDetail job={selectedJob} onBack={() => setSelectedJob(null)} isApplied={isJobApplied} />;
   }
 
   return (
@@ -281,26 +388,79 @@ const MobileMyJobs: React.FC = () => {
       </div>
 
       {/* Job Cards */}
-      <div style={{ padding: '0 16px' }}>
+      <div style={{ 
+        padding: '0 16px',
+        height: 'calc(100vh - 180px)',
+        overflowY: 'auto',
+        scrollSnapType: 'y mandatory',
+        scrollBehavior: 'smooth',
+        WebkitOverflowScrolling: 'touch'
+      }} className="job-cards-container">
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px' }}>
-            <div style={{ width: '32px', height: '32px', border: '3px solid #E5E7EB', borderTop: '3px solid #4285F4', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-          </div>
-        ) : savedJobs.length === 0 ? (
+          <MobileLoader />
+        ) : jobs.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             <Bookmark style={{ width: '60px', height: '60px', color: '#D1D5DB', margin: '0 auto 16px' }} />
             <p style={{ fontFamily: 'Poppins', fontSize: '14px', color: '#6E6E6E' }}>
-              No saved jobs yet
+              {activeTab === 'applied' ? 'No applied jobs yet' : activeTab === 'saved' ? 'No saved jobs yet' : 'No jobs available'}
             </p>
           </div>
         ) : (
-          savedJobs.map(renderJobCard)
+          jobs.map(job => renderJobCard(job, activeTab === 'applied'))
         )}
       </div>
 
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        
+        /* Custom scrollbar styles for job cards container */
+        .job-cards-container::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .job-cards-container::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 3px;
+        }
+        
+        .job-cards-container::-webkit-scrollbar-thumb {
+          background: #4285F4;
+          border-radius: 3px;
+        }
+        
+        .job-cards-container::-webkit-scrollbar-thumb:hover {
+          background: #3367d6;
+        }
+        
+        /* Custom scrollbar styles for description */
+        div::-webkit-scrollbar {
+          width: 4px;
+        }
+        
+        div::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 2px;
+        }
+        
+        div::-webkit-scrollbar-thumb {
+          background: #4285F4;
+          border-radius: 2px;
+        }
+        
+        div::-webkit-scrollbar-thumb:hover {
+          background: #3367d6;
+        }
+        
+        /* Hide scrollbars for skills section when not applied */
+        .skills-container::-webkit-scrollbar {
+          display: none;
+        }
+        
+        .skills-container {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
         }
       `}</style>
     </div>

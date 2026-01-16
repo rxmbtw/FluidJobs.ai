@@ -1,16 +1,29 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import CandidateDashboard from '../components/CandidateDashboard';
 import ClientDashboard from '../components/ClientDashboard';
 import CompanyDashboard from '../components/CompanyDashboard';
 import { useAuth } from '../contexts/AuthProvider';
+import Loader from '../components/Loader';
 
 const Dashboard = () => {
   // Use AuthContext instead of direct sessionStorage access
   const { user } = useAuth();
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsInitialLoading(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   console.log('Dashboard - Current user:', user);
   console.log('Dashboard - User role:', user?.role);
+
+  if (isInitialLoading) {
+    return <Loader />;
+  }
 
   if (!user) {
     return (

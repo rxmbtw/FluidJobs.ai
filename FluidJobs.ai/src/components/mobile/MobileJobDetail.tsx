@@ -1,12 +1,13 @@
 import React from 'react';
-import { ArrowLeft, Bookmark, User } from 'lucide-react';
+import { ArrowLeft, Bookmark, User, Info, CheckCircle } from 'lucide-react';
 
 interface JobDetailProps {
   job: any;
   onBack: () => void;
+  isApplied?: boolean;
 }
 
-const MobileJobDetail: React.FC<JobDetailProps> = ({ job, onBack }) => {
+const MobileJobDetail: React.FC<JobDetailProps> = ({ job, onBack, isApplied = false }) => {
   const [isBookmarked, setIsBookmarked] = React.useState(false);
 
   const toggleBookmark = (e: React.MouseEvent) => {
@@ -29,7 +30,7 @@ const MobileJobDetail: React.FC<JobDetailProps> = ({ job, onBack }) => {
       {/* Job Card */}
       <div style={{ background: '#FFFFFF', margin: '16px', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
         {/* Banner */}
-        <div style={{ margin: '20px', height: '145px', background: '#C4C4C4', position: 'relative', borderRadius: '20px' }}>
+        <div style={{ margin: '20px', height: '145px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', position: 'relative', borderRadius: '20px' }}>
           <div style={{
             position: 'absolute',
             bottom: '-35px',
@@ -43,57 +44,93 @@ const MobileJobDetail: React.FC<JobDetailProps> = ({ job, onBack }) => {
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            <img src="/images/FLuid Live Icon.png" alt="Company Logo" style={{ width: '50px', height: '50px', objectFit: 'contain' }} />
+            <img src="/images/FLuid Live Icon light theme.png" alt="Company Logo" style={{ width: '50px', height: '50px', objectFit: 'contain' }} />
           </div>
 
           {/* Apply & Bookmark - Positioned below banner */}
           <div style={{ 
             position: 'absolute', 
-            top: '155px', 
+            top: '165px', 
             right: '20px', 
             display: 'flex', 
-            gap: '8px',
-            zIndex: 10
+            gap: '6px',
+            zIndex: 10,
+            flexWrap: 'wrap',
+            justifyContent: 'flex-end',
+            maxWidth: '200px'
           }}>
-            <button style={{
-              background: '#4285F4',
-              color: 'white',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              border: 'none',
-              fontFamily: 'Poppins',
-              fontWeight: 600,
-              fontSize: '11px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              cursor: 'pointer'
-            }}>
-              Apply Now <User style={{ width: '14px', height: '14px' }} />
-            </button>
-            <button 
-              onClick={toggleBookmark}
-              style={{ 
-                background: '#FFFFFF', 
-                border: '2px solid #6E6E6E', 
-                padding: '6px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <Bookmark 
-                style={{ 
-                  width: '16px', 
-                  height: '16px', 
-                  color: '#6E6E6E', 
-                  strokeWidth: 2,
-                  fill: isBookmarked ? '#000000' : 'none'
-                }} 
-              />
-            </button>
+            {isApplied ? (
+              <>
+                <button style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  border: '1px solid #000000',
+                  background: '#FFFFFF',
+                  cursor: 'pointer',
+                  fontSize: '10px'
+                }}>
+                  <Info style={{ width: '12px', height: '12px', color: '#000000' }} />
+                  <span style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: '#000000' }}>Under Review</span>
+                </button>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  background: '#34A853',
+                  fontSize: '10px'
+                }}>
+                  <CheckCircle style={{ width: '12px', height: '12px', color: '#FFFFFF' }} />
+                  <span style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: '#FFFFFF' }}>Applied</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <button style={{
+                  background: '#4285F4',
+                  color: 'white',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontFamily: 'Poppins',
+                  fontWeight: 600,
+                  fontSize: '11px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer'
+                }}>
+                  Apply Now <User style={{ width: '14px', height: '14px' }} />
+                </button>
+                <button 
+                  onClick={toggleBookmark}
+                  style={{ 
+                    background: '#FFFFFF', 
+                    border: '2px solid #6E6E6E', 
+                    padding: '6px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Bookmark 
+                    style={{ 
+                      width: '16px', 
+                      height: '16px', 
+                      color: '#6E6E6E', 
+                      strokeWidth: 2,
+                      fill: isBookmarked ? '#000000' : 'none'
+                    }} 
+                  />
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -179,9 +216,16 @@ const MobileJobDetail: React.FC<JobDetailProps> = ({ job, onBack }) => {
             <p style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 700, color: '#000000', marginBottom: '10px' }}>
               DESCRIPTION
             </p>
-            <p style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 500, color: '#6E6E6E', lineHeight: '1.5' }}>
-              FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable
-            </p>
+            <div style={{ 
+              maxHeight: '120px', 
+              overflowY: 'auto',
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#4285F4 #f1f1f1'
+            }}>
+              <p style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 500, color: '#6E6E6E', lineHeight: '1.5', paddingRight: '8px' }}>
+                FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable
+              </p>
+            </div>
           </div>
 
           {/* Skills */}
@@ -189,7 +233,7 @@ const MobileJobDetail: React.FC<JobDetailProps> = ({ job, onBack }) => {
             <p style={{ fontFamily: 'Poppins', fontSize: '11px', fontWeight: 700, color: '#000000', marginBottom: '10px' }}>
               ELIGIBLE SKILLS
             </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', overflowY: 'visible' }}>
               {['Python', 'C/C++', 'Java'].map((skill) => (
                 <div key={skill} style={{
                   padding: '6px 16px',
@@ -208,6 +252,27 @@ const MobileJobDetail: React.FC<JobDetailProps> = ({ job, onBack }) => {
           </div>
         </div>
       </div>
+      
+      <style>{`
+        /* Custom scrollbar styles for description */
+        div::-webkit-scrollbar {
+          width: 4px;
+        }
+        
+        div::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 2px;
+        }
+        
+        div::-webkit-scrollbar-thumb {
+          background: #4285F4;
+          border-radius: 2px;
+        }
+        
+        div::-webkit-scrollbar-thumb:hover {
+          background: #3367d6;
+        }
+      `}</style>
     </div>
   );
 };

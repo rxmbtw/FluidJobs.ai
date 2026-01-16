@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, User, Lock } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthProvider';
 import MobileLoader from './MobileLoader';
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';

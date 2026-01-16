@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Clock, IndianRupee, User, Bookmark, ChevronDown } from 'lucide-react';
 import DashboardLayout from '../components/DashboardLayout';
 
@@ -26,44 +26,41 @@ const Jobs: React.FC = () => {
     salaryRange: [] as string[],
     experience: [] as string[]
   });
-  const [jobs, setJobs] = useState<Job[]>([
-    {
-      id: 1,
-      title: 'Senior React Developer',
-      company: 'TechCorp Inc.',
-      location: 'San Francisco, CA',
-      type: 'Full-time',
-      salary: '₹12L - ₹18L',
-      skills: ['React', 'TypeScript', 'Node.js'],
-      status: 'Just Posted',
-      saved: false,
-      description: 'We are looking for a Senior React Developer to join our dynamic team. You will be responsible for developing user interface components and implementing them following well-known React.js workflows. Experience with TypeScript and Node.js is required.'
-    },
-    {
-      id: 2,
-      title: 'Frontend Engineer',
-      company: 'StartupXYZ',
-      location: 'New York, NY',
-      type: 'Full-time',
-      salary: '₹8L - ₹12L',
-      skills: ['Vue.js', 'JavaScript', 'CSS'],
-      status: 'Actively Hiring',
-      saved: false,
-      description: 'Join our innovative startup as a Frontend Engineer. You will work on cutting-edge web applications using Vue.js and modern JavaScript. Strong CSS skills and eye for design are essential.'
-    },
-    {
-      id: 3,
-      title: 'UX Designer',
-      company: 'DesignStudio',
-      location: 'Remote',
-      type: 'Contract',
-      salary: '₹5L - ₹8L',
-      skills: ['Figma', 'Sketch', 'Prototyping'],
-      status: 'Actively Hiring',
-      saved: false,
-      description: 'We need a talented UX Designer to create intuitive and engaging user experiences. Proficiency in Figma and Sketch is required. Experience with prototyping and user research is a plus.'
-    }
-  ]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Fetch jobs from API
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/jobs-enhanced/published');
+        const data = await response.json();
+        if (data.success) {
+          const formattedJobs = data.jobs.map((job: any) => ({
+            id: job.id,
+            title: job.title,
+            company: job.company || 'FluidJobs.ai',
+            location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations || 'Remote',
+            type: job.job_type || 'Full-time',
+            salary: job.min_salary && job.max_salary ? 
+              `₹${(job.min_salary/100000).toFixed(1)}L - ₹${(job.max_salary/100000).toFixed(1)}L` : 
+              'Competitive',
+            skills: Array.isArray(job.skills) ? job.skills : [],
+            status: 'Published',
+            saved: false,
+            description: job.description || 'No description available'
+          }));
+          setJobs(formattedJobs);
+        }
+      } catch (error) {
+        console.error('Error fetching jobs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchJobs();
+  }, []);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([
   ]);
 
@@ -271,6 +268,21 @@ const Jobs: React.FC = () => {
       </button>
     </div>
   );
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-center py-16">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading jobs...</p>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

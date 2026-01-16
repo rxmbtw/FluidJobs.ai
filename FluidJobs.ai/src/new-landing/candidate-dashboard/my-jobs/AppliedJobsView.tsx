@@ -39,7 +39,7 @@ const AppliedJobsView: React.FC<AppliedJobsViewProps> = ({ themeState = 'light',
         overflow: 'hidden'
       }}>
         {/* Banner */}
-        <div style={{ width: '100%', height: '120px', background: '#C4C4C4', position: 'relative', borderRadius: '20px', marginBottom: '40px' }}>
+        <div style={{ width: '100%', height: '120px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', position: 'relative', borderRadius: '20px', marginBottom: '40px' }}>
           <div style={{
             position: 'absolute',
             bottom: '-30px',
@@ -53,7 +53,7 @@ const AppliedJobsView: React.FC<AppliedJobsViewProps> = ({ themeState = 'light',
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            <img src="/images/FLuid Live Icon.png" alt="Company Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+            <img src="/images/FLuid Live Icon light theme.png" alt="Company Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
           </div>
         </div>
 

@@ -1,5 +1,3 @@
-export { default as DesktopMyResume } from './DesktopMyResume';
-export { default as DesktopMyJobs } from './DesktopMyJobs';
 export { default as DesktopAlertsPage } from './DesktopAlertsPage';
 export { default as DesktopCandidateDashboard } from './DesktopCandidateDashboard';
 export { default as DesktopViewProfilePage } from './DesktopViewProfilePage';

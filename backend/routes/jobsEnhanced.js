@@ -6,6 +6,7 @@ const fs = require('fs');
 const { PDFParse } = require('pdf-parse');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { logAudit } = require('../middleware/auditLogger');
+const { authenticateToken } = require('./auth');
 const router = express.Router();
 
 // Create uploads directory if it doesn't exist
@@ -33,6 +34,99 @@ const upload = multer({
     }
   },
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+});
+
+// Get job counts
+router.get('/counts', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        COUNT(*) as total_jobs,
+        COUNT(CASE WHEN status = 'Published' THEN 1 END) as published_jobs,
+        COUNT(CASE WHEN status = 'active' THEN 1 END) as active_jobs,
+        COUNT(CASE WHEN status IN ('Published', 'active') THEN 1 END) as active_published_jobs,
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_jobs,
+        COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_jobs
+      FROM jobs_enhanced
+    `);
+    
+    res.json({
+      success: true,
+      counts: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error fetching job counts:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get stats (user-specific if authenticated)
+router.get('/stats', (req, res, next) => {
+  // Try to authenticate, but don't fail if no token
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (token) {
+    authenticateToken(req, res, next);
+  } else {
+    next();
+  }
+}, async (req, res) => {
+  try {
+    let query;
+    let params = [];
+    
+    if (req.user) {
+      // User is authenticated - get user-specific stats
+      const userId = req.user.adminId || req.user.id;
+      
+      query = `
+        SELECT 
+          COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') THEN j.id END) as active_jobs,
+          COUNT(DISTINCT c.candidate_id) as active_candidates,
+          COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '7 days' THEN j.id END) as jobs_last_7_days,
+          COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '14 days' AND j.created_at < NOW() - INTERVAL '7 days' THEN j.id END) as jobs_previous_7_days,
+          COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_last_7_days,
+          COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '14 days' AND c.created_at < NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_previous_7_days
+        FROM account_users au
+        JOIN accounts a ON au.account_id = a.account_id
+        LEFT JOIN jobs_enhanced j ON j.account_id = a.account_id
+        LEFT JOIN candidates c ON 1=1
+        WHERE au.user_id = $1
+      `;
+      params = [userId];
+    } else {
+      // No authentication - get global stats
+      query = `
+        SELECT 
+          COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') THEN j.id END) as active_jobs,
+          COUNT(DISTINCT c.candidate_id) as active_candidates,
+          COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '7 days' THEN j.id END) as jobs_last_7_days,
+          COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '14 days' AND j.created_at < NOW() - INTERVAL '7 days' THEN j.id END) as jobs_previous_7_days,
+          COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_last_7_days,
+          COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '14 days' AND c.created_at < NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_previous_7_days
+        FROM jobs_enhanced j
+        CROSS JOIN candidates c
+      `;
+    }
+    
+    const result = await pool.query(query, params);
+    const stats = result.rows[0];
+    
+    // Calculate changes
+    const jobs_change = parseInt(stats.jobs_last_7_days) - parseInt(stats.jobs_previous_7_days);
+    const candidates_change = parseInt(stats.candidates_last_7_days) - parseInt(stats.candidates_previous_7_days);
+    
+    res.json({
+      active_jobs: parseInt(stats.active_jobs) || 0,
+      active_candidates: parseInt(stats.active_candidates) || 0,
+      jobs_change,
+      candidates_change
+    });
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Get all jobs
@@ -130,6 +224,60 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('Error fetching jobs:', error);
     res.status(500).json({ error: 'Failed to fetch jobs' });
+  }
+});
+
+// Get published jobs for candidates
+router.get('/published', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        j.id,
+        j.title,
+        j.company,
+        j.job_type,
+        j.job_domain,
+        j.locations,
+        j.mode_of_job,
+        j.min_experience,
+        j.max_experience,
+        j.min_salary,
+        j.max_salary,
+        j.skills,
+        j.description,
+        j.selected_image,
+        j.created_at,
+        j.registration_closing_date
+      FROM jobs_enhanced j
+      WHERE j.status = 'Published' OR j.status = 'active'
+      ORDER BY j.created_at DESC;
+    `);
+    
+    res.json({ success: true, jobs: result.rows });
+  } catch (error) {
+    console.error('Error fetching published jobs:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get active jobs for admin dashboard
+router.get('/active', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        j.id,
+        j.title,
+        j.status,
+        j.created_at
+      FROM jobs_enhanced j
+      WHERE j.status = 'Published' OR j.status = 'active'
+      ORDER BY j.created_at DESC;
+    `);
+    
+    res.json({ success: true, jobs: result.rows });
+  } catch (error) {
+    console.error('Error fetching active jobs:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

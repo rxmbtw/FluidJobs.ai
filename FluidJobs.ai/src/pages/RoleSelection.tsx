@@ -49,12 +49,12 @@ const RoleSelection: React.FC = () => {
       if (selectedRole === 'Admin') {
         navigate('/main-unified-dashboard');
       } else {
-        navigate('/dashboard');
+        navigate('/candidate-dashboard');
       }
     } catch (error) {
       console.error('Failed to update role:', error);
       // Navigate anyway to avoid blocking user
-      navigate('/dashboard');
+      navigate('/candidate-dashboard');
     } finally {
       setLoading(false);
     }

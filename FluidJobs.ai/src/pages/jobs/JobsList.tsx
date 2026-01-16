@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import JobCard from '../../components/JobCard';
-import JobDetailModal from '../../components/JobDetailModal';
 
 const mockJobs = [
   {
@@ -58,9 +57,6 @@ const JobsList: React.FC = () => {
           <JobCard key={job.id} job={job} onClick={() => setSelectedJob(job)} />
         ))}
       </div>
-      {selectedJob && (
-        <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
-      )}
     </div>
   );
 };

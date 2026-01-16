@@ -5,10 +5,11 @@ import axios from 'axios';
 interface MobileChangePasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onForgotPassword: () => void;
+  onForgotPassword?: () => void;
+  themeState?: 'light' | 'dark';
 }
 
-const MobileChangePasswordModal: React.FC<MobileChangePasswordModalProps> = ({ isOpen, onClose, onForgotPassword }) => {
+const MobileChangePasswordModal: React.FC<MobileChangePasswordModalProps> = ({ isOpen, onClose, onForgotPassword, themeState = 'light' }) => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -231,23 +232,25 @@ const MobileChangePasswordModal: React.FC<MobileChangePasswordModalProps> = ({ i
           </button>
 
           {/* Forgot Password Link */}
-          <button
-            type="button"
-            onClick={onForgotPassword}
-            className="block mx-auto"
-            style={{
-              background: 'none',
-              border: 'none',
-              fontFamily: 'Poppins',
-              fontWeight: 500,
-              fontSize: '12px',
-              lineHeight: '18px',
-              color: '#4285F4',
-              cursor: 'pointer'
-            }}
-          >
-            Forgot Your Password?
-          </button>
+          {onForgotPassword && (
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              className="block mx-auto"
+              style={{
+                background: 'none',
+                border: 'none',
+                fontFamily: 'Poppins',
+                fontWeight: 500,
+                fontSize: '12px',
+                lineHeight: '18px',
+                color: '#4285F4',
+                cursor: 'pointer'
+              }}
+            >
+              Forgot Your Password?
+            </button>
+          )}
         </form>
       </div>
     </div>

@@ -3,9 +3,9 @@ import { User, Mail, Phone, Calendar, Users as UsersIcon, MapPin, Upload, Edit, 
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useProfileCompletionContext } from '../../contexts/ProfileCompletionContext';
-import LocationAutocomplete from '../../new-landing/candidate-dashboard/LocationAutocomplete';
-import PhoneInput from '../../new-landing/candidate-dashboard/PhoneInput';
-import CollegeAutocomplete from '../../new-landing/candidate-dashboard/CollegeAutocomplete';
+import LocationAutocomplete from '../LocationAutocomplete';
+import PhoneInput from '../PhoneInput';
+import CollegeAutocomplete from '../CollegeAutocomplete';
 import Notification from '../Notification';
 
 const MobileEditProfilePage: React.FC = () => {
@@ -102,7 +102,7 @@ const MobileEditProfilePage: React.FC = () => {
     if (hasChanges()) {
       setShowDiscardModal(true);
     } else {
-      navigate('/mobile-profile');
+      navigate('/candidate-dashboard', { state: { activeTab: 'profile' } });
     }
   };
 
@@ -137,7 +137,7 @@ const MobileEditProfilePage: React.FC = () => {
       
       setTimeout(() => {
         setShowSuccess(false);
-        navigate('/profile');
+        navigate('/candidate-dashboard', { state: { activeTab: 'profile' } });
       }, 2000);
     } catch (error) {
       console.error('Error saving profile:', error);
@@ -153,7 +153,7 @@ const MobileEditProfilePage: React.FC = () => {
 
   const handleDiscard = () => {
     setShowDiscardModal(false);
-    navigate('/mobile-profile');
+    navigate('/candidate-dashboard', { state: { activeTab: 'profile' } });
   };
 
   const toggleDropdown = (field: string) => {

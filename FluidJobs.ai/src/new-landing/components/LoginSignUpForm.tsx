@@ -1,17 +1,9 @@
 import React, { useState } from 'react';
-import UiverseButton from './UiverseButton';
+import { useNavigate } from 'react-router-dom';
 import RegistrationModal from './registration/RegistrationModal';
 import ForgotPasswordModal from '../../components/ForgotPasswordModal';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthProvider';
 import Loader from '../../components/Loader';
-
-// This is a global declaration to inform TypeScript about the 'google' object from the GSI script
-declare global {
-    interface Window {
-        google: any;
-    }
-}
-
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 
@@ -43,13 +35,6 @@ const EyeOffIcon: React.FC = () => (
     </svg>
 );
 
-const SocialButton: React.FC<{ icon: React.ReactNode; label: string; onClick?: () => void }> = ({ icon, label, onClick }) => (
-    <button onClick={onClick} className="btn-social w-full py-3 rounded-lg font-medium flex items-center justify-center space-x-2">
-        {icon}
-        <span>{label}</span>
-    </button>
-);
-
 const handleGoogleSignIn = (role: string = 'Candidate') => {
     window.location.href = `${API_BASE}/api/auth/google?role=${role}`;
 };
@@ -57,135 +42,6 @@ const handleGoogleSignIn = (role: string = 'Candidate') => {
 const handleLinkedInSignIn = (role: string = 'Candidate') => {
     window.location.href = `${API_BASE}/api/auth/linkedin?role=${role}`;
 };
-
-interface SignUpFormProps {
-    onOpenRegistration: () => void;
-}
-
-const SignUpForm: React.FC<SignUpFormProps> = ({ onOpenRegistration }) => {
-    const [showPassword, setShowPassword] = useState(false);
-
-    return (
-        <div className="space-y-5">
-            <div className="space-y-3">
-                <SocialButton icon={<GoogleIcon />} label="Sign up with Google" onClick={() => handleGoogleSignIn('Candidate')} />
-                <SocialButton icon={<LinkedInIcon />} label="Sign up with LinkedIn" onClick={() => handleLinkedInSignIn('Candidate')} />
-            </div>
-            <div className="flex items-center space-x-3">
-                <hr className="flex-1 border-gray-700" />
-                <span className="text-secondary text-sm">OR</span>
-                <hr className="flex-1 border-gray-700" />
-            </div>
-            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-                <div>
-                    <input type="text" id="signup-name" className="input-custom w-full p-3 rounded-lg ring-accent" placeholder="Your Name" />
-                </div>
-                <div>
-                    <input type="email" id="signup-email" className="input-custom w-full p-3 rounded-lg ring-accent" placeholder="Email address or phone number" />
-                </div>
-                <div>
-                    <div className="relative">
-                        <input
-                            type={showPassword ? 'text' : 'password'}
-                            id="signup-password"
-                            className="input-custom w-full p-3 rounded-lg ring-accent pr-10"
-                            placeholder="Password"
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-white"
-                            aria-label={showPassword ? "Hide password" : "Show password"}
-                        >
-                            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                        </button>
-                    </div>
-                </div>
-                <div className="flex justify-end">
-                    <a href="#" className="text-sm text-accent hover:underline">Forgot password?</a>
-                </div>
-                <UiverseButton as="button" type="button" className="w-full" size="medium" onClick={onOpenRegistration}>
-                    Sign Up
-                </UiverseButton>
-            </form>
-        </div>
-    );
-};
-
-const LoginForm: React.FC<{ onNavigateToDashboard?: () => void }> = ({ onNavigateToDashboard }) => {
-    const [showPassword, setShowPassword] = useState(false);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-    const { login } = useAuth();
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-        try {
-            await login(email, password);
-            if (onNavigateToDashboard) onNavigateToDashboard();
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="space-y-5">
-            {error && <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-2 rounded-lg text-sm">{error}</div>}
-            <div className="space-y-3">
-                <SocialButton icon={<GoogleIcon />} label="Login with Google" onClick={() => handleGoogleSignIn('Candidate')} />
-                <SocialButton icon={<LinkedInIcon />} label="Login with LinkedIn" onClick={() => handleLinkedInSignIn('Candidate')} />
-            </div>
-            <div className="flex items-center space-x-3">
-                <hr className="flex-1 border-gray-700" />
-                <span className="text-secondary text-sm">OR</span>
-                <hr className="flex-1 border-gray-700" />
-            </div>
-            <form className="space-y-4" onSubmit={handleSubmit}>
-                <div>
-                    <input type="email" id="login-email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-custom w-full p-3 rounded-lg ring-accent" placeholder="Email address or phone number" required />
-                </div>
-                <div>
-                    <div className="relative">
-                        <input
-                            type={showPassword ? 'text' : 'password'}
-                            id="login-password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="input-custom w-full p-3 rounded-lg ring-accent pr-10"
-                            placeholder="Password"
-                            required
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-white"
-                            aria-label={showPassword ? "Hide password" : "Show password"}
-                        >
-                            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                        </button>
-                    </div>
-                </div>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                        <input id="remember" type="checkbox" className="checkbox-accent h-4 w-4 rounded border-gray-600 bg-gray-900 ring-accent" />
-                        <label htmlFor="remember" className="ml-2 block text-sm text-secondary">Remember me</label>
-                    </div>
-                    <a href="#" className="text-sm text-accent hover:underline">Forgot password?</a>
-                </div>
-                <UiverseButton as="button" type="submit" className="w-full" size="medium" disabled={loading}>
-                    {loading ? 'Logging in...' : 'Login'}
-                </UiverseButton>
-            </form>
-        </div>
-    );
-};
-
 
 interface LoginSignUpFormProps {
     onNavigateToDashboard?: () => void;
@@ -202,21 +58,12 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
-
-    // Auto-open registration modal if URL has register=true parameter
-    React.useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('register') === 'true') {
-            setIsRegistrationOpen(true);
-        }
-    }, []);
-
-    // OAuth callback is now handled in the main App component
+    const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (loading) return; // Prevent duplicate submissions
+        if (loading) return;
         
         setError('');
         setLoading(true);
@@ -233,7 +80,7 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
                     const data = await superadminResponse.json();
                     localStorage.setItem('superadmin_token', data.token);
                     localStorage.setItem('superadmin', JSON.stringify(data.admin));
-                    window.location.href = '/superadmin/dashboard';
+                    navigate('/superadmin/dashboard');
                     return;
                 }
             } catch (superadminError) {
@@ -242,7 +89,6 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
 
             // Force admin login for specific emails
             if (email === 'meetpandya@fluid.live') {
-                console.log('🔍 Forcing admin login for meetpandya@fluid.live');
                 try {
                     const adminResponse = await fetch(`${API_BASE}/api/auth/admin/login`, {
                         method: 'POST',
@@ -252,14 +98,18 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
 
                     if (adminResponse.ok) {
                         const data = await adminResponse.json();
-                        console.log('✅ Admin login successful:', data.user);
                         sessionStorage.clear();
                         localStorage.setItem('token', data.token);
                         sessionStorage.setItem('fluidjobs_token', data.token);
                         sessionStorage.setItem('fluidjobs_user', JSON.stringify(data.user));
-                        console.log('🔄 Direct redirect to company dashboard');
-                        // Use href instead of replace to force navigation
-                        window.location.href = '/company-dashboard';
+                        
+                        // Trigger user updated event to update AuthProvider
+                        window.dispatchEvent(new Event('userUpdated'));
+                        
+                        // Small delay to ensure AuthProvider updates
+                        setTimeout(() => {
+                            navigate('/company-dashboard');
+                        }, 100);
                         return;
                     } else {
                         const errorData = await adminResponse.json().catch(() => ({ error: 'Invalid credentials' }));
@@ -271,7 +121,6 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
             }
             
             // Try admin login first for other emails
-            console.log('🔍 Attempting admin login for:', email);
             try {
                 const adminResponse = await fetch(`${API_BASE}/api/auth/admin/login`, {
                     method: 'POST',
@@ -281,15 +130,18 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
 
                 if (adminResponse.ok) {
                     const data = await adminResponse.json();
-                    console.log('✅ Admin login successful:', data.user);
                     localStorage.setItem('token', data.token);
                     sessionStorage.setItem('fluidjobs_token', data.token);
                     sessionStorage.setItem('fluidjobs_user', JSON.stringify(data.user));
-                    window.location.replace('/company-dashboard');
+                    
+                    // Trigger user updated event to update AuthProvider
+                    window.dispatchEvent(new Event('userUpdated'));
+                    
+                    // Small delay to ensure AuthProvider updates
+                    setTimeout(() => {
+                        navigate('/company-dashboard');
+                    }, 100);
                     return;
-                } else {
-                    const errorData = await adminResponse.json().catch(() => ({ error: 'Unknown error' }));
-                    console.log('❌ Admin login failed with status', adminResponse.status, ':', errorData);
                 }
             } catch (adminError) {
                 console.log('❌ Admin login network error:', adminError);
@@ -297,7 +149,8 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
 
             // If not admin, try candidate login
             await login(email, password);
-            if (onNavigateToDashboard) onNavigateToDashboard();
+            // Force navigation to candidate dashboard after successful login
+            navigate('/candidate-dashboard');
         } catch (err: any) {
             setError(err.message || 'Login failed');
         } finally {

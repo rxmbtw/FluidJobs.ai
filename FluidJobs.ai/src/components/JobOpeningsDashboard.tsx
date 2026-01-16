@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
-import { Droplet, Plus, Briefcase, Mail, Calendar, BarChart, Users, MapPin, Clock, DollarSign, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Droplet, Plus, Briefcase, Mail, Calendar, BarChart, Users, MapPin, Clock, DollarSign, Loader2, Filter } from 'lucide-react';
+import Loader from './Loader';
 
 const JobOpeningsDashboard: React.FC = () => {
   const [activeNav, setActiveNav] = useState('view_opening');
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState({ published: true, unpublished: true });
 
   const jobOpenings = [
     {
@@ -34,6 +38,34 @@ const JobOpeningsDashboard: React.FC = () => {
       status: 'Published'
     }
   ];
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsInitialLoading(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.filter-dropdown')) {
+        setShowFilters(false);
+      }
+    };
+
+    if (showFilters) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showFilters]);
+
+  if (isInitialLoading) {
+    return <Loader />;
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -96,6 +128,55 @@ const JobOpeningsDashboard: React.FC = () => {
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
         <div className="p-8">
+          {/* Enhanced Filter Section */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+              <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">Clear All</button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+              <div className="relative">
+                <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+                  <span>All Status</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+              </div>
+              <div className="relative">
+                <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+                  <span>All Domains</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+              </div>
+              <div className="relative">
+                <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+                  <span>All Types</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+              </div>
+              <div className="relative">
+                <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+                  <span>All Modes</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+              </div>
+              <div className="relative">
+                <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+                  <span>All Ranges</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+              </div>
+              <div className="relative">
+                <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+                  <span>All Time</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+              </div>
+              <div className="relative">
+                <input type="text" placeholder="Type skills..." className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 text-sm" />
+              </div>
+            </div>
+          </div>
+
           {/* Header */}
           <div className="flex items-center space-x-3 mb-8">
             <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
@@ -106,7 +187,12 @@ const JobOpeningsDashboard: React.FC = () => {
 
           {/* Job Openings List */}
           <div className="space-y-6">
-            {jobOpenings.map((job) => (
+            {jobOpenings
+              .filter(job => 
+                (statusFilter.published && job.status === 'Published') ||
+                (statusFilter.unpublished && job.status === 'Unpublished')
+              )
+              .map((job) => (
               <div key={job.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 {/* Job Header */}
                 <div className="flex justify-between items-start mb-4">

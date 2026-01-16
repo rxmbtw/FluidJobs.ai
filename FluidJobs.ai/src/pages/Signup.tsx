@@ -50,7 +50,7 @@ const Signup: React.FC = () => {
     setLoading(true);
     try {
       await signup(formData.name, formData.email, formData.password, formData.role);
-      navigate('/dashboard');
+      navigate('/candidate-dashboard');
     } catch (error: any) {
       setErrors({ submit: error?.message || 'Registration failed. Please try again.' });
     } finally {
@@ -66,7 +66,7 @@ const Signup: React.FC = () => {
       if ((result as any).isNewUser) {
         navigate('/role-selection');
       } else {
-        navigate('/dashboard');
+        navigate('/candidate-dashboard');
       }
     } catch (error: any) {
       setErrors({ submit: error?.message || 'Google signup failed. Please try again.' });

@@ -16,6 +16,9 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [savedJobs, setSavedJobs] = useState<string[]>([]);
   const [showSavePopup, setShowSavePopup] = useState(false);
+  const [currentJobIndex, setCurrentJobIndex] = useState(0);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 1000);
@@ -27,6 +30,24 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
       setActiveFilter(initialFilter);
     }
   }, [initialFilter]);
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/jobs-enhanced/published');
+        const data = await response.json();
+        if (data.success) {
+          setJobs(data.jobs);
+        }
+      } catch (error) {
+        console.error('Error fetching jobs:', error);
+      } finally {
+        setJobsLoading(false);
+      }
+    };
+    
+    fetchJobs();
+  }, []);
 
   const bgColor = themeState === 'light' ? '#F1F1F1' : '#1a1a1a';
   const cardBg = themeState === 'light' ? '#FFFFFF' : '#1F2937';
@@ -48,18 +69,6 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
     { id: 'applied', label: 'Applied Jobs' },
     { id: 'saved', label: 'Saved Jobs' }
   ];
-
-  const mockJob = {
-    id: '1',
-    title: 'QA Engineer - Insurance',
-    postedDate: '30/10/2025',
-    jobType: 'Full-Time',
-    ctc: 'Rs.6.0L-Rs.15.0L',
-    industry: 'Technology',
-    location: 'Pune, Mumbai',
-    description: 'FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable, FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable',
-    skills: ['Python', 'C/C++', 'Java']
-  };
 
   const handleToggleSave = (jobId: string) => {
     setSavedJobs(prev => {
@@ -244,7 +253,7 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
       ) : activeFilter === 'saved' ? (
         savedJobs.length > 0 ? (
           <div 
-            onClick={() => setSelectedJob(mockJob)}
+            onClick={() => setSelectedJob(jobs[0])}
             style={{
           backgroundColor: cardBg,
           borderRadius: '20px',
@@ -255,7 +264,7 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
           overflow: 'hidden',
           cursor: 'pointer'
         }}>
-          <div style={{ width: '100%', height: '120px', background: '#C4C4C4', position: 'relative', borderRadius: '20px', marginBottom: '40px' }}>
+          <div style={{ width: '100%', height: '120px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', position: 'relative', borderRadius: '20px', marginBottom: '40px' }}>
             <div style={{
               position: 'absolute',
               bottom: '-30px',
@@ -269,7 +278,7 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <img src="/images/FLuid Live Icon.png" alt="Company Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+              <img src="/images/FLuid Live Icon light theme.png" alt="Company Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
             </div>
           </div>
           <div>
@@ -282,7 +291,7 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
                 <button style={{ background: '#4285F4', color: 'white', padding: '10px 20px', borderRadius: '10px', border: 'none', fontFamily: 'Poppins', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   Apply Now <User style={{ width: '18px', height: '18px' }} />
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); handleToggleSave(mockJob.id); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                <button onClick={(e) => { e.stopPropagation(); handleToggleSave(jobs[0]?.id); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
                   <Bookmark style={{ width: '24px', height: '24px', color: '#4285F4', fill: '#4285F4' }} />
                 </button>
               </div>
@@ -327,121 +336,188 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
           </div>
         )
       ) : (
-        <div 
-          onClick={() => setSelectedJob(mockJob)}
-          style={{
-        backgroundColor: cardBg,
-        borderRadius: '20px',
-        padding: '20px',
-        maxWidth: '896px',
-        margin: '0 auto',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-        overflow: 'hidden',
-        cursor: 'pointer'
-      }}>
-        {/* Banner */}
-        <div style={{ width: '100%', height: '120px', background: '#C4C4C4', position: 'relative', borderRadius: '20px', marginBottom: '40px' }}>
-          <div style={{
-            position: 'absolute',
-            bottom: '-30px',
-            left: '24px',
-            width: '60px',
-            height: '60px',
-            borderRadius: '50%',
-            background: '#FFFFFF',
-            border: '6px solid rgba(66, 133, 244, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <img src="/images/FLuid Live Icon.png" alt="Company Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-          </div>
-        </div>
-
-        {/* Content */}
         <div>
-          {/* Title & Actions */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-            <div>
-              <h2 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '20px', color: textPrimary, marginBottom: '4px' }}>
-                QA Engineer - Insurance
-              </h2>
-              <p style={{ fontFamily: 'Poppins', fontSize: '11px', color: '#9E9E9E' }}>
-                Posted on: 30/10/2025
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <button style={{
-                background: '#4285F4',
-                color: 'white',
-                padding: '10px 20px',
-                borderRadius: '10px',
-                border: 'none',
-                fontFamily: 'Poppins',
-                fontWeight: 600,
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                cursor: 'pointer'
-              }}>
-                Apply Now <User style={{ width: '18px', height: '18px' }} />
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); handleToggleSave(mockJob.id); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                <Bookmark style={{ width: '24px', height: '24px', color: savedJobs.includes(mockJob.id) ? '#4285F4' : textPrimary, fill: savedJobs.includes(mockJob.id) ? '#4285F4' : 'none' }} />
-              </button>
-            </div>
-          </div>
-
-          {/* Job Details */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
-            <div>
-              <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>JOB TYPE</p>
-              <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>Full-Time</p>
-            </div>
-            <div>
-              <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>CTC</p>
-              <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>Rs.6.0L-Rs.15.0L</p>
-            </div>
-            <div>
-              <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>INDUSTRY</p>
-              <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>Technology</p>
-            </div>
-            <div>
-              <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>LOCATION</p>
-              <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>Pune, Mumbai</p>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div style={{ marginBottom: '16px' }}>
-            <h3 style={{ fontFamily: 'Poppins', fontSize: '12px', fontWeight: 700, color: textPrimary, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>DESCRIPTION</h3>
-            <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 500, color: textSecondary, lineHeight: '1.5' }}>
-              FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable, <span style={{ color: '#4285F4', fontWeight: 600, cursor: 'pointer' }}>more</span>
-            </p>
-          </div>
-
-          {/* Skills */}
-          <div>
-            <h3 style={{ fontFamily: 'Poppins', fontSize: '12px', fontWeight: 700, color: textPrimary, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ELIGIBLE SKILLS</h3>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              {['Python', 'C/C++', 'Java'].map((skill) => (
-                <div key={skill} style={{
-                  padding: '6px 16px',
-                  borderRadius: '6px',
-                  border: '1px solid #4285F4',
-                  fontFamily: 'Poppins',
-                  fontSize: '13px',
-                  color: '#4285F4',
-                  fontWeight: 500
+          <div 
+            id="jobsContainer"
+            style={{ 
+              height: 'calc(100vh - 280px)', 
+              overflowY: 'auto',
+              scrollSnapType: 'y mandatory',
+              scrollBehavior: 'smooth',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              padding: '0 10px'
+            }}
+            onScroll={(e) => {
+              const container = e.target as HTMLElement;
+              const scrollTop = container.scrollTop;
+              const cardHeight = 400;
+              const newIndex = Math.round(scrollTop / cardHeight);
+              setCurrentJobIndex(Math.min(newIndex, jobs.length - 1));
+            }}
+          >
+            <style>
+              {`
+                #jobsContainer::-webkit-scrollbar {
+                  display: none;
+                }
+              `}
+            </style>
+          {jobs.map((job) => (
+            <div 
+              key={job.id}
+              onClick={() => setSelectedJob(job)}
+              style={{
+                backgroundColor: cardBg,
+                borderRadius: '20px',
+                padding: '20px',
+                maxWidth: '920px',
+                margin: '0 auto 30px auto',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                overflow: 'hidden',
+                cursor: 'pointer',
+                scrollSnapAlign: 'start'
+              }}
+            >
+              {/* Banner */}
+              <div style={{ width: '100%', height: '120px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', position: 'relative', borderRadius: '20px', marginBottom: '40px' }}>
+                <div style={{
+                  position: 'absolute',
+                  bottom: '-30px',
+                  left: '24px',
+                  width: '60px',
+                  height: '60px',
+                  borderRadius: '50%',
+                  background: '#FFFFFF',
+                  border: '6px solid rgba(66, 133, 244, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}>
-                  {skill}
+                  <img src="/images/FLuid Live Icon light theme.png" alt="Company Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
                 </div>
-              ))}
+              </div>
+
+              {/* Content */}
+              <div>
+                {/* Title & Actions */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  <div>
+                    <h2 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '20px', color: textPrimary, marginBottom: '4px' }}>
+                      {job.title}
+                    </h2>
+                    <p style={{ fontFamily: 'Poppins', fontSize: '11px', color: '#9E9E9E' }}>
+                      Posted on: {job.postedDate}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <button style={{
+                      background: '#4285F4',
+                      color: 'white',
+                      padding: '10px 20px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      fontFamily: 'Poppins',
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer'
+                    }}>
+                      Apply Now <User style={{ width: '18px', height: '18px' }} />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); handleToggleSave(job.id); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                      <Bookmark style={{ width: '24px', height: '24px', color: savedJobs.includes(job.id) ? '#4285F4' : textPrimary, fill: savedJobs.includes(job.id) ? '#4285F4' : 'none' }} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Job Details */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>JOB TYPE</p>
+                    <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>{job.jobType}</p>
+                  </div>
+                  <div>
+                    <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>CTC</p>
+                    <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>{job.ctc}</p>
+                  </div>
+                  <div>
+                    <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>INDUSTRY</p>
+                    <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>{job.industry}</p>
+                  </div>
+                  <div>
+                    <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>LOCATION</p>
+                    <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>{job.location}</p>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div style={{ marginBottom: '16px' }}>
+                  <h3 style={{ fontFamily: 'Poppins', fontSize: '12px', fontWeight: 700, color: textPrimary, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>DESCRIPTION</h3>
+                  <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 500, color: textSecondary, lineHeight: '1.5' }}>
+                    {job.description} <span style={{ color: '#4285F4', fontWeight: 600, cursor: 'pointer' }}>more</span>
+                  </p>
+                </div>
+
+                {/* Skills */}
+                <div>
+                  <h3 style={{ fontFamily: 'Poppins', fontSize: '12px', fontWeight: 700, color: textPrimary, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ELIGIBLE SKILLS</h3>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    {(job.skills || []).map((skill: string) => (
+                      <div key={skill} style={{
+                        padding: '6px 16px',
+                        borderRadius: '6px',
+                        border: '1px solid #4285F4',
+                        fontFamily: 'Poppins',
+                        fontSize: '13px',
+                        color: '#4285F4',
+                        fontWeight: 500
+                      }}>
+                        {skill}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
+          ))}
+          </div>
+          
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '8px',
+            marginTop: '20px',
+            paddingBottom: '20px'
+          }}>
+            {jobs.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  const container = document.getElementById('jobsContainer');
+                  if (container) {
+                    container.scrollTo({
+                      top: index * 430,
+                      behavior: 'smooth'
+                    });
+                    setCurrentJobIndex(index);
+                  }
+                }}
+                style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  backgroundColor: currentJobIndex === index ? '#4285F4' : '#D9D9D9',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+              />
+            ))}
           </div>
         </div>
-      </div>
       )}
     </div>
   );

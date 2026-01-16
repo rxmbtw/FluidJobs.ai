@@ -192,6 +192,9 @@ const PhoneInput: React.FC<PhoneInputProps> = ({ value, onChange, className, sty
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Extract height from style prop or use default
+  const inputHeight = style?.height || '28px';
+
   const filteredCountries = countries.filter(country => 
     country.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
     country.dialCode.includes(searchQuery)
@@ -242,7 +245,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({ value, onChange, className, sty
         <div
           onClick={() => setIsOpen(!isOpen)}
           style={{
-            height: '28px',
+            height: inputHeight,
             padding: '0 6px',
             border: `1px solid ${isOpen ? '#4285F4' : 'rgba(0, 0, 0, 0.5)'}`,
             borderRight: 'none',
@@ -268,15 +271,14 @@ const PhoneInput: React.FC<PhoneInputProps> = ({ value, onChange, className, sty
         
         {isOpen && (
           <div style={{
-            position: 'absolute',
-            bottom: '100%',
-            left: 0,
+            position: 'fixed',
+            top: dropdownRef.current ? `${dropdownRef.current.getBoundingClientRect().top - 400}px` : '0px',
+            left: dropdownRef.current ? `${dropdownRef.current.getBoundingClientRect().left}px` : '0px',
             width: '320px',
             background: themeState === 'light' ? '#FFFFFF' : '#374151',
             border: '1px solid #E5E7EB',
             borderRadius: '8px',
-            marginBottom: '4px',
-            zIndex: 1000,
+            zIndex: 9999,
             maxHeight: '400px',
             overflowY: 'auto',
             boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
@@ -287,7 +289,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({ value, onChange, className, sty
               background: themeState === 'light' ? '#FFFFFF' : '#374151',
               padding: '8px',
               borderBottom: '1px solid #E5E7EB',
-              zIndex: 1
+              zIndex: 10000
             }}>
               <input
                 type="text"
@@ -345,8 +347,21 @@ const PhoneInput: React.FC<PhoneInputProps> = ({ value, onChange, className, sty
         value={phoneNumber}
         onChange={handlePhoneChange}
         placeholder="9284710996"
-        className="h-[28px] px-2 border border-[rgba(0,0,0,0.5)] rounded-r-[5px] text-[12px] font-medium font-['Poppins']"
-        style={{ ...style, borderRadius: '0 5px 5px 0', backgroundColor: style?.backgroundColor, color: style?.color, flex: 1, minWidth: 0 }}
+        style={{ 
+          height: inputHeight,
+          padding: '0 8px',
+          border: '1px solid rgba(0,0,0,0.5)',
+          borderRadius: '0 5px 5px 0',
+          fontSize: '12px',
+          fontFamily: 'Poppins',
+          fontWeight: 'medium',
+          backgroundColor: style?.backgroundColor || (themeState === 'light' ? '#FFFFFF' : '#374151'),
+          color: style?.color || (themeState === 'light' ? '#000000' : '#E5E7EB'),
+          flex: 1,
+          minWidth: 0,
+          outline: 'none',
+          borderLeft: 'none'
+        }}
       />
     </div>
   );

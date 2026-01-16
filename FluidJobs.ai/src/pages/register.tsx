@@ -23,7 +23,7 @@ const Register: React.FC = () => {
     
     try {
       await signup(name, email, password, role);
-      navigate('/dashboard');
+      navigate('/candidate-dashboard');
     } catch (err: any) {
       setError(err?.message || 'Registration failed');
     } finally {

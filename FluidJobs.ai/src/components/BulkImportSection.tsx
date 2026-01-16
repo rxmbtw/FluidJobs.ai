@@ -134,17 +134,17 @@ const BulkImportSection: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-2xl shadow-xl p-8">
+    <div className="max-w-2xl mx-auto">
+      <div className="bg-white rounded-xl shadow-lg p-4">
         {/* Header */}
-        <div className="text-center mb-8">
-          <Upload className="w-16 h-16 text-blue-500 mx-auto mb-4" />
-          <h1 className="text-3xl font-semibold text-gray-900 mb-2">Bulk Import Candidates</h1>
-          <p className="text-gray-600">Upload a CSV file to create multiple candidate profiles at once</p>
+        <div className="text-center mb-4">
+          <Upload className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+          <h1 className="text-xl font-semibold text-gray-900 mb-1">Bulk Import Candidates</h1>
+          <p className="text-sm text-gray-600">Upload a CSV file to create multiple candidate profiles at once</p>
         </div>
 
         {/* File Upload Section */}
-        <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center mb-6">
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center mb-3">
           <input
             ref={fileInputRef}
             type="file"
@@ -155,10 +155,10 @@ const BulkImportSection: React.FC = () => {
           
           {selectedFile ? (
             <div className="flex items-center justify-center space-x-3">
-              <FileText className="w-8 h-8 text-green-500" />
+              <FileText className="w-6 h-6 text-green-500" />
               <div>
-                <p className="font-medium text-gray-900">{selectedFile.name}</p>
-                <p className="text-sm text-gray-500">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                <p className="font-medium text-gray-900 text-sm">{selectedFile.name}</p>
+                <p className="text-xs text-gray-500">{(selectedFile.size / 1024).toFixed(1)} KB</p>
               </div>
               <button
                 onClick={() => {
@@ -169,20 +169,20 @@ const BulkImportSection: React.FC = () => {
                   setImportStatus('idle');
                   setStatusMessage('');
                 }}
-                className="p-2 hover:bg-red-100 rounded-full transition-colors"
+                className="p-1 hover:bg-red-100 rounded-full transition-colors"
                 title="Remove file"
               >
-                <X className="w-5 h-5 text-red-500" />
+                <X className="w-4 h-4 text-red-500" />
               </button>
             </div>
           ) : (
             <div>
-              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-lg font-medium text-gray-900 mb-2">Select CSV File</p>
-              <p className="text-gray-500 mb-4">Choose a CSV file with candidate data</p>
+              <FileText className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <p className="font-medium text-gray-900 mb-1">Select CSV File</p>
+              <p className="text-sm text-gray-500 mb-3">Choose a CSV file with candidate data</p>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
               >
                 Browse Files
               </button>
@@ -191,7 +191,7 @@ const BulkImportSection: React.FC = () => {
         </div>
 
         {/* Download Template Button */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-3">
           <button
             onClick={() => {
               const csvContent = `full_name,email,phone_number,gender,marital_status,current_company,notice_period,current_ctc,location,currently_employed,previous_company,expected_ctc,experience_years
@@ -205,17 +205,17 @@ Jane Smith,jane.smith@email.com,+91 9876543211,Female,Married,Software Inc,60 Da
               a.click();
               window.URL.revokeObjectURL(url);
             }}
-            className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors mx-auto"
+            className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors mx-auto text-sm"
           >
-            <Download className="w-5 h-5" />
+            <Download className="w-4 h-4" />
             <span>Download CSV Template</span>
           </button>
         </div>
 
         {/* CSV Format Instructions */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <h3 className="font-medium text-blue-900 mb-2">CSV Format Requirements:</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+          <h3 className="font-medium text-blue-900 mb-1 text-sm">CSV Format Requirements:</h3>
+          <ul className="text-xs text-blue-800 space-y-0.5">
             <li>• <strong>Required:</strong> full_name, email</li>
             <li>• <strong>Optional:</strong> phone_number, gender, marital_status, current_company, notice_period, current_ctc, location, currently_employed, previous_company, expected_ctc, experience_years</li>
             <li>• Email addresses must be unique</li>
@@ -226,14 +226,14 @@ Jane Smith,jane.smith@email.com,+91 9876543211,Female,Married,Software Inc,60 Da
 
         {/* Status Messages */}
         {statusMessage && (
-          <div className={`flex items-center space-x-2 p-4 rounded-lg mb-6 ${
+          <div className={`flex items-center space-x-2 p-2 rounded-lg mb-3 ${
             importStatus === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
             importStatus === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
             'bg-blue-50 text-blue-800 border border-blue-200'
           }`}>
-            {importStatus === 'success' && <CheckCircle className="w-5 h-5" />}
-            {importStatus === 'error' && <AlertCircle className="w-5 h-5" />}
-            <span>{statusMessage}</span>
+            {importStatus === 'success' && <CheckCircle className="w-4 h-4" />}
+            {importStatus === 'error' && <AlertCircle className="w-4 h-4" />}
+            <span className="text-sm">{statusMessage}</span>
           </div>
         )}
 
@@ -242,7 +242,7 @@ Jane Smith,jane.smith@email.com,+91 9876543211,Female,Married,Software Inc,60 Da
           <button
             onClick={handleStartImport}
             disabled={!selectedFile || isImporting}
-            className={`px-8 py-3 rounded-lg font-semibold transition-colors ${
+            className={`px-6 py-2 rounded-lg font-semibold transition-colors text-sm ${
               !selectedFile || isImporting
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-blue-600 text-white hover:bg-blue-700'

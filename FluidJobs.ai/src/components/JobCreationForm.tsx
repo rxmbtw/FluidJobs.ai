@@ -16,6 +16,8 @@ import { indianCities } from '../data/indianCities';
 import './JobCreationForm.css';
 import SuccessModal from './SuccessModal';
 
+import { safeClosest } from '../utils/domHelpers';
+
 interface JobCreationFormProps {
   onBack: () => void;
   isSuperAdmin?: boolean;
@@ -58,6 +60,7 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
   const [showJobTypeSuggestions, setShowJobTypeSuggestions] = useState(false);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [showModeSuggestions, setShowModeSuggestions] = useState(false);
+  const [showAccountDropdown, setShowAccountDropdown] = useState(false);
 
   const [selectedImage, setSelectedImage] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -68,6 +71,23 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
   const [isGeneratingFromPdf, setIsGeneratingFromPdf] = useState(false);
   const [isUserEditing, setIsUserEditing] = useState(false);
   const [showPdfSuccessModal, setShowPdfSuccessModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+
+  // Prevent body scroll when dropdowns are open
+  useEffect(() => {
+    const hasOpenDropdown = showDomainSuggestions || showMinExpSuggestions || showMaxExpSuggestions || 
+                           showJobTypeSuggestions || showLocationSuggestions || showModeSuggestions || showSkillsSuggestions;
+    
+    if (hasOpenDropdown) {
+      document.body.classList.add('dropdown-open');
+    } else {
+      document.body.classList.remove('dropdown-open');
+    }
+
+    return () => {
+      document.body.classList.remove('dropdown-open');
+    };
+  }, [showDomainSuggestions, showMinExpSuggestions, showMaxExpSuggestions, showJobTypeSuggestions, showLocationSuggestions, showModeSuggestions, showSkillsSuggestions]);
 
   // Fetch accounts and current admin on mount
   useEffect(() => {
@@ -137,6 +157,34 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&h=250&fit=crop',
     'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop'
   ];
+
+  // FluidJobs Image Collection - Using S3 bucket URLs
+  const fluidJobsImages = {
+    tech: [
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/ai-technology-microchip-background-digital-transformation-concept.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/annie-spratt-QckxruozjRg-unsplash.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/Custom%20Education%20&%20Training%20Systems%20with%20Python%20Development.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/Frontend%20vs%20Backend%20What%20Happens%20Behind%20a%20Website.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/nubelson-fernandes--Xqckh_XVU4-unsplash.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/patrick-tomasso-fMntI8HAAB8-unsplash.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/person-front-computer-working-html.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/representation-user-experience-interface-design.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/roman-synkevych-E-V6EMtGSUU-unsplash.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/software-development-6523979_1280.jpg'
+    ],
+    management: [
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/business-meeting-office.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/business-people-board-room-meeting.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/close-up-woman-working-laptop.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/closeup-job-applicant-giving-his-resume-job-interview-office.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/Data%20Science%20Meeting.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/hunters-race-MYbhN8KaaEc-unsplash.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/lukas-blazek-mcSDtbWXUZU-unsplash.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/portrait-smiling-woman-startup-office-coding.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/smiley-man-work-holding-laptop-posing.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/woman-retoucher-looking-camera-smiling-sitting-creative-design-media-agency.jpg'
+    ]
+  };
 
   const experienceOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
   const jobTypeOptions = ['Full-time', 'Part-time', 'Contract', 'Internship'];
@@ -226,7 +274,8 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (formRef.current && !formRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (formRef.current && !formRef.current.contains(target)) {
         setShowDomainSuggestions(false);
         setShowMinExpSuggestions(false);
         setShowMaxExpSuggestions(false);
@@ -234,11 +283,32 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
         setShowLocationSuggestions(false);
         setShowModeSuggestions(false);
         setShowSkillsSuggestions(false);
+        setShowAccountDropdown(false);
       }
     };
 
+    const handleScroll = (event: Event) => {
+      const target = event.target as Element;
+      // Don't close dropdowns if scrolling within a dropdown
+      if (safeClosest(target, '.dropdown-content')) {
+        return;
+      }
+      setShowDomainSuggestions(false);
+      setShowMinExpSuggestions(false);
+      setShowMaxExpSuggestions(false);
+      setShowJobTypeSuggestions(false);
+      setShowLocationSuggestions(false);
+      setShowModeSuggestions(false);
+      setShowSkillsSuggestions(false);
+      setShowAccountDropdown(false);
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('scroll', handleScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('scroll', handleScroll, true);
+    };
   }, []);
 
   const validateStep = (step: number): boolean => {
@@ -485,15 +555,15 @@ What We Offer:
   }, [formData.job_description, isUserEditing]);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white job-form-container">
       {/* Main Content */}
-      <div className="w-full p-8">
+      <div className="w-full p-4">
         <div className="max-w-4xl mx-auto">
-          <div ref={formRef} className="bg-white rounded-lg p-8 shadow-md">
+          <div ref={formRef} className="bg-white rounded-lg p-4 shadow-md relative">
             {/* Header */}
-            <div className="mb-6 pb-6 border-b border-gray-200">
-              <h1 className="text-xl font-bold mb-2">Job Creation Form - Step {currentStep === 0 ? 1 : currentStep + 1} of 5</h1>
-              <p className="text-gray-600">
+            <div className="mb-4 pb-4 border-b border-gray-200">
+              <h1 className="text-lg font-bold mb-1">Job Creation Form - Step {currentStep === 0 ? 1 : currentStep + 1} of 5</h1>
+              <p className="text-sm text-gray-600">
                 {currentStep === 0 && 'Select your account'}
                 {currentStep === 1 && 'Basic job information'}
                 {currentStep === 2 && 'Salary and timeline details'}
@@ -503,16 +573,16 @@ What We Offer:
               
               {/* Progress Bar */}
               {currentStep > 0 && (
-                <div className="mt-4">
-                  <div className="flex justify-between text-xs text-gray-500 mb-2">
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
                     <span>Basic Info</span>
                     <span>Compensation</span>
                     <span>Location</span>
                     <span>Skills & Description</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-gray-200 rounded-full h-1.5">
                     <div 
-                      className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300"
                       style={{ width: `${(currentStep / 4) * 100}%` }}
                     ></div>
                   </div>
@@ -521,38 +591,49 @@ What We Offer:
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-7">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Step 0: Account Selection */}
               {currentStep === 0 && (
-                <div>
+                <div className="form-step">
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     Select your account <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <select
-                      value={selectedAccount}
-                      onChange={(e) => setSelectedAccount(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none bg-white text-gray-700"
+                    <button
+                      type="button"
+                      onClick={() => setShowAccountDropdown(!showAccountDropdown)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between"
                     >
-                      <option value="">Select an account</option>
-                      {accounts.map(account => (
-                        <option key={account.account_id} value={account.account_id}>
-                          {account.account_name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <span>{selectedAccount ? accounts.find(acc => acc.account_id.toString() === selectedAccount)?.account_name || 'Select an account' : 'Select an account'}</span>
+                      <svg className={`w-5 h-5 transition-transform ${showAccountDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
-                    </div>
+                    </button>
+                    {showAccountDropdown && (
+                      <div className="dropdown-content absolute top-full mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50 transition-all duration-300 ease-in-out">
+                        <div className="p-2">
+                          {accounts.map(account => (
+                            <div
+                              key={account.account_id}
+                              onClick={() => {
+                                setSelectedAccount(account.account_id.toString());
+                                setShowAccountDropdown(false);
+                              }}
+                              className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
+                            >
+                              {account.account_name}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* Step 1: Basic Job Info */}
               {currentStep === 1 && (
-                <>
+                <div className="form-step has-dropdown space-y-6">
                   {/* Job Title */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -577,74 +658,78 @@ What We Offer:
                       Job Domain <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      <input
-                        type="text"
-                        name="job_domain"
-                        value={formData.job_domain}
-                        onChange={handleInputChange}
-                        onFocus={() => setShowDomainSuggestions(true)}
-                        placeholder="Search Domain"
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                      <button
+                        type="button"
+                        onClick={() => setShowDomainSuggestions(!showDomainSuggestions)}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 flex items-center justify-between ${
                           errors.job_domain ? 'border-red-500' : 'border-gray-300'
                         }`}
-                      />
+                      >
+                        <span>{formData.job_domain || 'Select Domain'}</span>
+                        <svg className={`w-4 h-4 transition-transform ${showDomainSuggestions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
                       {errors.job_domain && <p className="text-red-500 text-sm mt-1">{errors.job_domain}</p>}
                       {showDomainSuggestions && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                          {domainSuggestions.filter(domain => domain.toLowerCase().includes(formData.job_domain.toLowerCase())).map(domain => (
-                            <label key={domain} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={formData.job_domain === domain}
-                                onChange={() => {
+                        <div className="dropdown-content absolute top-full mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto z-50 transition-all duration-300 ease-in-out" style={{overflowY: 'auto'}}>
+                          <div className="p-2">
+                            {domainSuggestions.map(domain => (
+                              <div
+                                key={domain}
+                                onClick={() => {
                                   setFormData(prev => ({ ...prev, job_domain: domain }));
                                   setShowDomainSuggestions(false);
+                                  setErrors(prev => ({ ...prev, job_domain: '' }));
                                 }}
-                                className="mr-3 text-indigo-600"
-                              />
-                              <span className="text-sm">{domain}</span>
-                            </label>
-                          ))}
+                                className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
+                              >
+                                {domain}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
                   </div>
 
                   {/* Experience */}
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-2 gap-8">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Min Experience (in Yrs) <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <input
-                          type="text"
-                          name="min_experience"
-                          value={formData.min_experience}
-                          onChange={handleInputChange}
-                          onFocus={() => setShowMinExpSuggestions(true)}
-                          placeholder="Ex. 2 years"
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        <button
+                          type="button"
+                          onClick={() => setShowMinExpSuggestions(!showMinExpSuggestions)}
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 flex items-center justify-between ${
                             errors.min_experience ? 'border-red-500' : 'border-gray-300'
                           }`}
-                        />
+                        >
+                          <span>{formData.min_experience || 'Select Experience'}</span>
+                          <svg className={`w-4 h-4 transition-transform ${showMinExpSuggestions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
                         {errors.min_experience && <p className="text-red-500 text-sm mt-1">{errors.min_experience}</p>}
                         {showMinExpSuggestions && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                            {experienceOptions.map(exp => (
-                              <label key={exp} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={formData.min_experience === exp}
-                                  onChange={() => {
+                          <div className="dropdown-content absolute top-full mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto z-50 transition-all duration-300 ease-in-out">
+                            <div className="p-2">
+                              {experienceOptions.map(exp => (
+                                <div
+                                  key={exp}
+                                  onClick={() => {
                                     setFormData(prev => ({ ...prev, min_experience: exp }));
                                     setShowMinExpSuggestions(false);
+                                    setErrors(prev => ({ ...prev, min_experience: '' }));
                                   }}
-                                  className="mr-3 text-indigo-600"
-                                />
-                                <span className="text-sm">{exp}</span>
-                              </label>
-                            ))}
+                                  className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
+                                >
+                                  {exp}
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -654,34 +739,36 @@ What We Offer:
                         Max Experience (in Yrs) <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <input
-                          type="text"
-                          name="max_experience"
-                          value={formData.max_experience}
-                          onChange={handleInputChange}
-                          onFocus={() => setShowMaxExpSuggestions(true)}
-                          placeholder="Ex. 5 years"
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        <button
+                          type="button"
+                          onClick={() => setShowMaxExpSuggestions(!showMaxExpSuggestions)}
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 flex items-center justify-between ${
                             errors.max_experience ? 'border-red-500' : 'border-gray-300'
                           }`}
-                        />
+                        >
+                          <span>{formData.max_experience || 'Select Experience'}</span>
+                          <svg className={`w-4 h-4 transition-transform ${showMaxExpSuggestions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
                         {errors.max_experience && <p className="text-red-500 text-sm mt-1">{errors.max_experience}</p>}
                         {showMaxExpSuggestions && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                            {experienceOptions.map(exp => (
-                              <label key={exp} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={formData.max_experience === exp}
-                                  onChange={() => {
+                          <div className="dropdown-content absolute top-full mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto z-50 transition-all duration-300 ease-in-out">
+                            <div className="p-2">
+                              {experienceOptions.map(exp => (
+                                <div
+                                  key={exp}
+                                  onClick={() => {
                                     setFormData(prev => ({ ...prev, max_experience: exp }));
                                     setShowMaxExpSuggestions(false);
+                                    setErrors(prev => ({ ...prev, max_experience: '' }));
                                   }}
-                                  className="mr-3 text-indigo-600"
-                                />
-                                <span className="text-sm">{exp}</span>
-                              </label>
-                            ))}
+                                  className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
+                                >
+                                  {exp}
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -694,34 +781,36 @@ What We Offer:
                       Job Type <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      <input
-                        type="text"
-                        name="job_type"
-                        value={formData.job_type}
-                        onChange={handleInputChange}
-                        onFocus={() => setShowJobTypeSuggestions(true)}
-                        placeholder="Ex. Full time"
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                      <button
+                        type="button"
+                        onClick={() => setShowJobTypeSuggestions(!showJobTypeSuggestions)}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 flex items-center justify-between ${
                           errors.job_type ? 'border-red-500' : 'border-gray-300'
                         }`}
-                      />
+                      >
+                        <span>{formData.job_type || 'Select Job Type'}</span>
+                        <svg className={`w-4 h-4 transition-transform ${showJobTypeSuggestions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
                       {errors.job_type && <p className="text-red-500 text-sm mt-1">{errors.job_type}</p>}
                       {showJobTypeSuggestions && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                          {jobTypeOptions.map(type => (
-                            <label key={type} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={formData.job_type === type}
-                                onChange={() => {
+                        <div className="dropdown-content absolute top-full mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto z-50 transition-all duration-300 ease-in-out">
+                          <div className="p-2">
+                            {jobTypeOptions.map(type => (
+                              <div
+                                key={type}
+                                onClick={() => {
                                   setFormData(prev => ({ ...prev, job_type: type }));
                                   setShowJobTypeSuggestions(false);
+                                  setErrors(prev => ({ ...prev, job_type: '' }));
                                 }}
-                                className="mr-3 text-indigo-600"
-                              />
-                              <span className="text-sm">{type}</span>
-                            </label>
-                          ))}
+                                className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
+                              >
+                                {type}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -746,12 +835,12 @@ What We Offer:
                     </select>
                     {errors.no_of_openings && <p className="text-red-500 text-sm mt-1">{errors.no_of_openings}</p>}
                   </div>
-                </>
+                </div>
               )}
 
               {/* Step 2: Salary and Timeline */}
               {currentStep === 2 && (
-                <>
+                <div className="form-step">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Annual Salary Per annum (₹) <span className="text-red-500">*</span>
@@ -815,6 +904,7 @@ What We Offer:
                         name="registration_opening_date"
                         value={formData.registration_opening_date}
                         onChange={handleInputChange}
+                        min={new Date().toISOString().split('T')[0]}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                           errors.registration_opening_date ? 'border-red-500' : 'border-gray-300'
                         }`}
@@ -830,17 +920,18 @@ What We Offer:
                         name="registration_closing_date"
                         value={formData.registration_closing_date}
                         onChange={handleInputChange}
+                        min={formData.registration_opening_date || new Date().toISOString().split('T')[0]}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                       <p className="text-xs text-gray-500 mt-1">If not provided, defaults to 6 months from opening date</p>
                     </div>
                   </div>
-                </>
+                </div>
               )}
 
               {/* Step 3: Location and Mode */}
               {currentStep === 3 && (
-                <>
+                <div className="form-step has-dropdown">
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -890,7 +981,7 @@ What We Offer:
                         
                         {/* Suggestions dropdown */}
                         {showLocationSuggestions && locationInput && !selectedLocation && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                             {indianCities
                               .filter(city => city.toLowerCase().includes(locationInput.toLowerCase()))
                               .slice(0, 10)
@@ -902,6 +993,7 @@ What We Offer:
                                     setFormData(prev => ({ ...prev, locations: city }));
                                     setLocationInput('');
                                     setShowLocationSuggestions(false);
+                                    setErrors(prev => ({ ...prev, locations: '' }));
                                   }}
                                   className="px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm"
                                 >
@@ -917,45 +1009,47 @@ What We Offer:
                         Mode of Job <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <input
-                          type="text"
-                          name="mode_of_job"
-                          value={formData.mode_of_job}
-                          onChange={handleInputChange}
-                          onFocus={() => setShowModeSuggestions(true)}
-                          placeholder="Ex. Work From Home"
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        <button
+                          type="button"
+                          onClick={() => setShowModeSuggestions(!showModeSuggestions)}
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 flex items-center justify-between ${
                             errors.mode_of_job ? 'border-red-500' : 'border-gray-300'
                           }`}
-                        />
+                        >
+                          <span>{formData.mode_of_job || 'Select Mode'}</span>
+                          <svg className={`w-4 h-4 transition-transform ${showModeSuggestions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
                         {errors.mode_of_job && <p className="text-red-500 text-sm mt-1">{errors.mode_of_job}</p>}
                         {showModeSuggestions && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                            {modeOptions.map(mode => (
-                              <label key={mode} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={formData.mode_of_job === mode}
-                                  onChange={() => {
+                          <div className="dropdown-content absolute top-full mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto z-50 transition-all duration-300 ease-in-out">
+                            <div className="p-2">
+                              {modeOptions.map(mode => (
+                                <div
+                                  key={mode}
+                                  onClick={() => {
                                     setFormData(prev => ({ ...prev, mode_of_job: mode }));
                                     setShowModeSuggestions(false);
+                                    setErrors(prev => ({ ...prev, mode_of_job: '' }));
                                   }}
-                                  className="mr-3 text-indigo-600"
-                                />
-                                <span className="text-sm">{mode}</span>
-                              </label>
-                            ))}
+                                  className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
+                                >
+                                  {mode}
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
                     </div>
                   </div>
-                </>
+                </div>
               )}
 
               {/* Step 4: Skills and Description */}
               {currentStep === 4 && (
-                <>
+                <div className="form-step has-dropdown">
                   {/* Job Posting Image Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -992,6 +1086,18 @@ What We Offer:
                         </div>
                       ))}
                     </div>
+                    
+                    {/* More Images Button */}
+                    <div className="flex justify-end mt-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowImageModal(true)}
+                        className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        More Images
+                      </button>
+                    </div>
+                    
                     {errors.selectedImage && <p className="text-red-500 text-sm mt-1">{errors.selectedImage}</p>}
                   </div>
 
@@ -1077,13 +1183,17 @@ What We Offer:
                     
                     {/* Skills Suggestions */}
                     {showSkillsSuggestions && filteredSkills.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                         {filteredSkills.map(skill => (
                           <label key={skill} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
                             <input
                               type="checkbox"
                               checked={selectedSkills.includes(skill)}
-                              onChange={() => toggleSkill(skill)}
+                              onChange={() => {
+                                toggleSkill(skill);
+                                setSkillsInput('');
+                                setShowSkillsSuggestions(false);
+                              }}
                               className="mr-3 text-indigo-600"
                             />
                             <span className="text-sm">{skill}</span>
@@ -1094,7 +1204,7 @@ What We Offer:
                   </div>
 
                   {/* Job Description */}
-                  <div>
+                  <div className="rich-text-editor">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Job Description <span className="text-red-500">*</span>
                     </label>
@@ -1118,7 +1228,7 @@ What We Offer:
                       {/* Rich Text Editor */}
                       <div className={`border rounded-lg ${errors.job_description ? 'border-red-500' : 'border-gray-300'}`}>
                         {/* Toolbar */}
-                        <div className="flex items-center gap-2 p-2 bg-gray-50 border-b border-gray-300 rounded-t-lg flex-wrap">
+                        <div className="rich-text-toolbar flex items-center gap-2 p-2 bg-gray-50 border-b border-gray-300 rounded-t-lg flex-wrap">
                           <select
                             onChange={(e) => execEditorCommand('formatBlock', e.target.value)}
                             className="px-3 py-1 border border-gray-300 rounded text-sm"
@@ -1193,11 +1303,11 @@ What We Offer:
                       {errors.job_description && <p className="text-red-500 text-sm mt-1">{errors.job_description}</p>}
                     </div>
                   </div>
-                </>
+                </div>
               )}
 
               {/* Navigation Buttons */}
-              <div className="flex justify-between mt-8">
+              <div className="flex justify-between mt-6">
                 {currentStep === 0 ? (
                   <button
                     type="button"
@@ -1245,8 +1355,8 @@ What We Offer:
 
       {/* Success Modal */}
       {showSuccessModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-sm w-full mx-4 text-center relative">
+        <div className="modal-overlay">
+          <div className="modal-content bg-white rounded-lg p-8 max-w-sm w-full mx-4 text-center relative">
             <button
               onClick={() => {
                 setShowSuccessModal(false);
@@ -1290,6 +1400,144 @@ What We Offer:
         title="Success!"
         message="✅ Job description generated from PDF successfully!"
       />
+
+      {/* Image Selection Modal */}
+      {showImageModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto mx-4">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-semibold text-gray-900">Select Job Posting Image</h2>
+              <button
+                onClick={() => setShowImageModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Tech Images */}
+            <div className="mb-8">
+              <h3 className="text-lg font-medium text-gray-800 mb-4">Technology & Development</h3>
+              <div className="grid grid-cols-4 gap-4">
+                {fluidJobsImages.tech.map((image, index) => (
+                  <div
+                    key={`tech-${index}`}
+                    onClick={() => {
+                      setSelectedImage(image);
+                      setErrors(prev => ({ ...prev, selectedImage: '' }));
+                      setShowImageModal(false);
+                    }}
+                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
+                      selectedImage === image
+                        ? 'border-indigo-600 ring-2 ring-indigo-200'
+                        : 'border-gray-200 hover:border-indigo-300'
+                    }`}
+                  >
+                    <img
+                      src={image}
+                      alt={`Tech image ${index + 1}`}
+                      className="w-full h-32 object-cover"
+                      onError={(e) => {
+                        console.log('Image failed to load:', image);
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                    {selectedImage === image && (
+                      <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                        <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Management Images */}
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-800 mb-4">Management & Business</h3>
+              <div className="grid grid-cols-4 gap-4">
+                {fluidJobsImages.management.map((image, index) => (
+                  <div
+                    key={`mgmt-${index}`}
+                    onClick={() => {
+                      setSelectedImage(image);
+                      setErrors(prev => ({ ...prev, selectedImage: '' }));
+                      setShowImageModal(false);
+                    }}
+                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
+                      selectedImage === image
+                        ? 'border-indigo-600 ring-2 ring-indigo-200'
+                        : 'border-gray-200 hover:border-indigo-300'
+                    }`}
+                  >
+                    <img
+                      src={image}
+                      alt={`Management image ${index + 1}`}
+                      className="w-full h-32 object-cover"
+                      onError={(e) => {
+                        console.log('Image failed to load:', image);
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                    {selectedImage === image && (
+                      <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                        <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Original Images */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-800 mb-4">General Professional</h3>
+              <div className="grid grid-cols-4 gap-4">
+                {jobImages.map((image, index) => (
+                  <div
+                    key={`original-${index}`}
+                    onClick={() => {
+                      setSelectedImage(image);
+                      setErrors(prev => ({ ...prev, selectedImage: '' }));
+                      setShowImageModal(false);
+                    }}
+                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
+                      selectedImage === image
+                        ? 'border-indigo-600 ring-2 ring-indigo-200'
+                        : 'border-gray-200 hover:border-indigo-300'
+                    }`}
+                  >
+                    <img
+                      src={image}
+                      alt={`Professional image ${index + 1}`}
+                      className="w-full h-32 object-cover"
+                    />
+                    {selectedImage === image && (
+                      <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                        <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

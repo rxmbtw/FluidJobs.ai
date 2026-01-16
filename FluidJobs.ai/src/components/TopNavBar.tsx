@@ -32,7 +32,7 @@ const TopNavBar: React.FC = () => {
           if (user?.role === 'Admin') {
             navigate('/company-dashboard');
           } else {
-            navigate('/dashboard');
+            navigate('/candidate-dashboard');
           }
         }}
         title="Go to Dashboard"

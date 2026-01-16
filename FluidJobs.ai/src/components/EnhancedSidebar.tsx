@@ -144,8 +144,10 @@ const EnhancedSidebar: React.FC = () => {
       case 'HR':
       case 'Admin':
         return [
-          { name: 'Home', path: '/dashboard', icon: Home },
+          { name: 'Dashboard', path: '/company-dashboard', icon: Home },
           { name: 'Job Management', path: '/job-management', icon: Briefcase },
+          { name: 'Candidates', path: '/manage-candidates', icon: Users },
+          { name: 'Applications', path: '/applications', icon: FileText },
         ];
       
       case 'Client':
@@ -280,7 +282,9 @@ const EnhancedSidebar: React.FC = () => {
 
       {cropperImage && (
         <ImageCropperModal
+          isOpen={true}
           imageSrc={cropperImage}
+          onClose={() => setCropperImage(null)}
           onCropComplete={handleCropComplete}
           onCancel={() => setCropperImage(null)}
         />

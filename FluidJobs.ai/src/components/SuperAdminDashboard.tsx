@@ -8,12 +8,30 @@ import JobOpeningsViewNew from './JobOpeningsView_new';
 import SuccessModal from './SuccessModal';
 import ErrorModal from './ErrorModal';
 import SuperAdminDashboardView from './dashboard/SuperAdminDashboardView';
-import ThemedBulkImport from '../new-landing/company-dashboard/ThemedBulkImport';
+import ThemedBulkImport from './ThemedBulkImport';
 import { ThemeProvider } from '../new-landing/candidate-dashboard/ThemeContext';
-import SuperAdminJobCreationModal from './SuperAdminJobCreationModal';
+import PhoneInput from '../new-landing/candidate-dashboard/PhoneInput';
+import JobCreationForm from './JobCreationForm';
+import Loader from './Loader';
 
 const SuperAdminDashboard: React.FC = () => {
   const admin = JSON.parse(localStorage.getItem('superadmin') || '{}');
+  
+  // Helper function for safe DOM traversal
+  const safeClosest = (element: HTMLElement | null, selector: string): HTMLElement | null => {
+    if (!element) return null;
+    try {
+      return element.closest(selector);
+    } catch {
+      return null;
+    }
+  };
+  
+  // DEBUG: Verify this component is loading
+  console.log('🟢 SuperAdminDashboard LOADED - Version 2026-01-17 FINAL FIX');
+  console.log('🟢 Fixed: Accounts & Users in scrollable containers');
+  console.log('🟢 Fixed: All page headings are now fixed (flex-shrink-0)');
+  console.log('🟢 Fixed: Content areas use overflow-hidden + h-full overflow-auto');
   
   const [stats, setStats] = useState({ pending_approvals: 0, total_pending_approvals: 0, active_jobs: 0, active_candidates: 0, jobs_change: 0, candidates_change: 0 });
   const [pendingApprovals, setPendingApprovals] = useState<any[]>([]);
@@ -34,6 +52,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [showProfileSettingsPage, setShowProfileSettingsPage] = useState(false);
   const [approvalTab, setApprovalTab] = useState('pending');
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -45,8 +64,11 @@ const SuperAdminDashboard: React.FC = () => {
     'ai-call': null
   });
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', email: '', role: '' });
+  const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', role: '' });
   const [creatingUser, setCreatingUser] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showEditAccountModal, setShowEditAccountModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
@@ -71,15 +93,21 @@ const SuperAdminDashboard: React.FC = () => {
   const [locationSearch, setLocationSearch] = useState('');
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [isNewDropdownOpen, setIsNewDropdownOpen] = useState(false);
+  const [isCandidateSubmenuOpen, setIsCandidateSubmenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [jobSearchQuery, setJobSearchQuery] = useState('');
+  const [showJobDropdown, setShowJobDropdown] = useState(false);
   const [showJobFilters, setShowJobFilters] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const fileInputRefs = useRef<{[key: string]: HTMLInputElement | null}>({});
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteName, setInviteName] = useState('');
+  const [invitePhone, setInvitePhone] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
   const [jobs, setJobs] = useState<any[]>([]);
+  const [activeJobs, setActiveJobs] = useState<any[]>([]);
   const [sendingInvite, setSendingInvite] = useState(false);
   const [showCreateJobModal, setShowCreateJobModal] = useState(false);
   const [showAIPolicies, setShowAIPolicies] = useState(false);
@@ -101,22 +129,32 @@ const SuperAdminDashboard: React.FC = () => {
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (isNewDropdownOpen && !target.closest('.new-dropdown-container')) {
+      if (isNewDropdownOpen && !safeClosest(target, '.new-dropdown-container')) {
         setIsNewDropdownOpen(false);
+        setIsCandidateSubmenuOpen(false);
       }
-      if (isProfileOpen && !target.closest('.profile-container')) {
+      if (isProfileOpen && !safeClosest(target, '.profile-container')) {
         setIsProfileOpen(false);
+      }
+      if (isSettingsOpen && !safeClosest(target, '.settings-container')) {
+        setIsSettingsOpen(false);
+      }
+      if (showRoleDropdown && !safeClosest(target, '.role-dropdown-container')) {
+        setShowRoleDropdown(false);
+      }
+      if (showJobDropdown && !safeClosest(target, '.job-dropdown-container')) {
+        setShowJobDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isNewDropdownOpen, isProfileOpen]);
+  }, [isNewDropdownOpen, isCandidateSubmenuOpen, isProfileOpen, isSettingsOpen, showJobDropdown]);
 
   React.useEffect(() => {
-    if (showInviteModal) {
+    if (showInviteModal || activeTab === 'send-invitation') {
       fetchJobs();
     }
-  }, [showInviteModal]);
+  }, [showInviteModal, activeTab]);
 
   const fetchJobs = async () => {
     try {
@@ -129,6 +167,20 @@ const SuperAdminDashboard: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching jobs:', error);
+    }
+  };
+
+  const fetchActiveJobs = async () => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/active`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.jobs) {
+          setActiveJobs(data.jobs);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching active jobs:', error);
     }
   };
 
@@ -149,6 +201,7 @@ const SuperAdminDashboard: React.FC = () => {
         body: JSON.stringify({
           email: inviteEmail,
           name: inviteName,
+          phone: invitePhone,
           jobId: selectedJobId || null
         })
       });
@@ -167,12 +220,40 @@ const SuperAdminDashboard: React.FC = () => {
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteName('');
+      setInvitePhone('');
       setSelectedJobId('');
     } catch (error) {
       console.error('Error sending invitation:', error);
       alert('Failed to send invitation. Please try again.');
     } finally {
       setSendingInvite(false);
+    }
+  };
+
+  const checkEmailExists = async (email: string) => {
+    if (!email || !email.includes('@')) {
+      setEmailError('');
+      return;
+    }
+
+    setCheckingEmail(true);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/auth/check-username`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: email })
+      });
+      const data = await response.json();
+      
+      if (data.exists) {
+        setEmailError('This email is already registered.');
+      } else {
+        setEmailError('');
+      }
+    } catch (error) {
+      console.error('Error checking email:', error);
+    } finally {
+      setCheckingEmail(false);
     }
   };
 
@@ -201,11 +282,22 @@ const SuperAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchStats();
-    fetchPendingApprovals();
-    fetchUsers();
-    fetchPolicies();
-    fetchAccounts();
+    const initializeDashboard = async () => {
+      setIsInitialLoading(true);
+      // Add 2 second delay for initial loading
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      fetchStats();
+      fetchPendingApprovals();
+      fetchUsers();
+      fetchPolicies();
+      fetchAccounts();
+      fetchActiveJobs();
+      
+      setIsInitialLoading(false);
+    };
+    
+    initializeDashboard();
   }, []);
 
   useEffect(() => {
@@ -215,8 +307,23 @@ const SuperAdminDashboard: React.FC = () => {
       } else if (approvalTab === 'declined') {
         fetchRejectedJobs();
       }
+    } else if (activeTab === 'settings-audit-logs') {
+      // Load audit logs when the audit logs tab is opened
+      const loadAuditLogs = async () => {
+        try {
+          const [logsRes, settingsRes] = await Promise.all([
+            axios.get<{logs: any[]}>(`http://localhost:8000/api/superadmin/audit-logs?page=${auditPage}`),
+            axios.get<{retention_days: number; auto_purge_enabled: boolean}>('http://localhost:8000/api/superadmin/audit-settings')
+          ]);
+          setAuditLogs(logsRes.data.logs);
+          setAuditSettings(settingsRes.data);
+        } catch (error) {
+          console.error('Error fetching audit logs:', error);
+        }
+      };
+      loadAuditLogs();
     }
-  }, [activeTab, approvalTab]);
+  }, [activeTab, approvalTab, auditPage]);
 
   const fetchStats = async () => {
     try {
@@ -310,7 +417,7 @@ const SuperAdminDashboard: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem('superadmin_token');
     localStorage.removeItem('superadmin');
-    navigate('/superadmin/login');
+    navigate('/login');
   };
 
   const handleEditUser = (user: any) => {
@@ -389,11 +496,20 @@ const SuperAdminDashboard: React.FC = () => {
       return;
     }
     
+    if (emailError) {
+      setErrorMessage({
+        title: 'Email Error',
+        message: 'Please use a different email address'
+      });
+      setShowErrorModal(true);
+      return;
+    }
+    
     setCreatingUser(true);
     try {
       const response = await axios.post('http://localhost:8000/api/superadmin/create-user', newUser);
-      setShowCreateUserModal(false);
-      setNewUser({ name: '', email: '', role: '' });
+      setNewUser({ name: '', email: '', phone: '', role: '' });
+      setEmailError('');
       fetchUsers();
       setSuccessMessage({
         title: 'User Created!',
@@ -546,9 +662,15 @@ const SuperAdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
+      {isInitialLoading ? (
+        <div className="flex items-center justify-center h-full bg-gray-50">
+          <Loader themeState="light" />
+        </div>
+      ) : (
+        <>
       {/* Fixed Top Header */}
-      <header className="sticky top-0 z-50 bg-white shadow-md border-b border-gray-200">
+      <header className="flex-shrink-0 bg-white shadow-md border-b border-gray-200" style={{ height: '73px' }}>
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center">
             <img 
@@ -563,12 +685,15 @@ const SuperAdminDashboard: React.FC = () => {
       </header>
 
       {/* Main Container */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <div 
-          className={`fixed left-0 top-[73px] bottom-0 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-40 ${
-            isSidebarExpanded ? 'w-64' : 'w-20'
-          }`}
+          className="fixed left-0 bottom-0 bg-white border-r-0 border-t-0 flex flex-col transition-all duration-300 z-40"
+          style={{ 
+            top: '73px',
+            width: isSidebarExpanded ? '256px' : '80px',
+            boxShadow: '1px 0 3px 0 rgba(0, 0, 0, 0.1), 1px 0 2px -1px rgba(0, 0, 0, 0.1), 0 -1px 3px 0 rgba(0, 0, 0, 0.1)'
+          }}
           onMouseEnter={() => setIsSidebarExpanded(true)}
           onMouseLeave={() => setIsSidebarExpanded(false)}
         >
@@ -581,7 +706,7 @@ const SuperAdminDashboard: React.FC = () => {
               className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200"
             >
               <Plus size={20} className="flex-shrink-0" />
-              {isSidebarExpanded && <span className="text-sm font-semibold whitespace-nowrap">New</span>}
+              {isSidebarExpanded && <span className="text-sm font-semibold whitespace-nowrap">Create</span>}
             </button>
 
             {isSidebarExpanded && isNewDropdownOpen && (
@@ -589,7 +714,7 @@ const SuperAdminDashboard: React.FC = () => {
                 <nav className="p-2">
                   <button
                     onClick={() => {
-                      setShowCreateJobModal(true);
+                      setActiveTab('create-job');
                       setIsNewDropdownOpen(false);
                     }}
                     className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
@@ -599,24 +724,64 @@ const SuperAdminDashboard: React.FC = () => {
                   </button>
                   <button
                     onClick={() => {
-                      setActiveTab('bulk-import');
+                      setActiveTab('create-user-page');
                       setIsNewDropdownOpen(false);
                     }}
                     className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
                   >
-                    <Upload size={18} />
-                    <span className="text-sm font-medium">Bulk Import</span>
+                    <UserCheck size={18} />
+                    <span className="text-sm font-medium">Create User</span>
                   </button>
                   <button
                     onClick={() => {
-                      setShowInviteModal(true);
+                      setActiveTab('create-account-page');
                       setIsNewDropdownOpen(false);
                     }}
                     className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
                   >
-                    <Mail size={18} />
-                    <span className="text-sm font-medium">Send Invitation</span>
+                    <Users size={18} />
+                    <span className="text-sm font-medium">Create Account</span>
                   </button>
+                  <div className="relative">
+                    <div 
+                      onClick={() => setIsCandidateSubmenuOpen(!isCandidateSubmenuOpen)}
+                      className="w-full flex items-center justify-between p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition cursor-pointer"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <User size={18} />
+                        <span className="text-sm font-medium">Create Candidate</span>
+                      </div>
+                      <svg className={`w-4 h-4 transition-transform duration-200 ${isCandidateSubmenuOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                    {isCandidateSubmenuOpen && (
+                      <div className="mt-1 ml-6 space-y-1">
+                        <button
+                          onClick={() => {
+                            setActiveTab('send-invitation');
+                            setIsNewDropdownOpen(false);
+                            setIsCandidateSubmenuOpen(false);
+                          }}
+                          className="w-full flex items-center space-x-3 p-2 rounded-lg text-gray-600 hover:bg-blue-50 transition text-left text-sm"
+                        >
+                          <Mail size={16} />
+                          <span>Send Invite</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setActiveTab('bulk-import');
+                            setIsNewDropdownOpen(false);
+                            setIsCandidateSubmenuOpen(false);
+                          }}
+                          className="w-full flex items-center space-x-3 p-2 rounded-lg text-gray-600 hover:bg-blue-50 transition text-left text-sm"
+                        >
+                          <Upload size={16} />
+                          <span>Bulk Import</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </nav>
               </div>
             )}
@@ -646,13 +811,16 @@ const SuperAdminDashboard: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('users')}
-            className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${
-              activeTab === 'users' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+            onClick={() => setActiveTab('job-openings')}
+            className={`w-full flex items-center ${isSidebarExpanded ? 'justify-between' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${
+              activeTab === 'job-openings' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <UserCheck size={20} className="flex-shrink-0" />
-            {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">User Management</span>}
+            <div className={`flex items-center ${isSidebarExpanded ? 'space-x-3' : ''}`}>
+              <Briefcase size={20} className="flex-shrink-0" />
+              {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Jobs</span>}
+            </div>
+            {isSidebarExpanded && <span className="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded-full">{activeJobs.length}</span>}
           </button>
 
           <button
@@ -662,20 +830,7 @@ const SuperAdminDashboard: React.FC = () => {
             }`}
           >
             <Users size={20} className="flex-shrink-0" />
-            {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Manage Candidates</span>}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('job-openings')}
-            className={`w-full flex items-center ${isSidebarExpanded ? 'justify-between' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${
-              activeTab === 'job-openings' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <div className={`flex items-center ${isSidebarExpanded ? 'space-x-3' : ''}`}>
-              <Briefcase size={20} className="flex-shrink-0" />
-              {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Job Openings</span>}
-            </div>
-            {isSidebarExpanded && <span className="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded-full">{stats.active_jobs}</span>}
+            {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Candidates</span>}
           </button>
 
           <button
@@ -691,18 +846,62 @@ const SuperAdminDashboard: React.FC = () => {
             {isSidebarExpanded && <span className="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded-full">{pendingApprovals.length}</span>}
           </button>
 
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${
-              activeTab === 'settings' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Settings size={20} className="flex-shrink-0" />
-            {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Settings</span>}
-          </button>
+
         </nav>
 
-        <div className="p-4 border-t border-gray-200 overflow-visible relative profile-container">
+        {/* Settings Direct Navigation */}
+        <div className="px-4 mb-4 settings-container" style={{ borderTop: '1px solid rgba(229, 231, 235, 0.8)', paddingTop: '16px', boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.05)' }}>
+          <div className="relative">
+            <button
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg text-left transition-all ${
+                activeTab.startsWith('settings') ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Settings size={20} className="flex-shrink-0" />
+              {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Settings</span>}
+            </button>
+
+            {isSidebarExpanded && isSettingsOpen && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-2xl shadow-2xl overflow-hidden z-20 border border-gray-200">
+                <div className="p-2">
+                  <button
+                    onClick={() => {
+                      setActiveTab('settings-ai-policies');
+                      setIsSettingsOpen(false);
+                    }}
+                    className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
+                  >
+                    <FileText size={18} />
+                    <span className="text-sm font-medium">AI Policies</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab('settings-audit-logs');
+                      setIsSettingsOpen(false);
+                    }}
+                    className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
+                  >
+                    <FileText size={18} />
+                    <span className="text-sm font-medium">Audit Logs</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab('users');
+                      setIsSettingsOpen(false);
+                    }}
+                    className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
+                  >
+                    <UserCheck size={18} />
+                    <span className="text-sm font-medium">User Management</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-4 overflow-visible relative profile-container" style={{ borderTop: '1px solid rgba(229, 231, 235, 0.8)', boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.05)' }}>
           <div 
             className={`flex items-center ${isSidebarExpanded ? 'justify-between' : 'justify-center'} cursor-pointer hover:opacity-90 transition`}
             onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -740,6 +939,16 @@ const SuperAdminDashboard: React.FC = () => {
                   <span className="font-semibold text-blue-600">Email: </span>
                   <span className="text-gray-900">{admin.email || 'admin@fluidjobs.ai'}</span>
                 </div>
+                <button
+                  onClick={() => {
+                    setShowProfileSettingsPage(true);
+                    setActiveTab('profile-settings');
+                    setIsProfileOpen(false);
+                  }}
+                  className="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition"
+                >
+                  Edit Profile
+                </button>
               </div>
             </div>
           )}
@@ -747,49 +956,71 @@ const SuperAdminDashboard: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className={`flex-1 overflow-auto transition-all duration-300 ${
+        <div className={`flex-1 transition-all duration-300 ${
           isSidebarExpanded ? 'ml-64' : 'ml-20'
-        }`}>
-        <div className="p-8">
+        } flex flex-col overflow-hidden`}>
           {activeTab === 'dashboard' && (
-            <SuperAdminDashboardView onTabChange={setActiveTab} />
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
+                <h1 className="text-3xl font-semibold text-gray-900">Super Admin Dashboard</h1>
+                <p className="text-gray-600">Welcome back {admin.name || 'Super Admin'}!</p>
+              </div>
+              <div className="flex-1 overflow-auto">
+                <SuperAdminDashboardView onTabChange={setActiveTab} />
+              </div>
+            </div>
           )}
 
           {activeTab === 'bulk-import' && (
-            <ThemeProvider>
-              <ThemedBulkImport />
-            </ThemeProvider>
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
+                <h1 className="text-3xl font-semibold text-gray-900">Bulk Import Candidates</h1>
+                <p className="text-gray-600">Import multiple candidates at once using CSV or Excel files</p>
+              </div>
+              <div className="flex-1 overflow-auto px-8 py-6">
+                <ThemeProvider>
+                  <ThemedBulkImport />
+                </ThemeProvider>
+              </div>
+            </div>
           )}
 
           {activeTab === 'accounts' && (
-            <>
-              <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
+                <div className="flex justify-between items-center">
                 <div>
                   <h1 className="text-3xl font-semibold text-gray-900">Accounts</h1>
                   <p className="text-gray-600">Manage client accounts and their dedicated hiring managers.</p>
                 </div>
                 <button 
-                  onClick={() => setShowCreateAccountModal(true)}
+                  onClick={() => setActiveTab('create-account-page')}
                   className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
                 >
                   <Plus size={20} />
                   <span>Create New Account</span>
                 </button>
+                </div>
               </div>
-
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Account Name</th>
-                      <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Assigned Users</th>
-                      <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Status</th>
-                      <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Active Jobs</th>
-                      <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Date Created</th>
-                      <th className="py-4 px-4"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="flex-1 overflow-auto px-8 py-6">
+                <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
+                  <div className="flex-shrink-0 border-b border-gray-200">
+                    <table className="w-full">
+                      <thead>
+                        <tr>
+                          <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Account Name</th>
+                          <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Assigned Users</th>
+                          <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Status</th>
+                          <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Active Jobs</th>
+                          <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Date Created</th>
+                          <th className="py-4 px-4"></th>
+                        </tr>
+                      </thead>
+                    </table>
+                  </div>
+                  <div className="flex-1 overflow-auto">
+                    <table className="w-full">
+                      <tbody>
                     {accounts.map((account) => (
                       <tr key={account.id} className="border-b border-gray-100 hover:bg-gray-50">
                         <td className="py-4 px-4 text-sm text-gray-900 font-medium">{account.name}</td>
@@ -833,31 +1064,31 @@ const SuperAdminDashboard: React.FC = () => {
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
+                    </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-            </>
+            </div>
           )}
 
           {activeTab === 'users' && (
-            <>
-              {/* Header */}
-              <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
+                <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h1 className="text-3xl font-semibold text-gray-900">User Management</h1>
+                  <h1 className="text-3xl font-semibold text-gray-900">Users</h1>
                   <p className="text-gray-600">Manage user accounts and their roles.</p>
                 </div>
                 <button 
-                  onClick={() => setShowCreateUserModal(true)}
+                  onClick={() => setActiveTab('create-user-page')}
                   className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
                 >
                   <Plus size={20} />
                   <span>Create New User</span>
                 </button>
-              </div>
-
-              {/* Search Bar */}
-              <div className="mb-6">
+                </div>
+                {/* Search Bar */}
                 <div className="relative">
                   <Search className="absolute left-4 top-3.5 text-gray-400" size={20} />
                   <input
@@ -874,25 +1105,30 @@ const SuperAdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Users Table */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">
-                        <div className="flex items-center space-x-1">
-                          <span>Name</span>
-                          <ArrowUpDown size={14} className="text-gray-400" />
-                        </div>
-                      </th>
-                      <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Email</th>
-                      <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Role</th>
-                      <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Date Joined</th>
-                      <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Status</th>
-                      <th className="py-4 px-4"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="flex-1 overflow-hidden px-8 py-6">
+                <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
+                  <div className="flex-shrink-0 border-b border-gray-200">
+                    <table className="w-full">
+                      <thead>
+                        <tr>
+                          <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">
+                            <div className="flex items-center space-x-1">
+                              <span>Name</span>
+                              <ArrowUpDown size={14} className="text-gray-400" />
+                            </div>
+                          </th>
+                          <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Email</th>
+                          <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Role</th>
+                          <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Date Joined</th>
+                          <th className="text-left py-4 px-4 text-sm font-medium text-gray-900">Status</th>
+                          <th className="py-4 px-4"></th>
+                        </tr>
+                      </thead>
+                    </table>
+                  </div>
+                  <div className="flex-1 overflow-auto">
+                    <table className="w-full">
+                      <tbody>
                     {users.map((user) => (
                       <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
                         <td className="py-4 px-4 text-sm text-gray-900">{user.name}</td>
@@ -922,82 +1158,70 @@ const SuperAdminDashboard: React.FC = () => {
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
-
-                {/* Pagination */}
-                <div className="flex items-center justify-between mt-6">
-                  <p className="text-sm text-gray-600">Showing 1 to {users.length} of {users.length} results</p>
-                  <div className="flex space-x-2">
-                    <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                      <ChevronLeft size={20} className="text-gray-600" />
-                    </button>
-                    <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                      <ChevronRight size={20} className="text-gray-600" />
-                    </button>
+                    </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
           {activeTab === 'candidates' && (
-            <>
-              <div className="mb-6">
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
                 <h1 className="text-3xl font-semibold text-gray-900">Manage Candidates</h1>
                 <p className="text-gray-600">View and manage all candidates across all accounts.</p>
               </div>
-              <div className="h-[calc(100vh-12rem)] overflow-hidden">
+              <div className="flex-1 overflow-hidden">
                 <ManageCandidatesWrapper isSuperAdmin={true} />
               </div>
-            </>
+            </div>
           )}
 
           {activeTab === 'job-openings' && (
-            <>
-              {/* Header */}
-              <div className="flex justify-between items-center mb-6">
-                <div>
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
+                <div className="mb-4">
                   <h1 className="text-3xl font-semibold text-gray-900">Job Openings</h1>
-                  <p className="text-gray-600">View and Manage all the openings created under your organization</p>
+                  <p className="text-gray-600">View and Manage all job openings</p>
+                </div>
+
+                {/* Search Bar and Filter */}
+                <div className="flex items-center justify-between">
+                  <div className="relative" style={{ width: '400px' }}>
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                    <input
+                      type="text"
+                      placeholder="Search job openings..."
+                      value={jobSearchQuery}
+                      onChange={(e) => setJobSearchQuery(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+                  <button 
+                    onClick={() => setShowJobFilters(!showJobFilters)}
+                    className="p-3 hover:bg-gray-100 rounded-lg"
+                  >
+                    <Filter size={20} className="text-gray-600" />
+                  </button>
                 </div>
               </div>
 
-              {/* Search Bar and Filter */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="relative" style={{ width: '400px' }}>
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                  <input
-                    type="text"
-                    placeholder="Search job openings..."
-                    value={jobSearchQuery}
-                    onChange={(e) => setJobSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <button 
-                  onClick={() => setShowJobFilters(!showJobFilters)}
-                  className="p-3 hover:bg-gray-100 rounded-lg"
-                >
-                  <Filter size={20} className="text-gray-600" />
-                </button>
+              <div className="flex-1 overflow-auto px-8 py-6">
+                <JobOpeningsViewNew hideHeader={true} searchQuery={jobSearchQuery} showFilters={showJobFilters} />
               </div>
-
-              {/* Job Cards */}
-              <JobOpeningsViewNew hideHeader={true} searchQuery={jobSearchQuery} showFilters={showJobFilters} />
-            </>
+            </div>
           )}
 
           {activeTab === 'approvals' && (
-            <>
-              {/* Header */}
-              <div className="mb-6">
-                <h1 className="text-3xl font-semibold text-gray-900">Approvals</h1>
-                <p className="text-gray-600">Manage all the approvals of users</p>
-              </div>
-
-              {/* Tab Navigation */}
-              <div className="flex space-x-3 mb-6">
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white border-b border-gray-200 shadow-sm">
+                <div className="px-8 py-6">
+                  <h1 className="text-3xl font-semibold text-gray-900">Approvals</h1>
+                  <p className="text-gray-600">Manage all the approvals of users</p>
+                </div>
+                {/* Tab Navigation */}
+                <div className="flex space-x-3 px-8 pb-4">
                 <button
                   onClick={() => setApprovalTab('pending')}
                   className={`px-8 py-3 rounded-full text-sm font-medium transition ${
@@ -1029,9 +1253,10 @@ const SuperAdminDashboard: React.FC = () => {
                   Declined
                 </button>
               </div>
-
+              </div>
+              <div className="flex-1 overflow-auto px-8 py-6">
               {/* Content Area */}
-              <div className="bg-white rounded-lg border border-gray-200 p-8 min-h-[500px]">
+              <div className="bg-white rounded-lg border border-gray-200 p-8 h-full overflow-auto">
                 {approvalTab === 'pending' && (
                   <div className="space-y-6">
                     {/* Job Creation Approvals */}
@@ -1203,38 +1428,239 @@ const SuperAdminDashboard: React.FC = () => {
                   </div>
                 )}
               </div>
-            </>
+              </div>
+            </div>
           )}
 
-          {activeTab === 'settings' && (
-            <>
-              {/* Header */}
-              <div className="mb-6">
-                <h1 className="text-3xl font-semibold text-gray-900">Settings</h1>
-                <p className="text-gray-600">Manage system settings and AI policies</p>
+          {activeTab === 'settings-ai-policies' && (
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
+                <h1 className="text-3xl font-semibold text-gray-900">AI Policies</h1>
+                <p className="text-gray-600">Manage AI policy documents and configurations</p>
               </div>
+              <div className="flex-1 overflow-auto px-8 py-6">
+                <div className="space-y-4 h-full overflow-auto">
+                  {/* Restrict Candidate Policy */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-base font-semibold text-gray-900">Restrict Candidate Policy</h4>
+                        {policies['restrict-candidate'] && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            {policies['restrict-candidate'].name} - Uploaded on {policies['restrict-candidate'].uploadedAt}
+                          </p>
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => triggerFileUpload('restrict-candidate')}
+                        disabled={uploadingPolicy === 'restrict-candidate'}
+                        className="text-blue-600 hover:text-blue-700 font-medium flex items-center space-x-1 disabled:opacity-50"
+                      >
+                        <Upload size={18} />
+                        <span>{uploadingPolicy === 'restrict-candidate' ? 'Uploading...' : 'Upload'}</span>
+                      </button>
+                      <input
+                        ref={el => { fileInputRefs.current['restrict-candidate'] = el; }}
+                        type="file"
+                        accept=".pdf,.txt"
+                        onChange={(e) => handleFileChange('restrict-candidate', e)}
+                        className="hidden"
+                      />
+                    </div>
+                  </div>
 
-              {/* Settings Accordion */}
-              <div className="space-y-4">
-                {/* Profile Settings Accordion */}
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <button
-                    onClick={() => setShowProfileSettings(!showProfileSettings)}
-                    className="w-full flex items-center justify-between p-6 hover:bg-gray-50 transition"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <User size={24} className="text-blue-600" />
-                      <div className="text-left">
-                        <h3 className="text-lg font-semibold text-gray-900">Profile Settings</h3>
-                        <p className="text-sm text-gray-600">Update your personal information</p>
+                  {/* AI Interviewer Policy */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-base font-semibold text-gray-900">AI Interviewer Policy</h4>
+                        {policies['ai-interviewer'] && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            {policies['ai-interviewer'].name} - Uploaded on {policies['ai-interviewer'].uploadedAt}
+                          </p>
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => triggerFileUpload('ai-interviewer')}
+                        disabled={uploadingPolicy === 'ai-interviewer'}
+                        className="text-blue-600 hover:text-blue-700 font-medium flex items-center space-x-1 disabled:opacity-50"
+                      >
+                        <Upload size={18} />
+                        <span>{uploadingPolicy === 'ai-interviewer' ? 'Uploading...' : 'Upload'}</span>
+                      </button>
+                      <input
+                        ref={el => { fileInputRefs.current['ai-interviewer'] = el; }}
+                        type="file"
+                        accept=".pdf,.txt"
+                        onChange={(e) => handleFileChange('ai-interviewer', e)}
+                        className="hidden"
+                      />
+                    </div>
+                  </div>
+
+                  {/* AI Call Policy */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-base font-semibold text-gray-900">AI Call Policy</h4>
+                        {policies['ai-call'] && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            {policies['ai-call'].name} - Uploaded on {policies['ai-call'].uploadedAt}
+                          </p>
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => triggerFileUpload('ai-call')}
+                        disabled={uploadingPolicy === 'ai-call'}
+                        className="text-blue-600 hover:text-blue-700 font-medium flex items-center space-x-1 disabled:opacity-50"
+                      >
+                        <Upload size={18} />
+                        <span>{uploadingPolicy === 'ai-call' ? 'Uploading...' : 'Upload'}</span>
+                      </button>
+                      <input
+                        ref={el => { fileInputRefs.current['ai-call'] = el; }}
+                        type="file"
+                        accept=".pdf,.txt"
+                        onChange={(e) => handleFileChange('ai-call', e)}
+                        className="hidden"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings-audit-logs' && (
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
+                <h1 className="text-3xl font-semibold text-gray-900">Audit Logs</h1>
+                <p className="text-gray-600">View system activity and user actions</p>
+              </div>
+              <div className="flex-1 overflow-auto px-8 py-6">
+                <div className="bg-white rounded-lg border border-gray-200 p-6 h-full overflow-auto">
+                  {/* Search and Export */}
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="relative flex-1 mr-4">
+                      <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+                      <input
+                        type="text"
+                        placeholder="Search logs..."
+                        value={auditSearch}
+                        onChange={(e) => setAuditSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const response = await axios.get<{logs: any[]}>('http://localhost:8000/api/superadmin/audit-logs/export');
+                          const csv = response.data.logs.map((log: any) => 
+                            `${log.created_at},${log.user_name},${log.action_type},${log.action_description}`
+                          ).join('\n');
+                          const blob = new Blob([`Timestamp,User,Action,Description\n${csv}`], { type: 'text/csv' });
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `audit-logs-${new Date().toISOString()}.csv`;
+                          a.click();
+                        } catch (error) {
+                          console.error('Error exporting logs:', error);
+                        }
+                      }}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      <Download size={18} />
+                      <span>Export</span>
+                    </button>
+                  </div>
+
+                  {/* Logs Table */}
+                  <div className="bg-gray-50 rounded-lg overflow-hidden mb-4">
+                    <table className="w-full">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Timestamp</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">User</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Action</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {auditLogs.filter(log => 
+                          !auditSearch || 
+                          log.user_name?.toLowerCase().includes(auditSearch.toLowerCase()) ||
+                          log.action_description?.toLowerCase().includes(auditSearch.toLowerCase())
+                        ).slice(0, 10).map((log) => (
+                          <tr key={log.id} className="border-t border-gray-200">
+                            <td className="py-3 px-4 text-sm text-gray-600">
+                              {new Date(log.created_at).toLocaleString()}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-900">{log.user_name || 'System'}</td>
+                            <td className="py-3 px-4 text-sm">
+                              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                                {log.action_type}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{log.action_description}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Retention Settings */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Log Retention Settings</h4>
+                    <div className="flex items-center space-x-4">
+                      <div className="flex-1">
+                        <label className="block text-xs text-gray-600 mb-1">Retention Period (days)</label>
+                        <input
+                          type="number"
+                          value={auditSettings.retention_days}
+                          onChange={(e) => setAuditSettings({...auditSettings, retention_days: parseInt(e.target.value)})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={async () => {
+                            try {
+                              await axios.put('http://localhost:8000/api/superadmin/audit-settings', auditSettings);
+                              setSuccessMessage({ title: 'Success!', message: 'Settings updated' });
+                              setShowSuccessModal(true);
+                            } catch (error) {
+                              console.error('Error updating settings:', error);
+                            }
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setShowPurgeConfirmModal(true)}
+                          className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 text-sm flex items-center space-x-1"
+                        >
+                          <Trash2 size={16} />
+                          <span>Purge</span>
+                        </button>
                       </div>
                     </div>
-                    <ChevronRight size={20} className={`text-gray-400 transition-transform ${showProfileSettings ? 'rotate-90' : ''}`} />
-                  </button>
-                  
-                  {showProfileSettings && (
-                    <div className="border-t border-gray-200 p-6">
-                      <div className="space-y-6">
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'profile-settings' && (
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
+                <h1 className="text-3xl font-semibold text-gray-900">Profile Settings</h1>
+                <p className="text-gray-600">Update your personal information</p>
+              </div>
+              <div className="flex-1 overflow-auto px-8 py-6">
+                <div className="bg-white rounded-lg border border-gray-200 p-6 h-full overflow-auto">
+                  <div className="space-y-6">
                         {/* Profile Picture */}
                         <div className="flex items-center space-x-6">
                           <div className="relative">
@@ -1450,9 +1876,442 @@ const SuperAdminDashboard: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+            </div>
+          )}
 
+          {activeTab === 'create-job' && (
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
+                <h1 className="text-3xl font-semibold text-gray-900">Create New Job</h1>
+                <p className="text-gray-600">Create and publish a new job opening</p>
+              </div>
+              <div className="flex-1 overflow-auto px-8 py-6">
+                <JobCreationForm 
+                  onBack={() => setActiveTab('dashboard')} 
+                  isSuperAdmin={true} 
+                />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'create-user-page' && (
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
+                <h1 className="text-3xl font-semibold text-gray-900">Create New User</h1>
+                <p className="text-gray-600">Add a new user to the system</p>
+              </div>
+              <div className="flex-1 overflow-auto px-8 py-6">
+                <div className="bg-white rounded-lg border border-gray-200 p-6 max-w-2xl mx-auto">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                      <input
+                        type="email"
+                        value={newUser.email}
+                        onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                        onBlur={(e) => checkEmailExists(e.target.value)}
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          emailError ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter email address"
+                      />
+                      {checkingEmail && <p className="text-xs text-blue-500 mt-1">Checking email...</p>}
+                      {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+                      <input
+                        type="text"
+                        value={newUser.name}
+                        onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter full name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                      <div className="w-full">
+                        <PhoneInput
+                          value={newUser.phone}
+                          onChange={(value) => setNewUser({...newUser, phone: value})}
+                          className="w-full"
+                          style={{ 
+                            backgroundColor: '#FFFFFF', 
+                            color: '#000000', 
+                            height: '48px'
+                          }}
+                          themeState="light"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Role *</label>
+                      <div className="relative role-dropdown-container">
+                        <button
+                          type="button"
+                          onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between"
+                        >
+                          <span>{newUser.role || 'Select role'}</span>
+                          <svg className={`w-5 h-5 transition-transform ${showRoleDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {showRoleDropdown && (
+                          <div className="absolute bottom-full mb-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                            <div className="p-2">
+                              {['SuperAdmin', 'Admin', 'Recruiter', 'HR', 'Sales'].map(role => (
+                                <div
+                                  key={role}
+                                  onClick={() => {
+                                    setNewUser({...newUser, role});
+                                    setShowRoleDropdown(false);
+                                  }}
+                                  className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
+                                >
+                                  {role}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex space-x-3 pt-4">
+                      <button
+                        onClick={() => {
+                          setActiveTab('dashboard');
+                          setNewUser({ name: '', email: '', phone: '', role: '' });
+                          setEmailError('');
+                        }}
+                        className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={async () => {
+                          await handleCreateUser();
+                          setActiveTab('users');
+                        }}
+                        disabled={creatingUser || !newUser.name || !newUser.email || !newUser.role}
+                        className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {creatingUser ? 'Creating...' : 'Create User'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'create-account-page' && (
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
+                <h1 className="text-3xl font-semibold text-gray-900">Create New Account</h1>
+                <p className="text-gray-600">Add a new client account to the system</p>
+              </div>
+              <div className="flex-1 overflow-auto px-8 py-6">
+                <div className="bg-white rounded-lg border border-gray-200 p-6 max-w-2xl mx-auto">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Account Name *</label>
+                      <input
+                        type="text"
+                        value={newAccount.name}
+                        onChange={(e) => setNewAccount({...newAccount, name: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter account name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                      <select
+                        value={newAccount.status}
+                        onChange={(e) => setNewAccount({...newAccount, status: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={newAccount.locations.length > 0 ? newAccount.locations[0] : locationSearch}
+                          onChange={(e) => {
+                            setLocationSearch(e.target.value);
+                            setShowLocationDropdown(e.target.value.length > 0);
+                            if (e.target.value === '') {
+                              setNewAccount({...newAccount, locations: []});
+                            }
+                          }}
+                          onFocus={() => {
+                            setNewAccount({...newAccount, locations: []});
+                            setShowLocationDropdown(true);
+                          }}
+                          onBlur={() => setTimeout(() => setShowLocationDropdown(false), 200)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Search location..."
+                        />
+                        {showLocationDropdown && locationSearch && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            {locationOptions
+                              .filter(loc => loc.toLowerCase().includes(locationSearch.toLowerCase()))
+                              .map((location) => (
+                                <div
+                                  key={location}
+                                  onClick={() => {
+                                    setNewAccount({...newAccount, locations: [location]});
+                                    setLocationSearch('');
+                                    setShowLocationDropdown(false);
+                                  }}
+                                  className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                                >
+                                  {location}
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Assign Users</label>
+                      <div className="border border-gray-300 rounded-lg p-4 max-h-60 overflow-y-auto">
+                        {users.map((user) => (
+                          <div key={user.id} className="flex items-center space-x-3 py-2 hover:bg-gray-50 px-2 rounded">
+                            <input
+                              type="checkbox"
+                              checked={newAccount.assignedUsers.includes(user.id)}
+                              onChange={() => {
+                                setNewAccount(prev => ({
+                                  ...prev,
+                                  assignedUsers: prev.assignedUsers.includes(user.id)
+                                    ? prev.assignedUsers.filter(id => id !== user.id)
+                                    : [...prev.assignedUsers, user.id]
+                                }));
+                              }}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                            />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                              <p className="text-xs text-gray-500">{user.email} - {user.role}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex space-x-3 pt-4">
+                      <button
+                        onClick={() => {
+                          setActiveTab('dashboard');
+                          setNewAccount({ name: '', status: 'Active', locations: [], assignedUsers: [] });
+                        }}
+                        className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!newAccount.name) {
+                            setErrorMessage({
+                              title: 'Missing Field',
+                              message: 'Please enter account name'
+                            });
+                            setShowErrorModal(true);
+                            return;
+                          }
+                          setCreatingAccount(true);
+                          try {
+                            await axios.post('http://localhost:8000/api/superadmin/accounts', {
+                              ...newAccount,
+                              locations: newAccount.locations.length > 0 ? newAccount.locations[0] : null
+                            });
+                            setNewAccount({ name: '', status: 'Active', locations: [], assignedUsers: [] });
+                            fetchAccounts();
+                            setSuccessMessage({
+                              title: 'Success!',
+                              message: 'Account created successfully'
+                            });
+                            setShowSuccessModal(true);
+                            setActiveTab('accounts');
+                          } catch (error) {
+                            console.error('Error creating account:', error);
+                            setErrorMessage({
+                              title: 'Error',
+                              message: 'Error creating account'
+                            });
+                            setShowErrorModal(true);
+                          } finally {
+                            setCreatingAccount(false);
+                          }
+                        }}
+                        disabled={creatingAccount || !newAccount.name}
+                        className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {creatingAccount ? 'Creating...' : 'Create Account'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'send-invitation' && (
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
+                <h1 className="text-3xl font-semibold text-gray-900">Send Invitation</h1>
+                <p className="text-gray-600">Invite candidates to apply for job openings</p>
+              </div>
+              <div className="flex-1 overflow-auto px-8 py-6">
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="max-w-md mx-auto">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Mail className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900">Send Invitation</h2>
+                  </div>
+
+                  <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
+                      <input
+                        type="email"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        placeholder="Enter email address"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+                      <input
+                        type="text"
+                        value={inviteName}
+                        onChange={(e) => setInviteName(e.target.value)}
+                        placeholder="Enter candidate name"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                      <input
+                        type="tel"
+                        value={invitePhone}
+                        onChange={(e) => setInvitePhone(e.target.value)}
+                        placeholder="Enter phone number"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Job Opening</label>
+                      <div className="relative job-dropdown-container">
+                        <button
+                          type="button"
+                          onClick={() => setShowJobDropdown(!showJobDropdown)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between transition"
+                        >
+                          <span className="text-left">
+                            {selectedJobId ? 
+                              jobs.find(job => job.job_id.toString() === selectedJobId)?.job_title + ' - ' + 
+                              (Array.isArray(jobs.find(job => job.job_id.toString() === selectedJobId)?.locations) ? 
+                                jobs.find(job => job.job_id.toString() === selectedJobId)?.locations.join(', ') : 
+                                jobs.find(job => job.job_id.toString() === selectedJobId)?.locations)
+                              : 'Select a job opening'
+                            }
+                          </span>
+                          <svg className={`w-5 h-5 transition-transform ${showJobDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {showJobDropdown && (
+                          <div className="absolute top-full mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                            <div className="p-2">
+                              <div
+                                onClick={() => {
+                                  setSelectedJobId('');
+                                  setShowJobDropdown(false);
+                                }}
+                                className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
+                              >
+                                Select a job opening
+                              </div>
+                              {jobs.map((job) => (
+                                <div
+                                  key={job.job_id}
+                                  onClick={() => {
+                                    setSelectedJobId(job.job_id.toString());
+                                    setShowJobDropdown(false);
+                                  }}
+                                  className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
+                                >
+                                  {job.job_title} - {Array.isArray(job.locations) ? job.locations.join(', ') : job.locations}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-3 pt-4">
+                    <button
+                      onClick={() => {
+                        setActiveTab('dashboard');
+                        setInviteEmail('');
+                        setInviteName('');
+                        setInvitePhone('');
+                        setSelectedJobId('');
+                      }}
+                      className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await handleSendInvite();
+                        setActiveTab('dashboard');
+                      }}
+                      disabled={sendingInvite}
+                      className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                    >
+                      {sendingInvite ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          <span>Sending...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-5 h-5" />
+                          <span>Send Invite</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
+                <h1 className="text-3xl font-semibold text-gray-900">Settings</h1>
+                <p className="text-gray-600">Manage system settings and AI policies</p>
+              </div>
+              <div className="flex-1 overflow-auto px-8 py-6">
+              {/* Settings Accordion */}
+              <div className="space-y-4 h-full overflow-auto">
                 {/* AI Policies Accordion */}
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                   <button
@@ -1705,9 +2564,9 @@ const SuperAdminDashboard: React.FC = () => {
                   )}
                 </div>
               </div>
-            </>
+              </div>
+            </div>
           )}
-        </div>
         </div>
       </div>
 
@@ -2390,24 +3249,6 @@ const SuperAdminDashboard: React.FC = () => {
         message={errorMessage.message}
       />
 
-      {/* Create Job Modal */}
-      <SuperAdminJobCreationModal
-        isOpen={showCreateJobModal}
-        onClose={() => setShowCreateJobModal(false)}
-        onSuccess={() => {
-          setSuccessMessage({
-            title: 'Success!',
-            message: 'Job created and published successfully'
-          });
-          setShowSuccessModal(true);
-          fetchStats();
-          // Refresh job openings if on that tab
-          if (activeTab === 'job-openings') {
-            window.dispatchEvent(new Event('jobCreated'));
-          }
-        }}
-      />
-
       {/* Invitation Modal */}
       {showInviteModal && ReactDOM.createPortal(
         <div 
@@ -2457,6 +3298,17 @@ const SuperAdminDashboard: React.FC = () => {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                <input
+                  type="tel"
+                  value={invitePhone}
+                  onChange={(e) => setInvitePhone(e.target.value)}
+                  placeholder="Enter phone number"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Job <span className="text-gray-400 text-xs">(Optional)</span>
                 </label>
@@ -2495,6 +3347,8 @@ const SuperAdminDashboard: React.FC = () => {
           </div>
         </div>,
         document.body
+      )}
+        </>
       )}
     </div>
   );

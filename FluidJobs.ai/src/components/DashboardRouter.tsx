@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthProvider';
-import CandidateDashboard from '../new-landing/candidate-dashboard/CandidateDashboard';
-import CompanyDashboard from '../new-landing/company-dashboard/CompanyDashboard';
+import CandidateDashboard from './CandidateDashboard';
+import CompanyDashboard from './CompanyDashboard';
 
 const DashboardRouter: React.FC = () => {
   const { user } = useAuth();

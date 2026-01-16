@@ -214,7 +214,9 @@ router.post('/admin/login', loginLimiter, async (req, res) => {
     const token = jwt.sign(
       {
         adminId: admin.id,
+        id: admin.id,  // Add this for compatibility
         email: admin.email,
+        name: admin.name,
         role: admin.role || 'Admin'
       },
       process.env.JWT_SECRET,
@@ -803,6 +805,30 @@ router.post('/change-password', authenticateToken, async (req, res) => {
   }
 });
 
+// Test endpoint to debug token
+router.get('/debug-token', authenticateToken, async (req, res) => {
+  try {
+    console.log('🔍 Debug token - Full user object:', JSON.stringify(req.user, null, 2));
+    const userId = req.user.adminId || req.user.id;
+    
+    // Check if user exists in users table
+    const userCheck = await pool.query('SELECT id, name, email FROM users WHERE id = $1', [userId]);
+    
+    // Check account assignments
+    const accountCheck = await pool.query('SELECT * FROM account_users WHERE user_id = $1', [userId]);
+    
+    res.json({
+      tokenPayload: req.user,
+      extractedUserId: userId,
+      userExists: userCheck.rows.length > 0,
+      userDetails: userCheck.rows[0] || null,
+      accountAssignments: accountCheck.rows
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get logged-in user's assigned accounts
 router.get('/my-accounts', authenticateToken, async (req, res) => {
   try {
@@ -816,6 +842,15 @@ router.get('/my-accounts', authenticateToken, async (req, res) => {
     if (!userId) {
       console.error('❌ No userId found in token');
       return res.status(400).json({ error: 'User ID not found in token' });
+    }
+    
+    // First check if user exists in users table
+    const userCheck = await pool.query('SELECT id, name, email FROM users WHERE id = $1', [userId]);
+    console.log('🔍 User check result:', userCheck.rows);
+    
+    if (userCheck.rows.length === 0) {
+      console.error('❌ User not found in users table');
+      return res.status(404).json({ error: 'User not found' });
     }
     
     const result = await pool.query(`
@@ -839,6 +874,7 @@ router.get('/my-accounts', authenticateToken, async (req, res) => {
     `, [userId]);
     
     console.log('✅ Found accounts:', result.rows.length);
+    console.log('📋 Accounts data:', result.rows);
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching user accounts:', error);

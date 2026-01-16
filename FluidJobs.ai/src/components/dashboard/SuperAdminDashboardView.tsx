@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Search, X, Check } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 interface DashboardStats {
   pending_approvals: number;
@@ -9,6 +9,13 @@ interface DashboardStats {
   active_candidates: number;
   jobs_change: number;
   candidates_change: number;
+}
+
+interface ActiveJob {
+  id: string;
+  title: string;
+  status: string;
+  created_at: string;
 }
 
 interface PendingJob {
@@ -35,8 +42,9 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
     jobs_change: 0,
     candidates_change: 0
   });
-  const [pendingApprovals, setPendingApprovals] = useState<PendingJob[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [activeJobs, setActiveJobs] = useState<ActiveJob[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   const admin = JSON.parse(localStorage.getItem('superadmin') || '{}');
@@ -44,8 +52,9 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
 
   useEffect(() => {
     fetchStats();
-    fetchPendingApprovals();
+    fetchAccounts();
     fetchUsers();
+    fetchActiveJobs();
   }, []);
 
   useEffect(() => {
@@ -64,12 +73,12 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
     }
   };
 
-  const fetchPendingApprovals = async () => {
+  const fetchAccounts = async () => {
     try {
-      const response = await axios.get<PendingJob[]>('http://localhost:8000/api/superadmin/pending-approvals');
-      setPendingApprovals(response.data);
+      const response = await axios.get<any[]>('http://localhost:8000/api/superadmin/accounts');
+      setAccounts(response.data);
     } catch (error) {
-      console.error('Error fetching approvals:', error);
+      console.error('Error fetching accounts:', error);
     }
   };
 
@@ -82,42 +91,28 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
     }
   };
 
-  const handleApprove = async (id: number) => {
+  const fetchActiveJobs = async () => {
     try {
-      await axios.post(`http://localhost:8000/api/superadmin/approve-job/${id}`);
-      fetchPendingApprovals();
-      fetchStats();
+      const response = await axios.get('http://localhost:8000/api/jobs-enhanced/active');
+      const data = response.data as { success: boolean; jobs: ActiveJob[] };
+      if (data.success) {
+        setActiveJobs(data.jobs || []);
+      }
     } catch (error) {
-      console.error('Error approving job:', error);
-    }
-  };
-
-  const handleReject = async (id: number) => {
-    try {
-      await axios.post(`http://localhost:8000/api/superadmin/reject-job/${id}`);
-      fetchPendingApprovals();
-      fetchStats();
-    } catch (error) {
-      console.error('Error rejecting job:', error);
+      console.error('Error fetching active jobs:', error);
     }
   };
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-gray-900">SuperAdmin Dashboard</h1>
-        <p className="text-gray-600">Welcome back {adminName}!</p>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-6 mb-8">
         <div 
-          onClick={() => onTabChange('approvals')}
+          onClick={() => onTabChange('accounts')}
           className="bg-white p-6 rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
         >
-          <p className="text-gray-600 text-sm mb-2">Pending Approvals</p>
-          <p className="text-4xl font-semibold text-gray-900">{stats.total_pending_approvals}</p>
+          <p className="text-gray-600 text-sm mb-2">Active Accounts</p>
+          <p className="text-4xl font-semibold text-gray-900">{accounts.filter(account => account.status === 'Active').length}</p>
         </div>
 
         <div 
@@ -125,12 +120,7 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
           className="bg-white p-6 rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
         >
           <p className="text-gray-600 text-sm mb-2">Total Active Jobs</p>
-          <p className="text-4xl font-semibold text-gray-900 mb-2">{stats.active_jobs}</p>
-          {stats.jobs_change !== 0 && (
-            <p className={`text-sm ${stats.jobs_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {stats.jobs_change > 0 ? '↑' : '↓'} {stats.jobs_change > 0 ? '+' : ''}{stats.jobs_change}
-            </p>
-          )}
+          <p className="text-4xl font-semibold text-gray-900">{activeJobs.length}</p>
         </div>
 
         <div 
@@ -147,66 +137,41 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
         </div>
       </div>
 
-      {/* Pending Approvals */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Pending Approvals</h2>
-        <div className="space-y-3">
-          {pendingApprovals.slice(0, 2).map((job) => (
-            <div key={job.id} className="bg-gray-50 p-4 rounded-lg flex justify-between items-center">
-              <div>
-                <p className="font-medium text-gray-900">{job.title}</p>
-                <p className="text-sm text-gray-600">{job.company}</p>
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handleReject(job.id)}
-                  className="p-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50"
-                >
-                  <X size={20} />
-                </button>
-                <button
-                  onClick={() => handleApprove(job.id)}
-                  className="p-2 border border-green-300 text-green-600 rounded-lg hover:bg-green-50"
-                >
-                  <Check size={20} />
-                </button>
-              </div>
-            </div>
-          ))}
+      {/* User Management */}
+      <div className="bg-white rounded-lg border border-gray-200 flex flex-col" style={{ maxHeight: '500px' }}>
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
+          <h2 className="text-xl font-semibold text-gray-900">User Management</h2>
           <button 
-            onClick={() => onTabChange('approvals')}
-            className="text-gray-600 text-sm hover:text-gray-900"
+            onClick={() => onTabChange('users')}
+            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
           >
-            Show more
+            View All
           </button>
         </div>
-      </div>
-
-      {/* User Management */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">User Management</h2>
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-3 text-gray-400" size={20} />
-          <input
-            type="text"
-            placeholder="Search users by name, email or role..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <div className="p-6 flex-shrink-0">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Search users by name, email or role..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-auto flex-1">
           <table className="w-full">
-            <thead>
+            <thead className="bg-gray-50 sticky top-0">
               <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Name</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Email</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Role</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Joined</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-900 bg-gray-50">Name</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-900 bg-gray-50">Email</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-900 bg-gray-50">Role</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-900 bg-gray-50">Joined</th>
               </tr>
             </thead>
             <tbody>
-              {users.slice(0, 10).map((user) => (
+              {users.map((user) => (
                 <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-3 px-4 text-sm text-gray-900">{user.name}</td>
                   <td className="py-3 px-4 text-sm text-gray-600">{user.email}</td>

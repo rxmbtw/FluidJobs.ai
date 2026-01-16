@@ -86,6 +86,7 @@ app.use('/api/gemini', require('./routes/geminiReviewer'));
 app.use('/api/test-candidates', require('./routes/testCandidates'));
 app.use('/api/job-attachments', require('./routes/jobAttachments'));
 app.use('/api/saved-jobs', require('./routes/savedJobs'));
+app.use('/api/job-applications', require('./routes/jobApplications'));
 app.use('/api/forgot-password', require('./routes/forgotPassword'));
 app.use('/api/superadmin', require('./routes/superadmin'));
 app.use('/api/candidate-restrictions', require('./routes/candidateRestrictions'));

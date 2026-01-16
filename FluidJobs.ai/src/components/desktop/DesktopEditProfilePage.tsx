@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Phone, Calendar, MapPin, User as UserIcon, Edit, Upload, ChevronDown, ChevronUp } from 'lucide-react';
 import axios from 'axios';
-import ImageCropperModal from '../../new-landing/candidate-dashboard/ImageCropperModal';
-import LocationAutocomplete from '../../new-landing/candidate-dashboard/LocationAutocomplete';
+import ImageCropperModal from '../ImageCropperModal';
+import LocationAutocomplete from '../LocationAutocomplete';
 import PhoneInput from '../../new-landing/candidate-dashboard/PhoneInput';
-import CollegeAutocomplete from '../../new-landing/candidate-dashboard/CollegeAutocomplete';
+import CollegeAutocomplete from '../CollegeAutocomplete';
 import Loader from '../Loader';
 import Notification from '../Notification';
 import { useProfileCompletionContext } from '../../contexts/ProfileCompletionContext';

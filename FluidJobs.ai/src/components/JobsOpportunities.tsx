@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Users, Award, Building2, Search, Download } from 'lucide-react';
+import { FileText, Users, Award, Building2, Search, Download, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { jobService, Job, JobAttachment } from '../services/jobService';
 import { useJobs } from '../contexts/JobsProvider';
 import DashboardLayout from './DashboardLayout';
 import SaveJobButton from './SaveJobButton';
+import Loader from './Loader';
 
 const JobsOpportunities: React.FC = () => {
   const navigate = useNavigate();
@@ -14,10 +15,12 @@ const JobsOpportunities: React.FC = () => {
   const { jobs: contextJobs, loading: contextLoading, refreshJobs } = useJobs();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [jobStats, setJobStats] = useState({ total: 0, eligible: 0, applied: 0, offers: 0 });
   const [activeTags, setActiveTags] = useState<string[]>(['IT Product & Services', 'IT / Computers - Software']);
   const [searchQuery, setSearchQuery] = useState('');
   const [jobAttachments, setJobAttachments] = useState<{[key: string]: JobAttachment[]}>({});
+  const [showFilters, setShowFilters] = useState(false);
 
   const popularTags = [
     'IT Product & Services',
@@ -26,6 +29,30 @@ const JobsOpportunities: React.FC = () => {
     'Education',
     'Others'
   ];
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsInitialLoading(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.filter-dropdown')) {
+        setShowFilters(false);
+      }
+    };
+
+    if (showFilters) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showFilters]);
 
   useEffect(() => {
     fetchJobs();
@@ -45,6 +72,7 @@ const JobsOpportunities: React.FC = () => {
   const fetchJobs = async () => {
     try {
       setLoading(true);
+      await new Promise(resolve => setTimeout(resolve, 2000));
       const [jobData, stats] = await Promise.all([
         jobService.getAllJobs(),
         jobService.getJobStats()
@@ -98,13 +126,15 @@ const JobsOpportunities: React.FC = () => {
     navigate(`/careers/${jobId}`);
   };
 
+  if (isInitialLoading) {
+    return <Loader />;
+  }
+
   return (
     <DashboardLayout>
       <div className="-m-8 p-6 min-h-full">
         {/* Main Content Column */}
         <div>
-
-
           {/* Search Bar */}
           <div className="mb-6">
             <div className="relative max-w-md">
@@ -119,27 +149,52 @@ const JobsOpportunities: React.FC = () => {
             </div>
           </div>
 
-          {/* Filter Toggle */}
-          <div className="flex justify-end mb-4">
-            <div className="flex gap-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={eligibleFilter}
-                  onChange={(e) => setEligibleFilter(e.target.checked)}
-                  className="mr-2 text-purple-600 focus:ring-purple-500"
-                />
-                <span className="text-sm text-gray-700">Eligible</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={nonEligibleFilter}
-                  onChange={(e) => setNonEligibleFilter(e.target.checked)}
-                  className="mr-2 text-purple-600 focus:ring-purple-500"
-                />
-                <span className="text-sm text-gray-700">Non Eligible</span>
-              </label>
+          {/* Enhanced Filter Section */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+              <button className="text-sm text-purple-600 hover:text-purple-700 font-medium">Clear All</button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+              <div className="relative">
+                <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+                  <span>All Status</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+              </div>
+              <div className="relative">
+                <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+                  <span>All Domains</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+              </div>
+              <div className="relative">
+                <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+                  <span>All Types</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+              </div>
+              <div className="relative">
+                <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+                  <span>All Modes</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+              </div>
+              <div className="relative">
+                <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+                  <span>All Ranges</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+              </div>
+              <div className="relative">
+                <button className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between text-sm">
+                  <span>All Time</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+              </div>
+              <div className="relative">
+                <input type="text" placeholder="Type skills..." className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 text-sm" />
+              </div>
             </div>
           </div>
 

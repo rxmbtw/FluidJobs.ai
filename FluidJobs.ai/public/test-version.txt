@@ -1,0 +1,6 @@
+SuperAdmin Dashboard Version: UPDATED_2026_01_16_v2
+Changes Applied:
+- Fixed headers with flex-shrink-0
+- Scrollable containers for Users and Accounts
+- ManageCandidatesWrapper integration
+Last Modified: 2026-01-16 19:00

@@ -5,6 +5,8 @@ import './styles/animated-gradient.css';
 import './styles/mobile.css';
 import App from './App';
 import { AuthProvider } from './contexts/AuthProvider';
+import { ProfileCompletionProvider } from './contexts/ProfileCompletionContext';
+import { ProfileProvider } from './contexts/ProfileContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -14,7 +16,11 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <AuthProvider>
-      <App />
+      <ProfileProvider>
+        <ProfileCompletionProvider>
+          <App />
+        </ProfileCompletionProvider>
+      </ProfileProvider>
     </AuthProvider>
   </React.StrictMode>
 );
