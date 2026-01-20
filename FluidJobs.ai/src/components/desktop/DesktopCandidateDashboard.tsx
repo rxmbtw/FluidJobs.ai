@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, ChevronDown, User, MessageCircle, LogOut, Bookmark } from 'lucide-react';
-import { Notification, Work, Paper } from 'react-iconly';
+import { Sun, Moon, ChevronDown, User, MessageCircle, LogOut } from 'lucide-react';
+import { Notification, Work, Paper, Bookmark } from 'react-iconly';
 import DesktopAlertsPage from './DesktopAlertsPage';
 import MyJobsView from '../../new-landing/candidate-dashboard/my-jobs/MyJobsView';
 import MyResumeView from '../../new-landing/candidate-dashboard/my-resume/MyResumeView';
@@ -181,18 +181,16 @@ const DesktopCandidateDashboard: React.FC = () => {
               setInitialFilter('saved');
               handleTabChange('jobs');
             }}
-            className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200"
+            className="w-[42px] h-[42px] rounded-[5px] flex items-center justify-center transition-all duration-200"
             style={{
-              backgroundColor: newUiTab === 'jobs' && initialFilter === 'saved' ? '#DBEAFE' : (themeState === 'light' ? '#F3F4F6' : '#374151'),
+              backgroundColor: '#D9D9D9',
               border: `1px solid ${newUiTab === 'jobs' && initialFilter === 'saved' ? '#2563EB' : (themeState === 'light' ? '#E5E7EB' : '#4B5563')}`
             }}
           >
             <Bookmark 
-              className="w-5 h-5" 
-              style={{ 
-                color: newUiTab === 'jobs' && initialFilter === 'saved' ? '#2563EB' : (themeState === 'light' ? '#6B7280' : '#9CA3AF'),
-                strokeWidth: 2
-              }} 
+              set="bulk" 
+              primaryColor="rgba(19, 15, 38, 1)" 
+              size={25} 
             />
           </button>
 

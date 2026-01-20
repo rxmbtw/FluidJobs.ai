@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { Info, CheckCircle } from 'lucide-react';
-import { Bookmark } from 'react-iconly';
+import { Bookmark, AddUser } from 'react-iconly';
 
-interface AppliedJobsViewProps {
+interface SavedJobsViewProps {
   themeState?: 'light' | 'dark';
   onJobClick: (job: any) => void;
   savedJobs: string[];
   onToggleSave: (jobId: string) => void;
 }
 
-const AppliedJobsView: React.FC<AppliedJobsViewProps> = ({ themeState = 'light', onJobClick, savedJobs, onToggleSave }) => {
+const SavedJobsView: React.FC<SavedJobsViewProps> = ({ themeState = 'light', onJobClick, savedJobs, onToggleSave }) => {
   const [currentJobIndex, setCurrentJobIndex] = useState(0);
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   
@@ -17,7 +16,7 @@ const AppliedJobsView: React.FC<AppliedJobsViewProps> = ({ themeState = 'light',
   const textPrimary = themeState === 'light' ? '#000000' : '#f9fafb';
   const textSecondary = themeState === 'light' ? '#6E6E6E' : '#9ca3af';
 
-  const mockJobs = [
+  const mockSavedJobs = [
     {
       id: '1',
       title: 'QA Engineer - Insurance',
@@ -32,14 +31,14 @@ const AppliedJobsView: React.FC<AppliedJobsViewProps> = ({ themeState = 'light',
     },
     {
       id: '2',
-      title: 'Senior Software Engineer',
+      title: 'Senior Frontend Developer',
       postedDate: '28/10/2025',
       jobType: 'Full-Time',
-      ctc: 'Rs.8.0L-Rs.18.0L',
+      ctc: 'Rs.10.0L-Rs.20.0L',
       industry: 'Technology',
-      location: 'Bangalore, Hyderabad',
-      description: 'Join our dynamic team as a Senior Software Engineer. Work on cutting-edge technologies and build scalable solutions that impact millions of users worldwide.',
-      skills: ['React', 'Node.js', 'AWS'],
+      location: 'Mumbai, Pune',
+      description: 'Join our team as a Senior Frontend Developer and work on cutting-edge web applications using modern frameworks and technologies.',
+      skills: ['React', 'TypeScript', 'CSS'],
       selectedImage: null
     }
   ];
@@ -62,6 +61,18 @@ const AppliedJobsView: React.FC<AppliedJobsViewProps> = ({ themeState = 'light',
     return words.slice(0, maxWords).join(' ');
   };
 
+  if (savedJobs.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+          <Bookmark set="bulk" primaryColor="rgba(19, 15, 38, 1)" size={64} />
+        </div>
+        <h3 style={{ fontFamily: 'Poppins', fontSize: '20px', fontWeight: 600, color: textPrimary, marginBottom: '8px' }}>No Saved Jobs Yet</h3>
+        <p style={{ fontFamily: 'Poppins', fontSize: '14px', color: textSecondary }}>Start saving jobs to view them here</p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', position: 'relative' }}>
       {/* Navigation Dots */}
@@ -75,11 +86,11 @@ const AppliedJobsView: React.FC<AppliedJobsViewProps> = ({ themeState = 'light',
         gap: '12px',
         zIndex: 10
       }}>
-        {mockJobs.map((_, index) => (
+        {mockSavedJobs.map((_, index) => (
           <button
             key={index}
             onClick={() => {
-              const jobCard = document.getElementById(`applied-job-card-${index}`);
+              const jobCard = document.getElementById(`saved-job-card-${index}`);
               if (jobCard) {
                 jobCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 setCurrentJobIndex(index);
@@ -113,7 +124,7 @@ const AppliedJobsView: React.FC<AppliedJobsViewProps> = ({ themeState = 'light',
           const scrollTop = container.scrollTop;
           const cardHeight = 500;
           const newIndex = Math.round(scrollTop / cardHeight);
-          setCurrentJobIndex(Math.min(newIndex, mockJobs.length - 1));
+          setCurrentJobIndex(Math.min(newIndex, mockSavedJobs.length - 1));
         }}
       >
         <style>
@@ -123,9 +134,9 @@ const AppliedJobsView: React.FC<AppliedJobsViewProps> = ({ themeState = 'light',
             }
           `}
         </style>
-        {mockJobs.map((job, index) => (
+        {mockSavedJobs.map((job, index) => (
           <div 
-            id={`applied-job-card-${index}`}
+            id={`saved-job-card-${index}`}
             key={job.id}
             onClick={() => onJobClick(job)}
             style={{
@@ -174,7 +185,7 @@ const AppliedJobsView: React.FC<AppliedJobsViewProps> = ({ themeState = 'light',
 
             {/* Content */}
             <div>
-              {/* Title & Status Buttons */}
+              {/* Title & Actions */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                 <div>
                   <h2 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '20px', color: textPrimary, marginBottom: '4px' }}>
@@ -186,41 +197,24 @@ const AppliedJobsView: React.FC<AppliedJobsViewProps> = ({ themeState = 'light',
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                   <button style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #000000',
-                    background: '#FFFFFF',
-                    fontFamily: 'Poppins',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: '#000000',
-                    cursor: 'pointer'
-                  }}>
-                    <Info style={{ width: '16px', height: '16px', color: '#000000' }} />
-                    Under Review
-                  </button>
-                  <button style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    background: '#34A853',
+                    background: 'rgba(66, 133, 244, 1)',
+                    color: 'rgba(255, 255, 255, 1)',
+                    padding: '10px 20px',
+                    borderRadius: '10px',
                     border: 'none',
                     fontFamily: 'Poppins',
-                    fontSize: '14px',
                     fontWeight: 600,
-                    color: '#FFFFFF',
+                    fontSize: '13px',
+                    lineHeight: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
                     cursor: 'pointer'
                   }}>
-                    <CheckCircle style={{ width: '16px', height: '16px', color: '#FFFFFF' }} />
-                    Applied
+                    Apply Now <AddUser set="light" primaryColor="rgba(255, 255, 255, 1)" size={17} style={{ strokeWidth: 1.5 }} />
                   </button>
                   <button onClick={(e) => { e.stopPropagation(); onToggleSave(job.id); }} className="w-[29px] h-[29px] rounded-[5px] flex items-center justify-center" style={{ backgroundColor: '#D9D9D9' }}>
-                    <Bookmark set="bulk" primaryColor={savedJobs.includes(job.id) ? '#4285F4' : 'rgba(19, 15, 38, 1)'} size={20} style={{ width: '16px', height: '20px' }} />
+                    <Bookmark set="bulk" primaryColor="#4285F4" size={20} style={{ width: '16px', height: '20px' }} />
                   </button>
                 </div>
               </div>
@@ -291,4 +285,4 @@ const AppliedJobsView: React.FC<AppliedJobsViewProps> = ({ themeState = 'light',
   );
 };
 
-export default AppliedJobsView;
+export default SavedJobsView;

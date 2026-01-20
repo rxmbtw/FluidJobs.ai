@@ -1,5 +1,6 @@
 import React from 'react';
-import { Bell, BellOff } from 'lucide-react';
+import { BellOff } from 'lucide-react';
+import { Notification } from 'react-iconly';
 import ProfileCompletion from '../ProfileCompletion';
 
 interface DesktopAlertsPageProps {
@@ -29,10 +30,10 @@ const DesktopAlertsPage: React.FC<DesktopAlertsPageProps> = ({
           }}
         >
           <div className="flex items-center gap-3 mb-6">
-            <Bell 
-              className="w-7 h-7" 
-              strokeWidth={1.5} 
-              style={{ color: themeState === 'light' ? '#000000' : '#f9fafb' }} 
+            <Notification 
+              set="bulk" 
+              primaryColor={themeState === 'light' ? '#000000' : '#f9fafb'} 
+              size={28} 
             />
             <h2 
               className="text-3xl font-semibold" 
@@ -45,15 +46,16 @@ const DesktopAlertsPage: React.FC<DesktopAlertsPageProps> = ({
             </h2>
           </div>
           <div className="flex flex-col items-center justify-center text-center flex-1">
-            <BellOff 
-              className="w-20 h-20 mb-6" 
-              style={{ color: themeState === 'light' ? '#D1D5DB' : '#4B5563' }} 
-            />
             <p 
               className="text-lg font-medium" 
               style={{ 
-                fontFamily: 'Poppins, sans-serif', 
-                color: themeState === 'light' ? '#6E6E6E' : '#9ca3af' 
+                fontFamily: 'Roboto, sans-serif', 
+                fontWeight: 600,
+                fontSize: '14px',
+                lineHeight: '100%',
+                color: 'rgba(110, 110, 110, 1)',
+                maxWidth: '323px',
+                textAlign: 'center'
               }}
             >
               Complete your profile to start getting announcements of the latest job openings!

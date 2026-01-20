@@ -174,28 +174,6 @@ const MobileProfilePage: React.FC = () => {
               </span>
             </button>
           </div>
-
-          {/* Status Button */}
-          <div className="px-3">
-            <div style={{
-              padding: '10px 24px',
-              borderRadius: '20px',
-              background: '#4285F4',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '100%'
-            }}>
-              <span style={{
-                fontFamily: 'Poppins, sans-serif',
-                fontWeight: 600,
-                fontSize: '13px',
-                color: '#FFFFFF'
-              }}>
-                Applied
-              </span>
-            </div>
-          </div>
         </div>
       </div>
 

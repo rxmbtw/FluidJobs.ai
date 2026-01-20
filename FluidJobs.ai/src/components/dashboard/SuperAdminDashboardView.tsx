@@ -45,6 +45,7 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
   const [accounts, setAccounts] = useState<any[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [activeJobs, setActiveJobs] = useState<ActiveJob[]>([]);
+  const [closedJobs, setClosedJobs] = useState<ActiveJob[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   const admin = JSON.parse(localStorage.getItem('superadmin') || '{}');
@@ -55,6 +56,7 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
     fetchAccounts();
     fetchUsers();
     fetchActiveJobs();
+    fetchClosedJobs();
   }, []);
 
   useEffect(() => {
@@ -103,10 +105,22 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
     }
   };
 
+  const fetchClosedJobs = async () => {
+    try {
+      const response = await axios.get('http://localhost:8000/api/jobs-enhanced/closed');
+      const data = response.data as { success: boolean; jobs: ActiveJob[] };
+      if (data.success) {
+        setClosedJobs(data.jobs || []);
+      }
+    } catch (error) {
+      console.error('Error fetching closed jobs:', error);
+    }
+  };
+
   return (
     <div className="p-8">
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-4 gap-4 mb-8">
         <div 
           onClick={() => onTabChange('accounts')}
           className="bg-white p-6 rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
@@ -134,6 +148,14 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
               {stats.candidates_change > 0 ? '↑' : '↓'} {stats.candidates_change > 0 ? '+' : ''}{stats.candidates_change}
             </p>
           )}
+        </div>
+
+        <div 
+          onClick={() => onTabChange('job-openings')}
+          className="bg-white p-6 rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
+        >
+          <p className="text-gray-600 text-sm mb-2">Closed Positions</p>
+          <p className="text-4xl font-semibold text-gray-900">{closedJobs.length}</p>
         </div>
       </div>
 

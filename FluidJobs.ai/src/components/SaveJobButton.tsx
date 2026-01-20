@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bookmark } from 'lucide-react';
+import { Bookmark } from 'react-iconly';
 import savedJobsService from '../services/savedJobsService';
 
 interface SaveJobButtonProps {
@@ -97,7 +97,9 @@ const SaveJobButton: React.FC<SaveJobButtonProps> = ({
       title={isSaved ? 'Remove from saved jobs' : 'Save job'}
     >
       <Bookmark 
-        className={`h-5 w-5 ${isSaved ? 'fill-current' : ''}`} 
+        set="bulk"
+        primaryColor={isSaved ? 'rgba(19, 15, 38, 1)' : 'rgba(19, 15, 38, 1)'}
+        size={20}
       />
       {showText && (
         <span className="ml-2 text-sm font-medium">

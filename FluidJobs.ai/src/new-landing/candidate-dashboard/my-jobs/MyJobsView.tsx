@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Bookmark, User, Filter } from 'lucide-react';
+import { User, Filter } from 'lucide-react';
+import { Bookmark, AddUser } from 'react-iconly';
 import Loader from '../../../components/Loader';
 import JobDetailView from './JobDetailView';
 import AppliedJobsView from './AppliedJobsView';
+import SavedJobsView from './SavedJobsView';
 
 interface MyJobsViewProps {
   initialFilter?: string;
@@ -19,6 +21,7 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
   const [currentJobIndex, setCurrentJobIndex] = useState(0);
   const [jobs, setJobs] = useState<any[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 1000);
@@ -81,6 +84,24 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
     });
   };
 
+  const toggleDescription = (jobId: string) => {
+    setExpandedDescriptions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(jobId)) {
+        newSet.delete(jobId);
+      } else {
+        newSet.add(jobId);
+      }
+      return newSet;
+    });
+  };
+
+  const truncateDescription = (description: string, maxWords: number = 20) => {
+    const words = description.split(' ');
+    if (words.length <= maxWords) return description;
+    return words.slice(0, maxWords).join(' ');
+  };
+
   const handleFilterClick = (filterId: string) => {
     setActiveFilter(filterId);
     setSelectedJob(null);
@@ -91,7 +112,7 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
 
   if (selectedJob) {
     return (
-      <div style={{ backgroundColor: bgColor, minHeight: 'calc(100vh - 116px)', padding: '20px 40px', position: 'relative' }}>
+      <div style={{ backgroundColor: bgColor, minHeight: 'calc(100vh - 80px)', padding: '20px 40px', position: 'relative' }}>
         {showSavePopup && (
           <div style={{
             position: 'fixed',
@@ -109,7 +130,7 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
             animation: 'slideIn 0.3s ease-out',
             fontFamily: 'Poppins'
           }}>
-            <Bookmark style={{ width: '20px', height: '20px', fill: '#FFFFFF' }} />
+            <Bookmark set="bulk" primaryColor="rgba(19, 15, 38, 1)" size={20} />
             <span style={{ fontSize: '14px', fontWeight: 600 }}>Added to Saved Jobs</span>
           </div>
         )}
@@ -128,39 +149,49 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
           `}
         </style>
         {/* Filter Tabs */}
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', alignItems: 'center', justifyContent: 'center' }}>
           {filters.map((filter) => (
-            <button
-              key={filter.id}
-              onClick={() => handleFilterClick(filter.id)}
+            <div key={filter.id} style={{
+              backgroundColor: activeFilter === filter.id ? (themeState === 'light' ? '#DBEAFE' : 'rgba(37, 99, 235, 0.2)') : '#FFFFFF',
+              borderRadius: '30px',
+              padding: '3px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+            }}>
+              <button
+                onClick={() => handleFilterClick(filter.id)}
+                className="flex items-center space-x-1 px-3 py-1.5 rounded-full transition-all font-semibold whitespace-nowrap"
+                style={{
+                  backgroundColor: 'transparent',
+                  color: activeFilter === filter.id ? '#2563EB' : (themeState === 'light' ? '#000000' : '#E5E7EB'),
+                  fontFamily: 'Poppins',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                <span>{filter.label}</span>
+              </button>
+            </div>
+          ))}
+          <div style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: '50%',
+            padding: '3px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+          }}>
+            <button 
+              className="flex items-center space-x-1 px-2 py-1.5 rounded-full transition-all font-semibold whitespace-nowrap"
               style={{
-                padding: '12px 24px',
-                borderRadius: '30px',
-                border: 'none',
-                background: activeFilter === filter.id ? '#4285F4' : '#D9D9D9',
-                color: activeFilter === filter.id ? '#FFFFFF' : '#6E6E6E',
+                backgroundColor: 'transparent',
+                color: themeState === 'light' ? '#000000' : '#E5E7EB',
                 fontFamily: 'Poppins',
-                fontWeight: 600,
-                fontSize: '14px',
-                cursor: 'pointer',
-                transition: 'all 0.3s'
+                border: 'none',
+                cursor: 'pointer'
               }}
             >
-              {filter.label}
+              <Filter style={{ width: '16px', height: '16px', color: themeState === 'light' ? '#000000' : '#E5E7EB' }} />
             </button>
-          ))}
-          <button style={{
-            padding: '12px',
-            borderRadius: '50%',
-            border: 'none',
-            background: '#D9D9D9',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Filter style={{ width: '20px', height: '20px', color: '#6E6E6E' }} />
-          </button>
+          </div>
         </div>
         
         <JobDetailView 
@@ -176,7 +207,7 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
   }
 
   return (
-    <div style={{ backgroundColor: bgColor, minHeight: 'calc(100vh - 116px)', padding: '20px 40px', position: 'relative' }}>
+    <div style={{ backgroundColor: bgColor, minHeight: 'calc(100vh - 80px)', padding: '20px 40px', position: 'relative', overflowY: 'auto' }}>
       {showSavePopup && (
         <div style={{
           position: 'fixed',
@@ -194,7 +225,7 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
           animation: 'slideIn 0.3s ease-out',
           fontFamily: 'Poppins'
         }}>
-          <Bookmark style={{ width: '20px', height: '20px', fill: '#FFFFFF' }} />
+          <Bookmark set="bulk" primaryColor="rgba(19, 15, 38, 1)" size={20} />
           <span style={{ fontSize: '14px', fontWeight: 600 }}>Added to Saved Jobs</span>
         </div>
       )}
@@ -213,158 +244,124 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
         `}
       </style>
       {/* Filter Tabs */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', alignItems: 'center', justifyContent: 'center' }}>
         {filters.map((filter) => (
-          <button
-            key={filter.id}
-            onClick={() => handleFilterClick(filter.id)}
+          <div key={filter.id} style={{
+            backgroundColor: activeFilter === filter.id ? (themeState === 'light' ? '#DBEAFE' : 'rgba(37, 99, 235, 0.2)') : '#FFFFFF',
+            borderRadius: '30px',
+            padding: '3px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+          }}>
+            <button
+              onClick={() => handleFilterClick(filter.id)}
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-full transition-all font-semibold whitespace-nowrap"
+              style={{
+                backgroundColor: 'transparent',
+                color: activeFilter === filter.id ? '#2563EB' : (themeState === 'light' ? '#000000' : '#E5E7EB'),
+                fontFamily: 'Poppins',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+            >
+              <span>{filter.label}</span>
+            </button>
+          </div>
+        ))}
+        <div style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: '50%',
+          padding: '3px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+        }}>
+          <button 
+            className="flex items-center space-x-1 px-2 py-1.5 rounded-full transition-all font-semibold whitespace-nowrap"
             style={{
-              padding: '12px 24px',
-              borderRadius: '30px',
-              border: 'none',
-              background: activeFilter === filter.id ? '#4285F4' : '#D9D9D9',
-              color: activeFilter === filter.id ? '#FFFFFF' : '#6E6E6E',
+              backgroundColor: 'transparent',
+              color: themeState === 'light' ? '#000000' : '#E5E7EB',
               fontFamily: 'Poppins',
-              fontWeight: 600,
-              fontSize: '14px',
-              cursor: 'pointer',
-              transition: 'all 0.3s'
+              border: 'none',
+              cursor: 'pointer'
             }}
           >
-            {filter.label}
+            <Filter style={{ width: '16px', height: '16px', color: themeState === 'light' ? '#000000' : '#E5E7EB' }} />
           </button>
-        ))}
-        <button style={{
-          padding: '12px',
-          borderRadius: '50%',
-          border: 'none',
-          background: '#D9D9D9',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <Filter style={{ width: '20px', height: '20px', color: '#6E6E6E' }} />
-        </button>
+        </div>
       </div>
 
       {activeFilter === 'applied' ? (
-        <AppliedJobsView themeState={themeState} onJobClick={(job) => setSelectedJob(job)} />
+        <AppliedJobsView themeState={themeState} onJobClick={(job) => setSelectedJob(job)} savedJobs={savedJobs} onToggleSave={handleToggleSave} />
       ) : activeFilter === 'saved' ? (
-        savedJobs.length > 0 ? (
-          <div 
-            onClick={() => setSelectedJob(jobs[0])}
-            style={{
-          backgroundColor: cardBg,
-          borderRadius: '20px',
-          padding: '20px',
-          maxWidth: '896px',
-          margin: '0 auto',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-          overflow: 'hidden',
-          cursor: 'pointer'
-        }}>
-          <div style={{ width: '100%', height: '120px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', position: 'relative', borderRadius: '20px', marginBottom: '40px' }}>
-            <div style={{
-              position: 'absolute',
-              bottom: '-30px',
-              left: '24px',
-              width: '60px',
-              height: '60px',
-              borderRadius: '50%',
-              background: '#FFFFFF',
-              border: '6px solid rgba(66, 133, 244, 0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <img src="/images/FLuid Live Icon light theme.png" alt="Company Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-            </div>
-          </div>
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-              <div>
-                <h2 style={{ fontFamily: 'Poppins', fontWeight: 700, fontSize: '20px', color: textPrimary, marginBottom: '4px' }}>QA Engineer - Insurance</h2>
-                <p style={{ fontFamily: 'Poppins', fontSize: '11px', color: '#9E9E9E' }}>Posted on: 30/10/2025</p>
-              </div>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <button style={{ background: '#4285F4', color: 'white', padding: '10px 20px', borderRadius: '10px', border: 'none', fontFamily: 'Poppins', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                  Apply Now <User style={{ width: '18px', height: '18px' }} />
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); handleToggleSave(jobs[0]?.id); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                  <Bookmark style={{ width: '24px', height: '24px', color: '#4285F4', fill: '#4285F4' }} />
-                </button>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
-              <div>
-                <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>JOB TYPE</p>
-                <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>Full-Time</p>
-              </div>
-              <div>
-                <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>CTC</p>
-                <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>Rs.6.0L-Rs.15.0L</p>
-              </div>
-              <div>
-                <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>INDUSTRY</p>
-                <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>Technology</p>
-              </div>
-              <div>
-                <p style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>LOCATION</p>
-                <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 600, color: textPrimary }}>Pune, Mumbai</p>
-              </div>
-            </div>
-            <div style={{ marginBottom: '16px' }}>
-              <h3 style={{ fontFamily: 'Poppins', fontSize: '12px', fontWeight: 700, color: textPrimary, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>DESCRIPTION</h3>
-              <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 500, color: textSecondary, lineHeight: '1.5' }}>FluidLive is a Technology Solutions company with modern techno-creative fluid blend as its principle. Developing economically feasible, artistically adaptable, <span style={{ color: '#4285F4', fontWeight: 600, cursor: 'pointer' }}>more</span></p>
-            </div>
-            <div>
-              <h3 style={{ fontFamily: 'Poppins', fontSize: '12px', fontWeight: 700, color: textPrimary, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ELIGIBLE SKILLS</h3>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                {['Python', 'C/C++', 'Java'].map((skill) => (
-                  <div key={skill} style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid #4285F4', fontFamily: 'Poppins', fontSize: '13px', color: '#4285F4', fontWeight: 500 }}>{skill}</div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <Bookmark style={{ width: '64px', height: '64px', color: textSecondary, margin: '0 auto 20px' }} />
-            <h3 style={{ fontFamily: 'Poppins', fontSize: '20px', fontWeight: 600, color: textPrimary, marginBottom: '8px' }}>No Saved Jobs Yet</h3>
-            <p style={{ fontFamily: 'Poppins', fontSize: '14px', color: textSecondary }}>Start saving jobs to view them here</p>
-          </div>
-        )
+        <SavedJobsView 
+          themeState={themeState} 
+          onJobClick={(job) => setSelectedJob(job)}
+          savedJobs={savedJobs}
+          onToggleSave={handleToggleSave}
+        />
       ) : (
-        <div>
+        <div style={{ display: 'flex', position: 'relative' }}>
+          {/* Navigation Dots */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '215px',
+            transform: 'translateY(-50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            zIndex: 10
+          }}>
+            {jobs.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  const jobCard = document.getElementById(`job-card-${index}`);
+                  if (jobCard) {
+                    jobCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setCurrentJobIndex(index);
+                  }
+                }}
+                style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  backgroundColor: currentJobIndex === index ? '#4285F4' : '#D9D9D9',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Jobs Container */}
           <div 
-            id="jobsContainer"
             style={{ 
-              height: 'calc(100vh - 280px)', 
+              width: '100%', 
+              padding: '0 10px 150px 10px',
+              height: 'calc(100vh - 150px)',
               overflowY: 'auto',
-              scrollSnapType: 'y mandatory',
-              scrollBehavior: 'smooth',
               scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              padding: '0 10px'
+              msOverflowStyle: 'none'
             }}
             onScroll={(e) => {
               const container = e.target as HTMLElement;
               const scrollTop = container.scrollTop;
-              const cardHeight = 400;
+              const cardHeight = 500;
               const newIndex = Math.round(scrollTop / cardHeight);
               setCurrentJobIndex(Math.min(newIndex, jobs.length - 1));
             }}
           >
             <style>
               {`
-                #jobsContainer::-webkit-scrollbar {
+                div::-webkit-scrollbar {
                   display: none;
                 }
               `}
             </style>
-          {jobs.map((job) => (
+            {jobs.map((job) => (
             <div 
+              id={`job-card-${jobs.indexOf(job)}`}
               key={job.id}
               onClick={() => setSelectedJob(job)}
               style={{
@@ -372,29 +369,42 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
                 borderRadius: '20px',
                 padding: '20px',
                 maxWidth: '920px',
-                margin: '0 auto 30px auto',
+                margin: '0 auto 50px auto',
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
                 overflow: 'hidden',
                 cursor: 'pointer',
-                scrollSnapAlign: 'start'
+                minHeight: '450px',
+                display: 'flex',
+                flexDirection: 'column'
               }}
             >
-              {/* Banner */}
-              <div style={{ width: '100%', height: '120px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', position: 'relative', borderRadius: '20px', marginBottom: '40px' }}>
+              {/* Banner with selected image */}
+              <div style={{ 
+                width: '100%', 
+                height: '200px', 
+                background: job.selectedImage ? `url(${job.selectedImage})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                position: 'relative', 
+                borderRadius: '15px', 
+                marginBottom: '60px' 
+              }}>
+                {/* Logo with stroke */}
                 <div style={{
                   position: 'absolute',
-                  bottom: '-30px',
-                  left: '24px',
-                  width: '60px',
-                  height: '60px',
+                  bottom: '-50px',
+                  left: '46px',
+                  width: '100px',
+                  height: '100px',
                   borderRadius: '50%',
-                  background: '#FFFFFF',
-                  border: '6px solid rgba(66, 133, 244, 0.3)',
+                  border: '12px solid rgba(66, 133, 244, 0.2)',
+                  backgroundColor: '#FFFFFF',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  boxShadow: '0 0 0 12px rgba(66, 133, 244, 0.1)'
                 }}>
-                  <img src="/images/FLuid Live Icon light theme.png" alt="Company Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                  <img src="/images/FLuid Live Icon light theme.png" alt="Company Logo" style={{ width: '59px', height: '59px', objectFit: 'contain' }} />
                 </div>
               </div>
 
@@ -412,23 +422,24 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
                   </div>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     <button style={{
-                      background: '#4285F4',
-                      color: 'white',
+                      background: 'rgba(66, 133, 244, 1)',
+                      color: 'rgba(255, 255, 255, 1)',
                       padding: '10px 20px',
                       borderRadius: '10px',
                       border: 'none',
                       fontFamily: 'Poppins',
                       fontWeight: 600,
-                      fontSize: '14px',
+                      fontSize: '13px',
+                      lineHeight: '100%',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
                       cursor: 'pointer'
                     }}>
-                      Apply Now <User style={{ width: '18px', height: '18px' }} />
+                      Apply Now <AddUser set="light" primaryColor="rgba(255, 255, 255, 1)" size={17} style={{ strokeWidth: 1.5 }} />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleToggleSave(job.id); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                      <Bookmark style={{ width: '24px', height: '24px', color: savedJobs.includes(job.id) ? '#4285F4' : textPrimary, fill: savedJobs.includes(job.id) ? '#4285F4' : 'none' }} />
+                    <button onClick={(e) => { e.stopPropagation(); handleToggleSave(job.id); }} className="w-[29px] h-[29px] rounded-[5px] flex items-center justify-center" style={{ backgroundColor: '#D9D9D9' }}>
+                      <Bookmark set="bulk" primaryColor={savedJobs.includes(job.id) ? '#4285F4' : 'rgba(19, 15, 38, 1)'} size={20} style={{ width: '16px', height: '20px' }} />
                     </button>
                   </div>
                 </div>
@@ -457,12 +468,23 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
                 <div style={{ marginBottom: '16px' }}>
                   <h3 style={{ fontFamily: 'Poppins', fontSize: '12px', fontWeight: 700, color: textPrimary, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>DESCRIPTION</h3>
                   <p style={{ fontFamily: 'Poppins', fontSize: '13px', fontWeight: 500, color: textSecondary, lineHeight: '1.5' }}>
-                    {job.description} <span style={{ color: '#4285F4', fontWeight: 600, cursor: 'pointer' }}>more</span>
+                    {expandedDescriptions.has(job.id) 
+                      ? job.description 
+                      : truncateDescription(job.description)
+                    }
+                    {job.description.split(' ').length > 20 && (
+                      <span 
+                        onClick={(e) => { e.stopPropagation(); toggleDescription(job.id); }}
+                        style={{ color: '#4285F4', fontWeight: 600, cursor: 'pointer', marginLeft: '4px' }}
+                      >
+                        {expandedDescriptions.has(job.id) ? 'less' : 'more'}
+                      </span>
+                    )}
                   </p>
                 </div>
 
                 {/* Skills */}
-                <div>
+                <div style={{ marginTop: 'auto' }}>
                   <h3 style={{ fontFamily: 'Poppins', fontSize: '12px', fontWeight: 700, color: textPrimary, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ELIGIBLE SKILLS</h3>
                   <div style={{ display: 'flex', gap: '10px' }}>
                     {(job.skills || []).map((skill: string) => (
@@ -484,40 +506,7 @@ const MyJobsView: React.FC<MyJobsViewProps> = ({ themeState = 'light', initialFi
             </div>
           ))}
           </div>
-          
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '8px',
-            marginTop: '20px',
-            paddingBottom: '20px'
-          }}>
-            {jobs.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  const container = document.getElementById('jobsContainer');
-                  if (container) {
-                    container.scrollTo({
-                      top: index * 430,
-                      behavior: 'smooth'
-                    });
-                    setCurrentJobIndex(index);
-                  }
-                }}
-                style={{
-                  width: '12px',
-                  height: '12px',
-                  borderRadius: '50%',
-                  border: 'none',
-                  backgroundColor: currentJobIndex === index ? '#4285F4' : '#D9D9D9',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease'
-                }}
-              />
-            ))}
           </div>
-        </div>
       )}
     </div>
   );

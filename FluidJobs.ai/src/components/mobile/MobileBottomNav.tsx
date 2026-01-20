@@ -1,6 +1,5 @@
 import React from 'react';
-import { User } from 'lucide-react';
-import { Notification, Work, Paper } from 'react-iconly';
+import { User, Notification, Work, Paper } from 'react-iconly';
 
 interface MobileBottomNavProps {
   activeTab: string;
@@ -9,10 +8,10 @@ interface MobileBottomNavProps {
 
 const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTab, onTabChange }) => {
   const tabs = [
-    { id: 'alerts', label: 'Alerts', icon: 'Notification' },
-    { id: 'jobs', label: 'My Jobs', icon: 'Work' },
-    { id: 'resume', label: 'My\u00A0Resume', icon: 'Paper' },
-    { id: 'profile', label: 'Profile', icon: 'Profile' },
+    { id: 'alerts', label: 'Alerts', icon: 'Notification', textColor: 'rgba(145, 145, 145, 1)' },
+    { id: 'jobs', label: 'My Jobs', icon: 'Work', textColor: 'rgba(161, 159, 168, 1)' },
+    { id: 'resume', label: 'My\u00A0Resume', icon: 'Paper', textColor: 'rgba(161, 159, 168, 1)' },
+    { id: 'profile', label: 'Profile', icon: 'Profile', textColor: 'rgba(161, 159, 168, 1)' },
   ];
 
   return (
@@ -22,16 +21,13 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTab, onTabChang
         position: 'fixed',
         left: '50%',
         transform: 'translateX(-50%)',
-        width: 'min(360px, 92vw)',
-        height: '72px',
+        width: '305px',
+        height: '70px',
         bottom: '20px',
         zIndex: 9999,
-        background: 'rgba(255, 255, 255, 0.85)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.12), 0px 2px 8px rgba(0, 0, 0, 0.08)',
-        borderRadius: '100px',
-        border: '1px solid rgba(255, 255, 255, 0.8)'
+        background: 'transparent',
+        boxShadow: '0px 0px 10px 2px rgba(0, 0, 0, 0.15)',
+        borderRadius: '100px'
       }}
     >
       <div className="flex justify-around items-center h-full px-3">
@@ -57,13 +53,13 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTab, onTabChang
                 <div
                   className="absolute"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(66, 133, 244, 0.2), rgba(0, 96, 255, 0.15))',
-                    borderRadius: '20px',
-                    top: '0',
-                    bottom: '0',
-                    left: '0',
-                    right: '0',
-                    boxShadow: '0px 2px 8px rgba(66, 133, 244, 0.2)'
+                    background: 'rgba(66, 133, 244, 0.16)',
+                    borderRadius: '30px',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: tab.id === 'resume' ? '84px' : '62px',
+                    height: '60px'
                   }}
                 ></div>
               )}
@@ -71,16 +67,16 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTab, onTabChang
                 {tab.icon === 'Notification' && <Notification set="bulk" primaryColor={isActive ? '#4285F4' : '#1F2937'} size={30} />}
                 {tab.icon === 'Work' && <Work set="bulk" primaryColor={isActive ? '#4285F4' : '#1F2937'} size={25} />}
                 {tab.icon === 'Paper' && <Paper set="bulk" primaryColor={isActive ? '#4285F4' : '#1F2937'} size={25} />}
-                {tab.icon === 'Profile' && <User style={{ width: '25px', height: '25px', color: isActive ? '#4285F4' : '#1F2937', strokeWidth: isActive ? 2.5 : 2 }} />}
+                {tab.icon === 'Profile' && <User set="bulk" primaryColor={isActive ? '#4285F4' : 'rgba(19, 15, 38, 1)'} size={30} />}
               </div>
               <span 
                 className="relative z-10"
                 style={{
                   fontFamily: 'Poppins',
-                  fontWeight: isActive ? 700 : 600,
+                  fontWeight: 600,
                   fontSize: '10px',
-                  lineHeight: '12px',
-                  color: isActive ? '#4285F4' : '#1F2937',
+                  lineHeight: '100%',
+                  color: isActive ? '#4285F4' : tab.textColor,
                   textAlign: 'center'
                 }}
               >

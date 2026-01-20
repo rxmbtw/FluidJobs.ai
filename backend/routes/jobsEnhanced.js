@@ -208,16 +208,30 @@ router.get('/', async (req, res) => {
       id: job.id.toString(),
       title: job.title,
       company: job.company || 'FluidJobs.ai',
-      type: job.job_type,
-      industry: job.job_domain,
-      salary: job.min_salary && job.max_salary ? 
+      jobType: job.job_type,
+      ctc: job.min_salary && job.max_salary ? 
         `₹${(job.min_salary/100000).toFixed(1)}L - ₹${(job.max_salary/100000).toFixed(1)}L` : 
         'Competitive',
-      location: job.location || 'Remote',
+      industry: job.job_domain,
+      location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations || 'Remote',
+      description: job.description,
+      skills: Array.isArray(job.skills) ? job.skills : [],
       postedDate: new Date(job.created_at || job.posted_date).toLocaleDateString(),
       isEligible: true,
-      registrationDeadline: job.closing_date ? new Date(job.closing_date).toLocaleDateString() : null,
-      attachmentCount: parseInt(job.attachment_count) || 0
+      registrationDeadline: job.registration_closing_date ? new Date(job.registration_closing_date).toLocaleDateString() : null,
+      attachmentCount: parseInt(job.attachment_count) || 0,
+      // Additional fields from job creation form
+      modeOfJob: job.mode_of_job,
+      noOfOpenings: job.no_of_openings,
+      minExperience: job.min_experience,
+      maxExperience: job.max_experience,
+      experienceRange: job.min_experience && job.max_experience ? `${job.min_experience}-${job.max_experience} years` : null,
+      selectedImage: job.selected_image,
+      showSalaryToCandidate: job.show_salary_to_candidate,
+      registrationOpeningDate: job.registration_opening_date,
+      registrationClosingDate: job.registration_closing_date,
+      minSalary: job.min_salary,
+      maxSalary: job.max_salary
     }));
     
     res.json(jobs);
@@ -243,17 +257,47 @@ router.get('/published', async (req, res) => {
         j.max_experience,
         j.min_salary,
         j.max_salary,
+        j.show_salary_to_candidate,
         j.skills,
         j.description,
         j.selected_image,
         j.created_at,
-        j.registration_closing_date
+        j.registration_opening_date,
+        j.registration_closing_date,
+        j.no_of_openings
       FROM jobs_enhanced j
       WHERE j.status = 'Published' OR j.status = 'active'
       ORDER BY j.created_at DESC;
     `);
     
-    res.json({ success: true, jobs: result.rows });
+    const jobs = result.rows.map(job => ({
+      id: job.id.toString(),
+      title: job.title,
+      company: job.company || 'FluidJobs.ai',
+      jobType: job.job_type,
+      ctc: job.min_salary && job.max_salary ? 
+        `₹${(job.min_salary/100000).toFixed(1)}L - ₹${(job.max_salary/100000).toFixed(1)}L` : 
+        'Competitive',
+      industry: job.job_domain,
+      location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations || 'Remote',
+      description: job.description,
+      skills: Array.isArray(job.skills) ? job.skills : [],
+      postedDate: new Date(job.created_at).toLocaleDateString(),
+      // Additional fields from job creation form
+      modeOfJob: job.mode_of_job,
+      noOfOpenings: job.no_of_openings,
+      minExperience: job.min_experience,
+      maxExperience: job.max_experience,
+      experienceRange: job.min_experience && job.max_experience ? `${job.min_experience}-${job.max_experience} years` : null,
+      selectedImage: job.selected_image,
+      showSalaryToCandidate: job.show_salary_to_candidate,
+      registrationOpeningDate: job.registration_opening_date,
+      registrationClosingDate: job.registration_closing_date,
+      minSalary: job.min_salary,
+      maxSalary: job.max_salary
+    }));
+    
+    res.json({ success: true, jobs });
   } catch (error) {
     console.error('Error fetching published jobs:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -308,20 +352,37 @@ router.get('/:id', async (req, res) => {
       id: job.id.toString(),
       title: job.title,
       company: job.company || 'FluidJobs.ai',
-      type: job.job_type,
-      industry: job.job_domain,
-      salary: job.min_salary && job.max_salary ? 
+      jobType: job.job_type,
+      ctc: job.min_salary && job.max_salary ? 
         `₹${(job.min_salary/100000).toFixed(1)}L - ₹${(job.max_salary/100000).toFixed(1)}L` : 
         'Competitive',
+      industry: job.job_domain,
       location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations,
       description: job.description,
       skills: Array.isArray(job.skills) ? job.skills : [],
+      postedDate: new Date(job.created_at).toLocaleDateString(),
+      // Additional fields from job creation form
+      modeOfJob: job.mode_of_job,
+      noOfOpenings: job.no_of_openings,
+      minExperience: job.min_experience,
+      maxExperience: job.max_experience,
+      experienceRange: job.min_experience && job.max_experience ? `${job.min_experience}-${job.max_experience} years` : null,
+      selectedImage: job.selected_image,
+      showSalaryToCandidate: job.show_salary_to_candidate,
+      registrationOpeningDate: job.registration_opening_date,
+      registrationClosingDate: job.registration_closing_date,
+      minSalary: job.min_salary,
+      maxSalary: job.max_salary,
+      // Legacy fields for backward compatibility
+      type: job.job_type,
+      salary: job.min_salary && job.max_salary ? 
+        `₹${(job.min_salary/100000).toFixed(1)}L - ₹${(job.max_salary/100000).toFixed(1)}L` : 
+        'Competitive',
       experience: `${job.min_experience}-${job.max_experience} years`,
       employmentType: job.job_type,
       salaryRange: job.min_salary && job.max_salary ? 
         `Rs.${(job.min_salary/100000).toFixed(1)}L-Rs.${(job.max_salary/100000).toFixed(1)}L` : 
         'Competitive',
-      postedDate: new Date(job.created_at).toLocaleDateString(),
       registration_opening_date: job.registration_opening_date,
       registration_closing_date: job.registration_closing_date,
       attachments: attachmentsResult.rows

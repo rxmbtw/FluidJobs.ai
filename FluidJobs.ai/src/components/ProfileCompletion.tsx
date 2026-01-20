@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Plus } from 'lucide-react';
+import { Plus, TickSquare } from 'react-iconly';
 import { useProfileCompletion, ProfileCompletionItem } from '../hooks/useProfileCompletion';
 
 interface ProfileCompletionProps {
@@ -17,7 +17,14 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
 
   const handleItemClick = (item: ProfileCompletionItem) => {
     if (item.completed) return;
-    onNavigateToEdit();
+    
+    // Navigate to resume page for resume-related items
+    if (item.id === 'resume') {
+      onNavigateToResume();
+    } else {
+      // Navigate to edit profile for all other items
+      onNavigateToEdit();
+    }
   };
 
   const bgColor = themeState === 'light' ? '#FFFFFF' : '#1F2937';
@@ -64,7 +71,7 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
       <div className="w-full h-[1px] mb-4 flex-shrink-0" style={{ backgroundColor: dividerColor }}></div>
       
       {/* Items - Scrollable */}
-      <div className="space-y-[18px] overflow-y-auto flex-1 pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: '#4285F4 #E5E7EB' }}>
+      <div className="space-y-[18px] overflow-y-auto flex-1 pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: '#D1D5DB #E5E7EB' }}>
         <style>{`
           .space-y-\[18px\]::-webkit-scrollbar {
             width: 6px;
@@ -74,7 +81,7 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
             border-radius: 10px;
           }
           .space-y-\[18px\]::-webkit-scrollbar-thumb {
-            background: #4285F4;
+            background: #D1D5DB;
             border-radius: 10px;
           }
         `}</style>
@@ -90,25 +97,20 @@ const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
             {/* Checkbox Icon */}
             <div className="flex-shrink-0 mr-3">
               <div className={`w-6 h-6 rounded-md flex items-center justify-center ${
-                item.completed ? 'bg-[#10B981] border-[1.5px] border-[#10B981]' : 'border-[1.5px] border-[#6E6E6E]'
-              }`}>
-                {item.completed && (
-                  <Check className="w-4 h-4 text-white" strokeWidth={2.5} />
+                item.completed ? '' : ''
+              }`} style={{ backgroundColor: 'transparent' }}>
+                {item.completed ? (
+                  <TickSquare set="light" primaryColor="#6B7280" size={18.5} style={{ strokeWidth: 1.5 }} />
+                ) : (
+                  <Plus set="light" primaryColor="rgba(66, 133, 244, 1)" size={18.5} />
                 )}
               </div>
             </div>
             
             {/* Label */}
-            <span className="text-[14px] font-medium leading-[16px] flex-grow" style={{ fontFamily: 'Poppins, sans-serif', color: item.completed ? '#10B981' : textSecondary }}>
+            <span className="text-[14px] font-medium leading-[16px] flex-grow" style={{ fontFamily: 'Roboto, sans-serif', fontWeight: 600, fontSize: '14px', lineHeight: '100%', color: item.completed ? '#6B7280' : 'rgba(110, 110, 110, 1)' }}>
               {item.label}
             </span>
-            
-            {/* Plus Icon */}
-            <div className="flex-shrink-0">
-              <div className="w-6 h-6 rounded-md bg-[#4285F4] flex items-center justify-center relative">
-                <Plus className="w-4 h-4 text-white" strokeWidth={2} />
-              </div>
-            </div>
           </div>
         ))}
       </div>

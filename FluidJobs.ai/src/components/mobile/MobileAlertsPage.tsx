@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, Check, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Plus, TickSquare, Notification } from 'react-iconly';
 import axios from 'axios';
 import { useProfileCompletionContext } from '../../contexts/ProfileCompletionContext';
 
@@ -126,9 +126,13 @@ const MobileAlertsPage: React.FC = () => {
     }
   };
 
-  const handleItemClick = () => {
-    console.log('Profile item clicked, navigating to edit profile');
-    navigate('/edit-profile');
+  const handleItemClick = (item: any) => {
+    console.log('Profile item clicked:', item.id);
+    if (item.id === 'resume') {
+      navigate('/candidate-dashboard', { state: { activeTab: 'resume' } });
+    } else {
+      navigate('/candidate-dashboard', { state: { showEditProfile: true } });
+    }
   };
 
   if (loading) {
@@ -144,7 +148,7 @@ const MobileAlertsPage: React.FC = () => {
       {/* Header */}
       <div className="px-6 pt-6 pb-4" style={{ flexShrink: 0, position: 'sticky', top: 0, background: '#F1F1F1', zIndex: 10 }}>
         <div className="flex items-center gap-2">
-          <Bell className="w-6 h-6" style={{ color: '#130F26', strokeWidth: 2 }} />
+          <Notification set="bulk" primaryColor="#130F26" size={24} />
           <h1 style={{
             fontFamily: 'Poppins, sans-serif',
             fontWeight: 700,
@@ -236,53 +240,57 @@ const MobileAlertsPage: React.FC = () => {
               {items.map((item) => (
                 <button
                   key={item.id}
-                  onClick={handleItemClick}
+                  onClick={() => handleItemClick(item)}
                   type="button"
                   style={{
                     width: '100%',
                     background: 'transparent',
                     border: 'none',
                     padding: 0,
-                    textAlign: 'left'}}>
-                  <div
-                  style={{
-                    border: item.completed ? '1px solid #10B981' : '1px solid rgba(0, 0, 0, 0.2)',
-                    borderRadius: '10px',
-                    height: '50px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '0 16px',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
+                    textAlign: 'left'
                   }}
                 >
-                  <div className="flex items-center">
-                    <div style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      background: item.completed ? '#10B981' : '#4285F4',
+                  <div
+                    style={{
+                      border: item.completed ? '1px solid #10B981' : '1px solid rgba(0, 0, 0, 0.2)',
+                      borderRadius: '10px',
+                      height: '50px',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: '12px'
-                    }}>
-                      {item.completed ? (
-                        <Check className="w-4 h-4" style={{ color: '#FFFFFF', strokeWidth: 3 }} />
-                      ) : (
-                        <Plus className="w-4 h-4" style={{ color: '#FFFFFF', strokeWidth: 3 }} />
-                      )}
+                      padding: '0 16px',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div className="flex items-center">
+                      <div style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '4px',
+                        background: 'transparent',
+                        border: item.completed ? '1.5px solid #E5E7EB' : 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: '12px'
+                      }}>
+                        {item.completed ? (
+                          <TickSquare set="light" primaryColor="#6B7280" size={18.5} style={{ strokeWidth: 1.5 }} />
+                        ) : (
+                          <Plus set="light" primaryColor="rgba(66, 133, 244, 1)" size={18.5} />
+                        )}
+                      </div>
+                      <span style={{
+                        fontFamily: 'Roboto, sans-serif',
+                        fontWeight: 600,
+                        fontSize: '14px',
+                        lineHeight: '100%',
+                        color: item.completed ? '#6B7280' : 'rgba(110, 110, 110, 1)'
+                      }}>
+                        {item.label}
+                      </span>
                     </div>
-                    <span style={{
-                      fontFamily: 'Poppins, sans-serif',
-                      fontWeight: 500,
-                      fontSize: '14px',
-                      color: item.completed ? '#10B981' : '#6E6E6E'
-                    }}>
-                      {item.label}
-                    </span>
-                  </div>
                   </div>
                 </button>
               ))}
@@ -303,12 +311,13 @@ const MobileAlertsPage: React.FC = () => {
             justifyContent: 'center'
           }}>
             <p style={{
-              fontFamily: 'Poppins, sans-serif',
-              fontWeight: 500,
+              fontFamily: 'Roboto, sans-serif',
+              fontWeight: 600,
               fontSize: '14px',
-              lineHeight: '20px',
-              color: '#6E6E6E',
-              maxWidth: '276px'
+              lineHeight: '100%',
+              color: 'rgba(110, 110, 110, 1)',
+              maxWidth: '276px',
+              textAlign: 'center'
             }}>
               Complete your profile to start getting announcements of the latest job openings!
             </p>

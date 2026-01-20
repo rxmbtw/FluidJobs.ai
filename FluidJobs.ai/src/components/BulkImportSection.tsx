@@ -138,7 +138,6 @@ const BulkImportSection: React.FC = () => {
       <div className="bg-white rounded-xl shadow-lg p-4">
         {/* Header */}
         <div className="text-center mb-4">
-          <Upload className="w-8 h-8 text-blue-500 mx-auto mb-2" />
           <h1 className="text-xl font-semibold text-gray-900 mb-1">Bulk Import Candidates</h1>
           <p className="text-sm text-gray-600">Upload a CSV file to create multiple candidate profiles at once</p>
         </div>
