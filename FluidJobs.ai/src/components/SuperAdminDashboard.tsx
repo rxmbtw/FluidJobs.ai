@@ -13,6 +13,7 @@ import { ThemeProvider } from '../new-landing/candidate-dashboard/ThemeContext';
 import PhoneInput from '../new-landing/candidate-dashboard/PhoneInput';
 import JobCreationForm from './JobCreationForm';
 import Loader from './Loader';
+import { DateFilterDropdown } from './DateFilterDropdown';
 
 const SuperAdminDashboard: React.FC = () => {
   const admin = JSON.parse(localStorage.getItem('superadmin') || '{}');
@@ -48,12 +49,14 @@ const SuperAdminDashboard: React.FC = () => {
   };
   const [approvedJobs, setApprovedJobs] = useState<any[]>([]);
   const [rejectedJobs, setRejectedJobs] = useState<any[]>([]);
+  const [allApprovals, setAllApprovals] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showProfileSettingsPage, setShowProfileSettingsPage] = useState(false);
   const [approvalTab, setApprovalTab] = useState('pending');
+  const [approvalFilter, setApprovalFilter] = useState('all'); // 'all', 'jobs', 'candidates'
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -121,6 +124,12 @@ const SuperAdminDashboard: React.FC = () => {
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [showPurgeConfirmModal, setShowPurgeConfirmModal] = useState(false);
   const [isPurging, setIsPurging] = useState(false);
+  const [dashboardDateRange, setDashboardDateRange] = useState({ start: '', end: '' });
+  const [approvalsDateRange, setApprovalsDateRange] = useState({ start: '', end: '' });
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [jobToReject, setJobToReject] = useState<any>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [submittingRejection, setSubmittingRejection] = useState(false);
 
   React.useEffect(() => {
     setProfileData({ name: admin.name || '', email: admin.email || '', currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -299,11 +308,44 @@ const SuperAdminDashboard: React.FC = () => {
     initializeDashboard();
   }, []);
 
+  // Add effect to refetch data when dashboard date range changes
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
+      fetchStats();
+    }
+  }, [dashboardDateRange]);
+
+  // Add effect to refetch data when approvals date range changes
   useEffect(() => {
     if (activeTab === 'approvals') {
+      fetchPendingApprovals();
       if (approvalTab === 'approved') {
         fetchApprovedJobs();
       } else if (approvalTab === 'declined') {
+        fetchRejectedJobs();
+      }
+      if (approvalFilter === 'all') {
+        fetchApprovedJobs();
+        fetchRejectedJobs();
+      }
+    }
+  }, [approvalsDateRange]);
+
+  useEffect(() => {
+    if (activeTab === 'approvals') {
+      console.log('🔍 Approvals tab active, current approvalTab:', approvalTab);
+      // Always fetch all data to support the "All" filter
+      fetchPendingApprovals();
+      if (approvalTab === 'approved') {
+        console.log('📋 Fetching approved jobs...');
+        fetchApprovedJobs();
+      } else if (approvalTab === 'declined') {
+        console.log('📋 Fetching rejected jobs...');
+        fetchRejectedJobs();
+      }
+      // Fetch all data when "All" filter might be used
+      if (approvalFilter === 'all') {
+        fetchApprovedJobs();
         fetchRejectedJobs();
       }
     } else if (activeTab === 'settings-audit-logs') {
@@ -322,11 +364,15 @@ const SuperAdminDashboard: React.FC = () => {
       };
       loadAuditLogs();
     }
-  }, [activeTab, approvalTab, auditPage]);
+  }, [activeTab, approvalTab, approvalFilter, auditPage]);
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get<typeof stats>('http://localhost:8000/api/superadmin/stats');
+      let url = 'http://localhost:8000/api/superadmin/stats';
+      if (dashboardDateRange.start && dashboardDateRange.end) {
+        url += `?startDate=${dashboardDateRange.start}&endDate=${dashboardDateRange.end}`;
+      }
+      const response = await axios.get<typeof stats>(url);
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -335,7 +381,11 @@ const SuperAdminDashboard: React.FC = () => {
 
   const fetchPendingApprovals = async () => {
     try {
-      const response = await axios.get<any[]>('http://localhost:8000/api/superadmin/pending-approvals');
+      let url = 'http://localhost:8000/api/superadmin/pending-approvals';
+      if (approvalsDateRange.start && approvalsDateRange.end) {
+        url += `?startDate=${approvalsDateRange.start}&endDate=${approvalsDateRange.end}`;
+      }
+      const response = await axios.get<any[]>(url);
       setPendingApprovals(response.data);
     } catch (error) {
       console.error('Error fetching approvals:', error);
@@ -344,8 +394,18 @@ const SuperAdminDashboard: React.FC = () => {
 
   const fetchApprovedJobs = async () => {
     try {
-      const response = await axios.get<any[]>('http://localhost:8000/api/superadmin/approved-jobs');
-      setApprovedJobs(response.data);
+      let url = 'http://localhost:8000/api/superadmin/approved-jobs';
+      if (approvalsDateRange.start && approvalsDateRange.end) {
+        url += `?startDate=${approvalsDateRange.start}&endDate=${approvalsDateRange.end}`;
+      }
+      const response = await axios.get<any[]>(url);
+      // Sort by approved_at descending - latest first
+      const sortedJobs = response.data.sort((a, b) => {
+        const dateA = new Date(a.approved_at).getTime();
+        const dateB = new Date(b.approved_at).getTime();
+        return dateB - dateA;
+      });
+      setApprovedJobs(sortedJobs);
     } catch (error) {
       console.error('Error fetching approved jobs:', error);
     }
@@ -353,10 +413,60 @@ const SuperAdminDashboard: React.FC = () => {
 
   const fetchRejectedJobs = async () => {
     try {
-      const response = await axios.get<any[]>('http://localhost:8000/api/superadmin/rejected-jobs');
-      setRejectedJobs(response.data);
+      console.log('🔄 Fetching rejected jobs from API...');
+      let url = 'http://localhost:8000/api/superadmin/rejected-jobs';
+      if (approvalsDateRange.start && approvalsDateRange.end) {
+        url += `?startDate=${approvalsDateRange.start}&endDate=${approvalsDateRange.end}`;
+      }
+      const response = await axios.get<any[]>(url);
+      console.log('✅ Rejected jobs response:', response.data);
+      // Sort by approved_at (rejection date) descending - latest first
+      const sortedJobs = response.data.sort((a, b) => {
+        const dateA = new Date(a.approved_at).getTime();
+        const dateB = new Date(b.approved_at).getTime();
+        return dateB - dateA;
+      });
+      setRejectedJobs(sortedJobs);
     } catch (error) {
-      console.error('Error fetching rejected jobs:', error);
+      console.error('❌ Error fetching rejected jobs:', error);
+    }
+  };
+
+  const fetchAllApprovals = async () => {
+    try {
+      console.log('🔄 Fetching all approvals from API...');
+      const [pendingRes, approvedRes, rejectedRes] = await Promise.all([
+        axios.get<any[]>('http://localhost:8000/api/superadmin/pending-approvals'),
+        axios.get<any[]>('http://localhost:8000/api/superadmin/approved-jobs'),
+        axios.get<any[]>('http://localhost:8000/api/superadmin/rejected-jobs')
+      ]);
+      
+      console.log('✅ All approvals responses:', {
+        pending: pendingRes.data.length,
+        approved: approvedRes.data.length,
+        rejected: rejectedRes.data.length
+      });
+      
+      const pending = pendingRes.data.map(job => ({ ...job, status: 'pending', priority: 1 }));
+      const approved = approvedRes.data.map(job => ({ ...job, status: 'approved', priority: 2 }));
+      const rejected = rejectedRes.data.map(job => ({ ...job, status: 'rejected', priority: 3 }));
+      
+      const combined = [...pending, ...approved, ...rejected];
+      
+      // Sort by priority first, then by date (latest first within each priority)
+      const sorted = combined.sort((a, b) => {
+        if (a.priority !== b.priority) {
+          return a.priority - b.priority;
+        }
+        const dateA = new Date(a.created_at || a.approved_at).getTime();
+        const dateB = new Date(b.created_at || b.approved_at).getTime();
+        return dateB - dateA;
+      });
+      
+      console.log('✅ All approvals sorted:', sorted.length, 'total jobs');
+      setAllApprovals(sorted);
+    } catch (error) {
+      console.error('❌ Error fetching all approvals:', error);
     }
   };
 
@@ -391,28 +501,6 @@ const SuperAdminDashboard: React.FC = () => {
     }
   };
 
-  const handleApprove = async (id: number) => {
-    try {
-      await axios.post(`http://localhost:8000/api/superadmin/approve-job/${id}`);
-      fetchPendingApprovals();
-      fetchStats();
-    } catch (error) {
-      console.error('Error approving job:', error);
-    }
-  };
-
-  const handleReject = async (id: number) => {
-    try {
-      await axios.post(`http://localhost:8000/api/superadmin/reject-job/${id}`);
-      fetchPendingApprovals();
-      fetchStats();
-    } catch (error) {
-      console.error('Error rejecting job:', error);
-    }
-  };
-
-
-
   const handleLogout = () => {
     localStorage.removeItem('superadmin_token');
     localStorage.removeItem('superadmin');
@@ -432,6 +520,125 @@ const SuperAdminDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error updating user:', error);
     }
+  };
+
+  const handleApprove = async (id: number, approvalType: string = 'job') => {
+    try {
+      if (approvalType === 'candidate_restriction') {
+        await axios.post(`http://localhost:8000/api/superadmin/approve-candidate-restriction/${id}`);
+      } else {
+        await axios.post(`http://localhost:8000/api/superadmin/approve-job/${id}`);
+      }
+      
+      fetchPendingApprovals();
+      fetchStats();
+      if (approvalTab === 'all') {
+        fetchAllApprovals();
+      }
+    } catch (error) {
+      console.error('Error approving:', error);
+    }
+  };
+
+  const handleReject = async (id: number, approvalType: string = 'job') => {
+    const item = pendingApprovals.find(j => j.id === id) || allApprovals.find(j => j.id === id);
+    setJobToReject({ ...item, approval_type: approvalType });
+    setShowRejectModal(true);
+  };
+
+  const handleRejectSubmit = async () => {
+    if (!rejectionReason.trim()) {
+      alert('Please enter a reason for rejection');
+      return;
+    }
+
+    try {
+      setSubmittingRejection(true);
+      
+      if (jobToReject.approval_type === 'candidate_restriction') {
+        const response = await axios.post(`http://localhost:8000/api/superadmin/reject-candidate-restriction/${jobToReject.id}`, {
+          reason: rejectionReason
+        });
+        
+        if (response.status === 200) {
+          fetchPendingApprovals();
+          fetchStats();
+          if (approvalTab === 'all') {
+            fetchAllApprovals();
+          }
+          setShowRejectModal(false);
+          setJobToReject(null);
+          setRejectionReason('');
+        }
+      } else {
+        const response = await axios.post(`http://localhost:8000/api/superadmin/reject-job/${jobToReject.id}`, {
+          reason: rejectionReason
+        });
+        
+        if (response.status === 200) {
+          fetchPendingApprovals();
+          fetchStats();
+          if (approvalTab === 'all') {
+            fetchAllApprovals();
+          }
+          setShowRejectModal(false);
+          setJobToReject(null);
+          setRejectionReason('');
+        }
+      }
+    } catch (error) {
+      console.error('Error rejecting:', error);
+      alert('Failed to reject. Please try again.');
+    } finally {
+      setSubmittingRejection(false);
+    }
+  };
+
+  // Filter approvals based on selected filter and fetch all data when needed
+  const getFilteredApprovals = () => {
+    if (approvalTab === 'pending') {
+      return filterApprovals(pendingApprovals);
+    } else if (approvalTab === 'approved') {
+      return filterApprovals([...approvedJobs, ...pendingApprovals.filter(item => item.status === 'approved')]);
+    } else if (approvalTab === 'declined') {
+      return filterApprovals(rejectedJobs);
+    }
+    return [];
+  };
+
+  // Get all approvals for the "All" filter
+  const getAllApprovalsForFilter = () => {
+    const pending = pendingApprovals.map(job => ({ ...job, status: 'pending', priority: 1 }));
+    const approved = approvedJobs.map(job => ({ ...job, status: 'approved', priority: 2 }));
+    const rejected = rejectedJobs.map(job => ({ ...job, status: 'rejected', priority: 3 }));
+    
+    const combined = [...pending, ...approved, ...rejected];
+    
+    // Sort by priority first, then by date (latest first within each priority)
+    return combined.sort((a, b) => {
+      if (a.priority !== b.priority) {
+        return a.priority - b.priority;
+      }
+      const dateA = new Date(a.created_at || a.approved_at).getTime();
+      const dateB = new Date(b.created_at || b.approved_at).getTime();
+      return dateB - dateA;
+    });
+  };
+
+  // Filter approvals based on selected filter
+  const filterApprovals = (approvals: any[]) => {
+    if (approvalFilter === 'all') {
+      // When "All" filter is selected, show all types of approvals from all tabs
+      return getAllApprovalsForFilter().filter(item => {
+        if (approvalTab === 'pending') return item.status === 'pending';
+        if (approvalTab === 'approved') return item.status === 'approved';
+        if (approvalTab === 'declined') return item.status === 'rejected';
+        return true;
+      });
+    }
+    if (approvalFilter === 'jobs') return approvals.filter(item => item.approval_type === 'job' || !item.approval_type);
+    if (approvalFilter === 'candidates') return approvals.filter(item => item.approval_type === 'candidate_restriction');
+    return approvals;
   };
 
   const handlePolicyUpload = async (policyType: string, file: File) => {
@@ -718,7 +925,7 @@ const SuperAdminDashboard: React.FC = () => {
                     }}
                     className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
                   >
-                    <Plus size={18} />
+                    <Briefcase size={18} />
                     <span className="text-sm font-medium">Create Job</span>
                   </button>
                   <button
@@ -931,11 +1138,16 @@ const SuperAdminDashboard: React.FC = () => {
           {activeTab === 'dashboard' && (
             <div className="flex flex-col h-full overflow-hidden">
               <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
-                <h1 className="text-3xl font-semibold text-gray-900">Super Admin Dashboard</h1>
-                <p className="text-gray-600">Welcome back {admin.name || 'Super Admin'}!</p>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h1 className="text-3xl font-semibold text-gray-900">Super Admin Dashboard</h1>
+                    <p className="text-gray-600">Welcome back {admin.name || 'Super Admin'}!</p>
+                  </div>
+                  <DateFilterDropdown onDateRangeChange={(start, end) => setDashboardDateRange({ start, end })} />
+                </div>
               </div>
               <div className="flex-1 overflow-auto">
-                <SuperAdminDashboardView onTabChange={setActiveTab} />
+                <SuperAdminDashboardView onTabChange={setActiveTab} dashboardDateRange={dashboardDateRange} />
               </div>
             </div>
           )}
@@ -1215,127 +1427,236 @@ const SuperAdminDashboard: React.FC = () => {
             <div className="flex flex-col h-full overflow-hidden">
               <div className="flex-shrink-0 bg-white border-b border-gray-200 shadow-sm">
                 <div className="px-8 py-6">
-                  <h1 className="text-3xl font-semibold text-gray-900">Approvals</h1>
-                  <p className="text-gray-600">Manage all the approvals of users</p>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h1 className="text-3xl font-semibold text-gray-900">Approvals</h1>
+                      <p className="text-gray-600">Manage all the approvals of users</p>
+                    </div>
+                    <DateFilterDropdown onDateRangeChange={(start, end) => setApprovalsDateRange({ start, end })} />
+                  </div>
                 </div>
                 {/* Tab Navigation */}
-                <div className="flex space-x-3 px-8 pb-4">
-                <button
-                  onClick={() => setApprovalTab('pending')}
-                  className={`px-8 py-3 rounded-full text-sm font-medium transition ${
-                    approvalTab === 'pending'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  Pending
-                </button>
-                <button
-                  onClick={() => setApprovalTab('approved')}
-                  className={`px-8 py-3 rounded-full text-sm font-medium transition ${
-                    approvalTab === 'approved'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  Approved
-                </button>
-                <button
-                  onClick={() => setApprovalTab('declined')}
-                  className={`px-8 py-3 rounded-full text-sm font-medium transition ${
-                    approvalTab === 'declined'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  Declined
-                </button>
-              </div>
+                <div className="flex justify-between items-center px-8 pb-4">
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => setApprovalTab('pending')}
+                      className={`px-8 py-3 rounded-full text-sm font-medium transition ${
+                        approvalTab === 'pending'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      Pending
+                    </button>
+                    <button
+                      onClick={() => setApprovalTab('approved')}
+                      className={`px-8 py-3 rounded-full text-sm font-medium transition ${
+                        approvalTab === 'approved'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      Approved
+                    </button>
+                    <button
+                      onClick={() => setApprovalTab('declined')}
+                      className={`px-8 py-3 rounded-full text-sm font-medium transition ${
+                        approvalTab === 'declined'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      Declined
+                    </button>
+                  </div>
+                  
+                  {/* Filter Buttons */}
+                  <div className="flex space-x-2 bg-gray-100 rounded-lg p-1">
+                    <button
+                      onClick={() => setApprovalFilter('all')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        approvalFilter === 'all'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => setApprovalFilter('jobs')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        approvalFilter === 'jobs'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Jobs
+                    </button>
+                    <button
+                      onClick={() => setApprovalFilter('candidates')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        approvalFilter === 'candidates'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Candidates
+                    </button>
+                  </div>
+                </div>
               </div>
               <div className="flex-1 overflow-auto px-8 py-6">
               {/* Content Area */}
               <div className="bg-white rounded-lg border border-gray-200 p-8 h-full overflow-auto">
                 {approvalTab === 'pending' && (
                   <div className="space-y-6">
-                    {/* Job Creation Approvals */}
-                    {pendingApprovals.length > 0 ? (
+                    {/* Pending Approvals */}
+                    {filterApprovals(pendingApprovals).length > 0 ? (
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Pending Approvals</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                          {approvalFilter === 'all' ? 'All Pending Approvals' : 'Pending Approvals'}
+                        </h3>
                         <div className="space-y-4">
-                          {pendingApprovals.map((job) => (
-                            <div 
-                              key={job.id} 
-                              className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                              onClick={() => {
-                                setActiveTab('job-openings');
-                                // We'll need to pass the job info to JobOpeningsViewNew to open JobSpecificDashboard
-                                // For now, we'll use a timeout to ensure the tab switch happens first
-                                setTimeout(() => {
-                                  // Trigger navigation to job dashboard with job settings tab
-                                  const jobData = {
-                                    jobId: job.id.toString(),
-                                    title: job.title
-                                  };
-                                  // This will be handled by JobOpeningsViewNew component
-                                  window.dispatchEvent(new CustomEvent('openJobDashboard', { 
-                                    detail: { job: jobData, defaultTab: 'job-settings' } 
-                                  }));
-                                }, 100);
-                              }}
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-3">
-                                    <h4 className="text-xl font-semibold text-gray-900">{job.title}</h4>
-                                    {job.is_republish ? (
-                                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
-                                        Re-publish Request
+                          {filterApprovals(pendingApprovals).map((item) => (
+                            item.approval_type === 'candidate_restriction' ? (
+                              // Candidate Restriction Card
+                              <div 
+                                key={`candidate-${item.id}`} 
+                                className="bg-white border border-orange-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-3">
+                                      <h4 className="text-xl font-semibold text-gray-900">Restricted Candidate</h4>
+                                      <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded">
+                                        Restriction Request
                                       </span>
-                                    ) : (
-                                      <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded">
-                                        New Job
-                                      </span>
-                                    )}
-                                  </div>
-                                  
-                                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4">
-                                    <div className="flex items-center">
-                                      <span className="text-sm font-medium text-gray-600 mr-2">Job Type:</span>
-                                      <span className="text-sm text-gray-900">{job.job_type || 'N/A'}</span>
                                     </div>
-                                    <div className="flex items-center">
-                                      <span className="text-sm font-medium text-gray-600 mr-2">Location:</span>
-                                      <span className="text-sm text-gray-900">{job.location || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                      <span className="text-sm font-medium text-gray-600 mr-2">Salary Range:</span>
-                                      <span className="text-sm text-gray-900">{formatSalary(job.salary_range)}</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                      <span className="text-sm font-medium text-gray-600 mr-2">Posted By:</span>
-                                      <span className="text-sm text-gray-900">{job.created_by_name || 'Unknown'}</span>
+                                    
+                                    <div className="grid grid-cols-3 gap-x-8 gap-y-2 mb-4">
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Candidate Name:</span>
+                                          <span className="text-sm text-gray-900">{item.candidate_name}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Requested on:</span>
+                                          <span className="text-sm text-gray-900">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Role:</span>
+                                          <span className="text-sm text-gray-900">{item.requested_by_role}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Requested by:</span>
+                                          <span className="text-sm text-gray-900">{item.requested_by_name}</span>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div className="flex items-start">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Restriction Reason:</span>
+                                          <span className="text-sm text-gray-900">{item.restriction_reason}</span>
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
                                   
-                                  <p className="text-sm text-gray-500">Posted on: {new Date(job.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                                </div>
-                                
-                                <div className="flex space-x-2 ml-4">
-                                  <button
-                                    onClick={() => handleReject(job.id)}
-                                    className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 font-medium"
-                                  >
-                                    Reject
-                                  </button>
-                                  <button
-                                    onClick={() => handleApprove(job.id)}
-                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
-                                  >
-                                    Approve
-                                  </button>
+                                  <div className="flex space-x-2 ml-4">
+                                    <button
+                                      onClick={() => handleReject(item.id, 'candidate_restriction')}
+                                      className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 font-medium"
+                                    >
+                                      Reject
+                                    </button>
+                                    <button
+                                      onClick={() => handleApprove(item.id, 'candidate_restriction')}
+                                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                                    >
+                                      Approve
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
+                            ) : (
+                              // Job Approval Card
+                              <div 
+                                key={`job-${item.id}`} 
+                                className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                                onClick={() => {
+                                  setActiveTab('job-openings');
+                                  setTimeout(() => {
+                                    const jobData = {
+                                      jobId: item.id.toString(),
+                                      title: item.title
+                                    };
+                                    window.dispatchEvent(new CustomEvent('openJobDashboard', { 
+                                      detail: { job: jobData, defaultTab: 'job-settings' } 
+                                    }));
+                                  }, 100);
+                                }}
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-3">
+                                      <h4 className="text-xl font-semibold text-gray-900">{item.title}</h4>
+                                      {item.is_republish ? (
+                                        <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+                                          Re-publish Request
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded">
+                                          New Job
+                                        </span>
+                                      )}
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4">
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Job Type:</span>
+                                        <span className="text-sm text-gray-900">{item.job_type || 'N/A'}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Location:</span>
+                                        <span className="text-sm text-gray-900">{item.location || 'N/A'}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Salary Range:</span>
+                                        <span className="text-sm text-gray-900">{formatSalary(item.salary_range)}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Posted By:</span>
+                                        <span className="text-sm text-gray-900">{item.created_by_name || 'Unknown'}</span>
+                                      </div>
+                                    </div>
+                                    
+                                    <p className="text-sm text-gray-500">Posted on: {new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                  </div>
+                                  
+                                  <div className="flex space-x-2 ml-4">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleReject(item.id, 'job');
+                                      }}
+                                      className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 font-medium"
+                                    >
+                                      Reject
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleApprove(item.id, 'job');
+                                      }}
+                                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                                    >
+                                      Approve
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )
                           ))}
                         </div>
                       </div>
@@ -1348,58 +1669,111 @@ const SuperAdminDashboard: React.FC = () => {
                 )}
                 {approvalTab === 'approved' && (
                   <div className="space-y-6">
-                    {/* Approved Jobs */}
-                    {approvedJobs.length > 0 ? (
+                    {/* Approved Items */}
+                    {filterApprovals([...approvedJobs, ...pendingApprovals.filter(item => item.status === 'approved')]).length > 0 ? (
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Approved Jobs</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                          {approvalFilter === 'all' ? 'All Approved Items' : 'Approved'}
+                        </h3>
                         <div className="space-y-4">
-                          {approvedJobs.map((job) => (
-                            <div 
-                              key={job.id} 
-                              className="bg-white border border-green-200 rounded-lg p-6 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                              onClick={() => {
-                                setActiveTab('job-openings');
-                                setTimeout(() => {
-                                  const jobData = {
-                                    jobId: job.id.toString(),
-                                    title: job.title
-                                  };
-                                  window.dispatchEvent(new CustomEvent('openJobDashboard', { 
-                                    detail: { job: jobData, defaultTab: 'job-settings' } 
-                                  }));
-                                }, 100);
-                              }}
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-3">
-                                    <h4 className="text-xl font-semibold text-gray-900">{job.title}</h4>
-                                    <span className="px-3 py-1 bg-green-600 text-white rounded-md text-sm font-medium">Approved</span>
+                          {filterApprovals([...approvedJobs, ...pendingApprovals.filter(item => item.status === 'approved')]).map((item) => (
+                            item.approval_type === 'candidate_restriction' ? (
+                              // Approved Candidate Restriction Card
+                              <div 
+                                key={`candidate-approved-${item.id}`} 
+                                className="bg-white border border-green-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-3">
+                                      <h4 className="text-xl font-semibold text-gray-900">Restricted Candidate</h4>
+                                      <span className="px-3 py-1 bg-green-600 text-white rounded-md text-sm font-medium">Approved</span>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-x-8 gap-y-2 mb-4">
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Candidate Name:</span>
+                                          <span className="text-sm text-gray-900">{item.candidate_name}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Approved on:</span>
+                                          <span className="text-sm text-gray-900">{new Date(item.approved_at || item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Approved By:</span>
+                                          <span className="text-sm text-gray-900">{item.approved_by_name || 'D Sodhi'} / {item.approved_by_role || 'SuperAdmin'}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Role:</span>
+                                          <span className="text-sm text-gray-900">{item.requested_by_role}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Requested by:</span>
+                                          <span className="text-sm text-gray-900">{item.requested_by_name}</span>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div className="flex items-start">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Restriction Reason:</span>
+                                          <span className="text-sm text-gray-900">{item.restriction_reason}</span>
+                                        </div>
+                                      </div>
+                                    </div>
                                   </div>
-                                  
-                                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4">
-                                    <div className="flex items-center">
-                                      <span className="text-sm font-medium text-gray-600 mr-2">Job Type:</span>
-                                      <span className="text-sm text-gray-900">{job.job_type || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                      <span className="text-sm font-medium text-gray-600 mr-2">Location:</span>
-                                      <span className="text-sm text-gray-900">{job.location || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                      <span className="text-sm font-medium text-gray-600 mr-2">Salary Range:</span>
-                                      <span className="text-sm text-gray-900">{formatSalary(job.salary_range)}</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                      <span className="text-sm font-medium text-gray-600 mr-2">Posted By:</span>
-                                      <span className="text-sm text-gray-900">{job.created_by_name || 'Unknown'}</span>
-                                    </div>
-                                  </div>
-                                  
-                                  <p className="text-sm text-gray-500">Approved on: {new Date(job.approved_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                                 </div>
                               </div>
-                            </div>
+                            ) : (
+                              // Approved Job Card
+                              <div 
+                                key={`job-approved-${item.id}`} 
+                                className="bg-white border border-green-200 rounded-lg p-6 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                                onClick={() => {
+                                  setActiveTab('job-openings');
+                                  setTimeout(() => {
+                                    const jobData = {
+                                      jobId: item.id.toString(),
+                                      title: item.title
+                                    };
+                                    window.dispatchEvent(new CustomEvent('openJobDashboard', { 
+                                      detail: { job: jobData, defaultTab: 'job-settings' } 
+                                    }));
+                                  }, 100);
+                                }}
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-3">
+                                      <h4 className="text-xl font-semibold text-gray-900">{item.title}</h4>
+                                      <span className="px-3 py-1 bg-green-600 text-white rounded-md text-sm font-medium">Approved</span>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4">
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Job Type:</span>
+                                        <span className="text-sm text-gray-900">{item.job_type || 'N/A'}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Location:</span>
+                                        <span className="text-sm text-gray-900">{item.location || 'N/A'}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Salary Range:</span>
+                                        <span className="text-sm text-gray-900">{formatSalary(item.salary_range)}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Posted By:</span>
+                                        <span className="text-sm text-gray-900">{item.created_by_name || 'Unknown'}</span>
+                                      </div>
+                                    </div>
+                                    
+                                    <p className="text-sm text-gray-500">Approved on: {new Date(item.approved_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )
                           ))}
                         </div>
                       </div>
@@ -1412,15 +1786,171 @@ const SuperAdminDashboard: React.FC = () => {
                 )}
                 {approvalTab === 'declined' && (
                   <div className="space-y-6">
-                    {/* Rejected Jobs */}
-                    {rejectedJobs.length > 0 ? (
+                    {/* Rejected Items */}
+                    {filterApprovals([...rejectedJobs, ...pendingApprovals.filter(item => item.status === 'rejected')]).length > 0 ? (
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Rejected Jobs</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                          {approvalFilter === 'all' ? 'All Rejected Items' : 'Rejected'}
+                        </h3>
                         <div className="space-y-4">
-                          {rejectedJobs.map((job) => (
+                          {filterApprovals([...rejectedJobs, ...pendingApprovals.filter(item => item.status === 'rejected')]).map((item) => (
+                            item.approval_type === 'candidate_restriction' ? (
+                              // Rejected Candidate Restriction Card
+                              <div 
+                                key={`candidate-rejected-${item.id}`} 
+                                className="bg-white border border-red-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-3">
+                                      <h4 className="text-xl font-semibold text-gray-900">Restricted Candidate</h4>
+                                      <span className="px-3 py-1 bg-red-600 text-white rounded-md text-sm font-medium">Rejected</span>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-x-8 gap-y-2 mb-4">
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Candidate Name:</span>
+                                          <span className="text-sm text-gray-900">{item.candidate_name}</span>
+                                        </div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Restriction Reason:</span>
+                                          <span className="text-sm text-gray-900">{item.restriction_reason}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Rejected on:</span>
+                                          <span className="text-sm text-gray-900">{new Date(item.approved_at || item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Role:</span>
+                                          <span className="text-sm text-gray-900">{item.requested_by_role}</span>
+                                        </div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Requested by:</span>
+                                          <span className="text-sm text-gray-900">{item.requested_by_name}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Requested on:</span>
+                                          <span className="text-sm text-gray-900">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Rejected by Role:</span>
+                                          <span className="text-sm text-gray-900">{item.approved_by_role || 'SuperAdmin'}</span>
+                                        </div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Rejected by:</span>
+                                          <span className="text-sm text-gray-900">{item.approved_by_name || 'D Sodhi'}</span>
+                                        </div>
+                                        <div className="flex items-start">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Rejection Reason:</span>
+                                          <span className="text-sm text-gray-900">{item.rejection_reason || 'No reason provided'}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              // Rejected Job Card (existing code)
+                              <div 
+                                key={`job-rejected-${item.id}`} 
+                                className="bg-white border border-red-200 rounded-lg p-6 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                                onClick={() => {
+                                  setActiveTab('job-openings');
+                                  setTimeout(() => {
+                                    const jobData = {
+                                      jobId: item.id.toString(),
+                                      title: item.title
+                                    };
+                                    window.dispatchEvent(new CustomEvent('openJobDashboard', { 
+                                      detail: { job: jobData, defaultTab: 'job-settings' } 
+                                    }));
+                                  }, 100);
+                                }}
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-3">
+                                      <h4 className="text-xl font-semibold text-gray-900">{item.title}</h4>
+                                      <span className="px-3 py-1 bg-red-600 text-white rounded-md text-sm font-medium">Rejected</span>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-x-8 gap-y-2 mb-4">
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Job Type:</span>
+                                          <span className="text-sm text-gray-900">{item.job_type || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Salary Range:</span>
+                                          <span className="text-sm text-gray-900">{formatSalary(item.salary_range)}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Rejected on:</span>
+                                          <span className="text-sm text-gray-900">{new Date(item.approved_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Location:</span>
+                                          <span className="text-sm text-gray-900">{item.location || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Posted By:</span>
+                                          <span className="text-sm text-gray-900">{item.created_by_name || 'Unknown'}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Posted on:</span>
+                                          <span className="text-sm text-gray-900">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Role:</span>
+                                          <span className="text-sm text-gray-900">{item.rejected_by_role || item.rejector_role || 'SuperAdmin'}</span>
+                                        </div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Username:</span>
+                                          <span className="text-sm text-gray-900">{item.rejected_by_name || item.rejected_by || item.rejector_name || item.rejected_by_username || 'Unknown'}</span>
+                                        </div>
+                                        <div className="flex items-start">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Rejection Reason:</span>
+                                          <span className="text-sm text-gray-900">{item.rejection_reason || 'No reason provided'}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center text-gray-500 py-12">
+                        <p>No declined items</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {approvalTab === 'all' && (
+                  <div className="space-y-6">
+                    {/* All Approvals */}
+                    {allApprovals.length > 0 ? (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">All Approvals</h3>
+                        <div className="space-y-4">
+                          {allApprovals.map((job) => (
                             <div 
-                              key={job.id} 
-                              className="bg-white border border-red-200 rounded-lg p-6 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                              key={`${job.status}-${job.id}`} 
+                              className={`bg-white border rounded-lg p-6 shadow-sm cursor-pointer hover:shadow-md transition-shadow ${
+                                job.status === 'pending' ? 'border-yellow-200' :
+                                job.status === 'approved' ? 'border-green-200' : 'border-red-200'
+                              }`}
                               onClick={() => {
                                 setActiveTab('job-openings');
                                 setTimeout(() => {
@@ -1438,30 +1968,113 @@ const SuperAdminDashboard: React.FC = () => {
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-3">
                                     <h4 className="text-xl font-semibold text-gray-900">{job.title}</h4>
-                                    <span className="px-3 py-1 bg-red-600 text-white rounded-md text-sm font-medium">Rejected</span>
+                                    <span className={`px-3 py-1 rounded-md text-sm font-medium ${
+                                      job.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                      job.status === 'approved' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+                                    }`}>
+                                      {job.status === 'pending' ? 'Pending' : job.status === 'approved' ? 'Approved' : 'Rejected'}
+                                    </span>
+                                    {job.is_republish && (
+                                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+                                        Re-publish Request
+                                      </span>
+                                    )}
                                   </div>
                                   
-                                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4">
-                                    <div className="flex items-center">
-                                      <span className="text-sm font-medium text-gray-600 mr-2">Job Type:</span>
-                                      <span className="text-sm text-gray-900">{job.job_type || 'N/A'}</span>
+                                  {job.status === 'rejected' ? (
+                                    <div className="grid grid-cols-3 gap-x-8 gap-y-2 mb-4">
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Job Type:</span>
+                                          <span className="text-sm text-gray-900">{job.job_type || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Salary Range:</span>
+                                          <span className="text-sm text-gray-900">{formatSalary(job.salary_range)}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Rejected on:</span>
+                                          <span className="text-sm text-gray-900">{new Date(job.approved_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Location:</span>
+                                          <span className="text-sm text-gray-900">{job.location || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Posted By:</span>
+                                          <span className="text-sm text-gray-900">{job.created_by_name || 'Unknown'}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Posted on:</span>
+                                          <span className="text-sm text-gray-900">{new Date(job.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Role:</span>
+                                          <span className="text-sm text-gray-900">{job.rejected_by_role || job.rejector_role || 'SuperAdmin'}</span>
+                                        </div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Username:</span>
+                                          <span className="text-sm text-gray-900">{job.rejected_by_name || job.rejected_by || job.rejector_name || job.rejected_by_username || 'Unknown'}</span>
+                                        </div>
+                                        <div className="flex items-start">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Rejection Reason:</span>
+                                          <span className="text-sm text-gray-900">{job.rejection_reason || 'No reason provided'}</span>
+                                        </div>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center">
-                                      <span className="text-sm font-medium text-gray-600 mr-2">Location:</span>
-                                      <span className="text-sm text-gray-900">{job.location || 'N/A'}</span>
+                                  ) : (
+                                    <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4">
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Job Type:</span>
+                                        <span className="text-sm text-gray-900">{job.job_type || 'N/A'}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Location:</span>
+                                        <span className="text-sm text-gray-900">{job.location || 'N/A'}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Salary Range:</span>
+                                        <span className="text-sm text-gray-900">{formatSalary(job.salary_range)}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Posted By:</span>
+                                        <span className="text-sm text-gray-900">{job.created_by_name || 'Unknown'}</span>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center">
-                                      <span className="text-sm font-medium text-gray-600 mr-2">Salary Range:</span>
-                                      <span className="text-sm text-gray-900">{formatSalary(job.salary_range)}</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                      <span className="text-sm font-medium text-gray-600 mr-2">Posted By:</span>
-                                      <span className="text-sm text-gray-900">{job.created_by_name || 'Unknown'}</span>
-                                    </div>
-                                  </div>
+                                  )}
                                   
-                                  <p className="text-sm text-gray-500">Rejected on: {new Date(job.approved_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                  <p className="text-sm text-gray-500">
+                                    {job.status === 'approved' ? 'Approved on: ' : job.status === 'rejected' ? 'Rejected on: ' : 'Posted on: '}
+                                    {new Date(job.status === 'pending' ? job.created_at : job.approved_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                  </p>
                                 </div>
+                                
+                                {job.status === 'pending' && (
+                                  <div className="flex space-x-2 ml-4">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleReject(job.id);
+                                      }}
+                                      className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 font-medium"
+                                    >
+                                      Reject
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleApprove(job.id);
+                                      }}
+                                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                                    >
+                                      Approve
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -1469,7 +2082,7 @@ const SuperAdminDashboard: React.FC = () => {
                       </div>
                     ) : (
                       <div className="text-center text-gray-500 py-12">
-                        <p>No declined items</p>
+                        <p>No approvals found</p>
                       </div>
                     )}
                   </div>
@@ -3394,6 +4007,54 @@ const SuperAdminDashboard: React.FC = () => {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Job Rejection Modal */}
+      {showRejectModal && jobToReject && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Reject Job Opening</h2>
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setJobToReject(null);
+                  setRejectionReason('');
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Rejecting: <strong>{jobToReject.title}</strong>
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Reason for Rejection *</label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Enter reason for rejecting this job opening..."
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              <button
+                onClick={handleRejectSubmit}
+                disabled={submittingRejection || !rejectionReason.trim()}
+                className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submittingRejection ? 'Rejecting...' : 'Reject Job Opening'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
         </>
       )}

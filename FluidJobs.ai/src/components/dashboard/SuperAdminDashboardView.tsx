@@ -5,8 +5,10 @@ import { Search } from 'lucide-react';
 interface DashboardStats {
   pending_approvals: number;
   total_pending_approvals: number;
+  active_accounts: number;
   active_jobs: number;
   active_candidates: number;
+  closed_positions: number;
   jobs_change: number;
   candidates_change: number;
 }
@@ -33,12 +35,19 @@ interface User {
   created_at: string;
 }
 
-const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> = ({ onTabChange }) => {
+interface SuperAdminDashboardViewProps {
+  onTabChange: (tab: string) => void;
+  dashboardDateRange?: { start: string; end: string };
+}
+
+const SuperAdminDashboardView: React.FC<SuperAdminDashboardViewProps> = ({ onTabChange, dashboardDateRange }) => {
   const [stats, setStats] = useState<DashboardStats>({
     pending_approvals: 0,
     total_pending_approvals: 0,
+    active_accounts: 0,
     active_jobs: 0,
     active_candidates: 0,
+    closed_positions: 0,
     jobs_change: 0,
     candidates_change: 0
   });
@@ -57,7 +66,7 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
     fetchUsers();
     fetchActiveJobs();
     fetchClosedJobs();
-  }, []);
+  }, [dashboardDateRange]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -68,7 +77,11 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get<DashboardStats>('http://localhost:8000/api/superadmin/stats');
+      let url = 'http://localhost:8000/api/superadmin/stats';
+      if (dashboardDateRange?.start && dashboardDateRange?.end) {
+        url += `?startDate=${dashboardDateRange.start}&endDate=${dashboardDateRange.end}`;
+      }
+      const response = await axios.get<DashboardStats>(url);
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -126,7 +139,7 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
           className="bg-white p-6 rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
         >
           <p className="text-gray-600 text-sm mb-2">Active Accounts</p>
-          <p className="text-4xl font-semibold text-gray-900">{accounts.filter(account => account.status === 'Active').length}</p>
+          <p className="text-4xl font-semibold text-gray-900">{stats.active_accounts || accounts.filter(account => account.status === 'Active').length}</p>
         </div>
 
         <div 
@@ -134,7 +147,7 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
           className="bg-white p-6 rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
         >
           <p className="text-gray-600 text-sm mb-2">Total Active Jobs</p>
-          <p className="text-4xl font-semibold text-gray-900">{activeJobs.length}</p>
+          <p className="text-4xl font-semibold text-gray-900">{stats.active_jobs || activeJobs.length}</p>
         </div>
 
         <div 
@@ -155,7 +168,7 @@ const SuperAdminDashboardView: React.FC<{ onTabChange: (tab: string) => void }> 
           className="bg-white p-6 rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
         >
           <p className="text-gray-600 text-sm mb-2">Closed Positions</p>
-          <p className="text-4xl font-semibold text-gray-900">{closedJobs.length}</p>
+          <p className="text-4xl font-semibold text-gray-900">{stats.closed_positions || closedJobs.length}</p>
         </div>
       </div>
 

@@ -27,7 +27,14 @@ interface Account {
   assigned_users: number;
 }
 
-const AdminDashboardView: React.FC<{ onTabChange: (tab: string) => void; onAccountsUpdate?: (accounts: Account[]) => void; onStatsUpdate?: (stats: DashboardStats) => void }> = ({ onTabChange, onAccountsUpdate, onStatsUpdate }) => {
+interface AdminDashboardViewProps {
+  onTabChange: (tab: string) => void;
+  onAccountsUpdate?: (accounts: Account[]) => void;
+  onStatsUpdate?: (stats: DashboardStats) => void;
+  dashboardDateRange?: { start: string; end: string };
+}
+
+const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onTabChange, onAccountsUpdate, onStatsUpdate, dashboardDateRange }) => {
   const [stats, setStats] = useState<DashboardStats>({
     active_jobs: 0,
     active_candidates: 0,
@@ -52,13 +59,17 @@ const AdminDashboardView: React.FC<{ onTabChange: (tab: string) => void; onAccou
     fetchStats();
     fetchAccounts();
     fetchActiveJobs();
-  }, []);
+  }, [dashboardDateRange]);
 
   const fetchStats = async () => {
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
       const token = sessionStorage.getItem('fluidjobs_token');
-      const response = await axios.get<DashboardStats>('http://localhost:8000/api/jobs-enhanced/stats', {
+      let url = 'http://localhost:8000/api/jobs-enhanced/stats';
+      if (dashboardDateRange?.start && dashboardDateRange?.end) {
+        url += `?startDate=${dashboardDateRange.start}&endDate=${dashboardDateRange.end}`;
+      }
+      const response = await axios.get<DashboardStats>(url, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       setStats(response.data);

@@ -330,15 +330,18 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
     try {
       setSubmittingRestriction(true);
       const userStr = sessionStorage.getItem('fluidjobs_user');
-      const userId = userStr ? JSON.parse(userStr).id : 1;
+      const user = userStr ? JSON.parse(userStr) : { id: 1, name: 'Admin', role: 'SuperAdmin' };
       
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidate-restrictions/restrict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           candidateId: selectedCandidate?.id,
-          userId: userId,
-          reason: restrictReason
+          userId: user.id,
+          reason: restrictReason,
+          userName: user.name || 'Admin',
+          userRole: user.role || 'SuperAdmin',
+          candidateName: selectedCandidate?.name
         })
       });
 
@@ -371,15 +374,18 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
     try {
       setSubmittingUnrestriction(true);
       const userStr = sessionStorage.getItem('fluidjobs_user');
-      const userId = userStr ? JSON.parse(userStr).id : 1;
+      const user = userStr ? JSON.parse(userStr) : { id: 1, name: 'Admin', role: 'SuperAdmin' };
       
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidate-restrictions/unrestrict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           candidateId: selectedCandidate?.id,
-          userId: userId,
-          reason: unrestrictReason
+          userId: user.id,
+          reason: unrestrictReason,
+          userName: user.name || 'Admin',
+          userRole: user.role || 'SuperAdmin',
+          candidateName: selectedCandidate?.name
         })
       });
 
@@ -828,37 +834,35 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
             <div className="flex-shrink-0 bg-white border-b border-gray-100 p-3 shadow-sm" style={{ minHeight: 0 }}>
               {/* Action Buttons */}
               <div className="flex justify-between items-center mb-6">
-                {(userRole === 'Admin' || isSuperAdmin) && (
-                  <div className="flex space-x-3">
-                    <button 
-                      onClick={handleRestrictClick}
-                      disabled={isRestricted}
-                      className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-medium transition border ${
-                        isRestricted ? 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <svg width="20" height="20" viewBox="0 0 26 26" fill="none" className="flex-shrink-0">
-                        <path d="M3 3L23 23" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
-                        <path d="M10.9 10.9C10.4 11.4 10 12.1 10 13C10 14.7 11.3 16 13 16C13.9 16 14.6 15.6 15.1 15.1" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
-                        <path d="M7.5 7.5C5.5 9 4 11 4 13C4 14.5 7 19 13 19C15 19 16.5 18.5 18 17.5" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
-                        <path d="M20 14C21 12.5 22 11.5 22 13C22 14.5 19 19 13 19" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
-                        <path d="M13 7C17 7 20 10 22 13" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
-                      <span>Restrict</span>
-                    </button>
-                    <button 
-                      onClick={handleUnrestrictClick}
-                      disabled={!isRestricted}
-                      className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-medium transition border ${
-                        !isRestricted ? 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed' : 'bg-white text-green-700 border-green-300 hover:bg-green-50'
-                      }`}
-                    >
-                      <Check className="w-5 h-5" />
-                      <span>Unrestrict</span>
-                    </button>
-                  </div>
-                )}
-                {(userRole !== 'Admin' && !isSuperAdmin) && <div></div>}
+                {/* Show buttons for Admin and SuperAdmin users */}
+                <div className="flex space-x-3">
+                  <button 
+                    onClick={handleRestrictClick}
+                    disabled={isRestricted}
+                    className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-medium transition border ${
+                      isRestricted ? 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 26 26" fill="none" className="flex-shrink-0">
+                      <path d="M3 3L23 23" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                      <path d="M10.9 10.9C10.4 11.4 10 12.1 10 13C10 14.7 11.3 16 13 16C13.9 16 14.6 15.6 15.1 15.1" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                      <path d="M7.5 7.5C5.5 9 4 11 4 13C4 14.5 7 19 13 19C15 19 16.5 18.5 18 17.5" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                      <path d="M20 14C21 12.5 22 11.5 22 13C22 14.5 19 19 13 19" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                      <path d="M13 7C17 7 20 10 22 13" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                    <span>Restrict</span>
+                  </button>
+                  <button 
+                    onClick={handleUnrestrictClick}
+                    disabled={!isRestricted}
+                    className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-medium transition border ${
+                      !isRestricted ? 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed' : 'bg-white text-green-700 border-green-300 hover:bg-green-50'
+                    }`}
+                  >
+                    <Check className="w-5 h-5" />
+                    <span>Unrestrict</span>
+                  </button>
+                </div>
                 <div className="flex space-x-3">
                   <button 
                     className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-medium ${

@@ -12,6 +12,7 @@ import { ThemeProvider } from './ThemeContext';
 import JobCreationForm from './JobCreationForm';
 import AdminDashboardView from './dashboard/AdminDashboardView';
 import Loader from './Loader';
+import { DateFilterDropdown } from './DateFilterDropdown';
 
 import { safeClosest } from '../utils/domHelpers';
 
@@ -46,6 +47,8 @@ const CompanyDashboard: React.FC = () => {
   const [profileData, setProfileData] = useState({ name: '', email: '', currentPassword: '', newPassword: '', confirmPassword: '' });
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [jobTab, setJobTab] = useState('all');
+  const [dashboardDateRange, setDashboardDateRange] = useState({ start: '', end: '' });
 
   const navigate = useNavigate();
 
@@ -66,6 +69,13 @@ const CompanyDashboard: React.FC = () => {
       fetchAccounts(); // Refresh accounts when switching to accounts or dashboard
     }
   };
+
+  // Add effect to refetch data when dashboard date range changes
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
+      fetchStats();
+    }
+  }, [dashboardDateRange]);
 
   useEffect(() => {
     const initializeDashboard = async () => {
@@ -205,7 +215,11 @@ const CompanyDashboard: React.FC = () => {
   const fetchStats = async () => {
     try {
       const token = sessionStorage.getItem('fluidjobs_token');
-      const response = await axios.get<typeof stats>('http://localhost:8000/api/jobs-enhanced/stats', {
+      let url = 'http://localhost:8000/api/jobs-enhanced/stats';
+      if (dashboardDateRange.start && dashboardDateRange.end) {
+        url += `?startDate=${dashboardDateRange.start}&endDate=${dashboardDateRange.end}`;
+      }
+      const response = await axios.get<typeof stats>(url, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       setStats(response.data);
@@ -321,7 +335,7 @@ const CompanyDashboard: React.FC = () => {
                     }}
                     className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
                   >
-                    <Plus size={18} />
+                    <Briefcase size={18} />
                     <span className="text-sm font-medium">Create Job</span>
                   </button>
                   <div className="relative">
@@ -489,11 +503,16 @@ const CompanyDashboard: React.FC = () => {
           {activeTab === 'dashboard' && (
             <div className="flex flex-col h-full overflow-hidden">
               <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
-                <h1 className="text-3xl font-semibold text-gray-900">Admin Dashboard</h1>
-                <p className="text-gray-600">Welcome back {admin.name || 'Admin'}!</p>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h1 className="text-3xl font-semibold text-gray-900">Admin Dashboard</h1>
+                    <p className="text-gray-600">Welcome back {admin.name || 'Admin'}!</p>
+                  </div>
+                  <DateFilterDropdown onDateRangeChange={(start, end) => setDashboardDateRange({ start, end })} />
+                </div>
               </div>
               <div className="flex-1 overflow-auto">
-                <AdminDashboardView onTabChange={handleTabChange} onAccountsUpdate={handleAccountsUpdate} onStatsUpdate={handleStatsUpdate} />
+                <AdminDashboardView onTabChange={handleTabChange} onAccountsUpdate={handleAccountsUpdate} onStatsUpdate={handleStatsUpdate} dashboardDateRange={dashboardDateRange} />
               </div>
             </div>
           )}
@@ -573,35 +592,14 @@ const CompanyDashboard: React.FC = () => {
 
           {activeTab === 'job-openings' && (
             <div className="flex flex-col h-full overflow-hidden">
-              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
-                <div className="mb-4">
-                  <h1 className="text-3xl font-semibold text-gray-900">Job Openings</h1>
-                  <p className="text-gray-600">View and Manage your job openings</p>
-                </div>
-
-                {/* Search Bar and Filter */}
-                <div className="flex items-center justify-between">
-                  <div className="relative" style={{ width: '400px' }}>
-                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                    <input
-                      type="text"
-                      placeholder="Search job openings..."
-                      value={jobSearchQuery}
-                      onChange={(e) => setJobSearchQuery(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                    />
-                  </div>
-                  <button 
-                    onClick={() => setShowJobFilters(!showJobFilters)}
-                    className="p-3 hover:bg-gray-100 rounded-lg"
-                  >
-                    <Filter size={20} className="text-gray-600" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-auto px-8 py-6">
-                <JobOpeningsViewNew hideHeader={true} searchQuery={jobSearchQuery} showFilters={showJobFilters} />
+              <div className="flex-1 overflow-auto">
+                <JobOpeningsViewNew 
+                  hideHeader={true} 
+                  searchQuery={jobSearchQuery} 
+                  showFilters={showJobFilters} 
+                  jobTab={jobTab} 
+                  onJobTabChange={setJobTab} 
+                />
               </div>
             </div>
           )}

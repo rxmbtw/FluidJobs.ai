@@ -167,16 +167,28 @@ router.post('/login', async (req, res) => {
 // Get Dashboard Stats
 router.get('/stats', async (req, res) => {
   try {
+    const { startDate, endDate } = req.query;
+    
+    let dateFilter = '';
+    let params = [];
+    
+    if (startDate && endDate) {
+      dateFilter = 'WHERE created_at >= $1 AND created_at <= $2';
+      params = [startDate, endDate];
+    }
+    
     const stats = await pool.query(`
       SELECT 
-        (SELECT COUNT(*) FROM jobs_enhanced WHERE status = 'pending') as pending_approvals,
-        (SELECT COUNT(*) FROM jobs_enhanced WHERE status NOT IN ('rejected', 'closed', 'deleted')) as active_jobs,
-        (SELECT COUNT(*) FROM candidates) as active_candidates,
+        (SELECT COUNT(*) FROM jobs_enhanced WHERE status = 'pending' ${dateFilter ? 'AND created_at >= $1 AND created_at <= $2' : ''}) as pending_approvals,
+        (SELECT COUNT(*) FROM accounts WHERE status = 'Active' ${dateFilter ? 'AND created_at >= $1 AND created_at <= $2' : ''}) as active_accounts,
+        (SELECT COUNT(*) FROM jobs_enhanced WHERE status NOT IN ('rejected', 'closed', 'deleted') ${dateFilter ? 'AND created_at >= $1 AND created_at <= $2' : ''}) as active_jobs,
+        (SELECT COUNT(*) FROM candidates ${dateFilter}) as active_candidates,
+        (SELECT COUNT(*) FROM jobs_enhanced WHERE status IN ('closed', 'rejected') ${dateFilter ? 'AND created_at >= $1 AND created_at <= $2' : ''}) as closed_positions,
         (SELECT COUNT(*) FROM jobs_enhanced WHERE status NOT IN ('rejected', 'closed', 'deleted') AND created_at >= NOW() - INTERVAL '7 days') as jobs_last_7_days,
         (SELECT COUNT(*) FROM jobs_enhanced WHERE status NOT IN ('rejected', 'closed', 'deleted') AND created_at >= NOW() - INTERVAL '14 days' AND created_at < NOW() - INTERVAL '7 days') as jobs_previous_7_days,
         (SELECT COUNT(*) FROM candidates WHERE created_at >= NOW() - INTERVAL '7 days') as candidates_last_7_days,
         (SELECT COUNT(*) FROM candidates WHERE created_at >= NOW() - INTERVAL '14 days' AND created_at < NOW() - INTERVAL '7 days') as candidates_previous_7_days
-    `);
+    `, params);
     
     const result = stats.rows[0];
     result.total_pending_approvals = parseInt(result.pending_approvals);
@@ -189,52 +201,155 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// Get Pending Approvals
+// Get Pending Approvals (Jobs + Candidate Restrictions)
 router.get('/pending-approvals', async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT j.*, u.name as created_by_name 
+    const { startDate, endDate } = req.query;
+    
+    let dateFilter = '';
+    let params = ['pending'];
+    
+    if (startDate && endDate) {
+      dateFilter = 'AND j.created_at >= $2 AND j.created_at <= $3';
+      params.push(startDate, endDate);
+    }
+    
+    // Get pending job approvals
+    const jobsResult = await pool.query(
+      `SELECT j.*, u.name as created_by_name, 'job' as approval_type
        FROM jobs_enhanced j 
        LEFT JOIN users u ON j.created_by_user_id = u.id 
-       WHERE j.status = $1 
-       ORDER BY j.created_at DESC LIMIT 10`,
-      ['pending']
+       WHERE j.status = $1 ${dateFilter}
+       ORDER BY j.created_at DESC`,
+      params
     );
-    res.json(result.rows);
+    
+    // Reset params for candidate restrictions
+    params = ['pending'];
+    if (startDate && endDate) {
+      dateFilter = 'AND created_at >= $2 AND created_at <= $3';
+      params.push(startDate, endDate);
+    } else {
+      dateFilter = '';
+    }
+    
+    // Get pending candidate restriction approvals
+    const candidateResult = await pool.query(
+      `SELECT *, 'candidate_restriction' as approval_type
+       FROM candidate_restriction_approvals 
+       WHERE status = $1 ${dateFilter}
+       ORDER BY created_at DESC`,
+      params
+    );
+    
+    // Combine and sort by created_at
+    const combined = [...jobsResult.rows, ...candidateResult.rows]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 20); // Limit to 20 most recent
+    
+    res.json(combined);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get Approved Jobs
+// Get Approved Jobs and Candidate Restrictions
 router.get('/approved-jobs', async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT j.*, u.name as created_by_name 
+    const { startDate, endDate } = req.query;
+    
+    let dateFilter = '';
+    let params = ['Published'];
+    
+    if (startDate && endDate) {
+      dateFilter = 'AND j.approved_at >= $2 AND j.approved_at <= $3';
+      params.push(startDate, endDate);
+    }
+    
+    // Get approved jobs
+    const jobsResult = await pool.query(
+      `SELECT j.*, u.name as created_by_name, 'job' as approval_type
        FROM jobs_enhanced j 
        LEFT JOIN users u ON j.created_by_user_id = u.id 
-       WHERE j.status = $1 AND j.approved_at IS NOT NULL 
+       WHERE j.status = $1 AND j.approved_at IS NOT NULL ${dateFilter}
        ORDER BY j.approved_at DESC`,
-      ['Published']
+      params
     );
-    res.json(result.rows);
+    
+    // Reset params for candidate restrictions
+    params = ['approved'];
+    if (startDate && endDate) {
+      dateFilter = 'AND approved_at >= $2 AND approved_at <= $3';
+      params.push(startDate, endDate);
+    } else {
+      dateFilter = '';
+    }
+    
+    // Get approved candidate restrictions
+    const candidateResult = await pool.query(
+      `SELECT *, 'candidate_restriction' as approval_type
+       FROM candidate_restriction_approvals 
+       WHERE status = $1 AND approved_at IS NOT NULL ${dateFilter}
+       ORDER BY approved_at DESC`,
+      params
+    );
+    
+    // Combine and sort by approved_at
+    const combined = [...jobsResult.rows, ...candidateResult.rows]
+      .sort((a, b) => new Date(b.approved_at || b.created_at) - new Date(a.approved_at || a.created_at));
+    
+    res.json(combined);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get Rejected Jobs
+// Get Rejected Jobs and Candidate Restrictions
 router.get('/rejected-jobs', async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT j.*, u.name as created_by_name 
+    const { startDate, endDate } = req.query;
+    
+    let dateFilter = '';
+    let params = ['rejected'];
+    
+    if (startDate && endDate) {
+      dateFilter = 'AND j.approved_at >= $2 AND j.approved_at <= $3';
+      params.push(startDate, endDate);
+    }
+    
+    // Get rejected jobs
+    const jobsResult = await pool.query(
+      `SELECT j.*, u.name as created_by_name, j.rejection_reason, 'job' as approval_type
        FROM jobs_enhanced j 
        LEFT JOIN users u ON j.created_by_user_id = u.id 
-       WHERE j.status = $1 AND j.approved_at IS NOT NULL 
+       WHERE j.status = $1 AND j.approved_at IS NOT NULL ${dateFilter}
        ORDER BY j.approved_at DESC`,
-      ['rejected']
+      params
     );
-    res.json(result.rows);
+    
+    // Reset params for candidate restrictions
+    params = ['rejected'];
+    if (startDate && endDate) {
+      dateFilter = 'AND approved_at >= $2 AND approved_at <= $3';
+      params.push(startDate, endDate);
+    } else {
+      dateFilter = '';
+    }
+    
+    // Get rejected candidate restrictions
+    const candidateResult = await pool.query(
+      `SELECT *, 'candidate_restriction' as approval_type
+       FROM candidate_restriction_approvals 
+       WHERE status = $1 AND approved_at IS NOT NULL ${dateFilter}
+       ORDER BY approved_at DESC`,
+      params
+    );
+    
+    // Combine and sort by approved_at (rejection date)
+    const combined = [...jobsResult.rows, ...candidateResult.rows]
+      .sort((a, b) => new Date(b.approved_at || b.created_at) - new Date(a.approved_at || a.created_at));
+    
+    res.json(combined);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -255,11 +370,168 @@ router.post('/approve-job/:id', async (req, res) => {
 // Reject Job
 router.post('/reject-job/:id', async (req, res) => {
   try {
+    const { reason } = req.body;
     const jobResult = await pool.query('SELECT title FROM jobs_enhanced WHERE id = $1', [req.params.id]);
-    await pool.query('UPDATE jobs_enhanced SET status = $1, approved_at = NOW() WHERE id = $2', ['rejected', req.params.id]);
-    await logAudit(null, 'SuperAdmin', 'JOB_REJECTED', `Rejected job: ${jobResult.rows[0]?.title}`, 'job', req.params.id, req);
+    
+    await pool.query(
+      'UPDATE jobs_enhanced SET status = $1, approved_at = NOW(), rejection_reason = $2 WHERE id = $3', 
+      ['rejected', reason || null, req.params.id]
+    );
+    
+    await logAudit(null, 'SuperAdmin', 'JOB_REJECTED', `Rejected job: ${jobResult.rows[0]?.title}${reason ? ` - Reason: ${reason}` : ''}`, 'job', req.params.id, req);
     res.json({ message: 'Job rejected' });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create Candidate Restriction Request
+router.post('/candidate-restrictions', async (req, res) => {
+  try {
+    const { 
+      candidate_id, 
+      candidate_name, 
+      requested_by_user_id, 
+      requested_by_name, 
+      requested_by_role, 
+      restriction_reason 
+    } = req.body;
+    
+    if (!candidate_id || !candidate_name || !requested_by_user_id || !restriction_reason) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    // If SuperAdmin is restricting, auto-approve
+    if (requested_by_role === 'SuperAdmin') {
+      // Directly restrict the candidate
+      await pool.query(
+        `INSERT INTO candidate_restrictions (candidate_id, user_id, reason, is_active, restricted_at)
+         VALUES ($1, $2, $3, true, NOW())`,
+        [candidate_id, requested_by_user_id, restriction_reason]
+      );
+      
+      await logAudit(requested_by_user_id, requested_by_name, 'CANDIDATE_RESTRICTED', 
+        `Restricted candidate: ${candidate_name} - Reason: ${restriction_reason}`, 'candidate', candidate_id, req);
+      
+      return res.json({ 
+        success: true, 
+        message: 'Candidate restricted successfully',
+        auto_approved: true 
+      });
+    }
+    
+    // For Admin users, create approval request
+    const result = await pool.query(
+      `INSERT INTO candidate_restriction_approvals (
+        candidate_id, candidate_name, requested_by_user_id, 
+        requested_by_name, requested_by_role, restriction_reason
+      ) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [candidate_id, candidate_name, requested_by_user_id, requested_by_name, requested_by_role, restriction_reason]
+    );
+    
+    await logAudit(requested_by_user_id, requested_by_name, 'CANDIDATE_RESTRICTION_REQUESTED', 
+      `Requested restriction for candidate: ${candidate_name}`, 'candidate', candidate_id, req);
+    
+    res.json({ 
+      success: true, 
+      message: 'Candidate restriction request submitted for approval',
+      approval_id: result.rows[0].id 
+    });
+  } catch (error) {
+    console.error('Error creating candidate restriction request:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get Pending Candidate Restriction Approvals
+router.get('/pending-candidate-restrictions', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM candidate_restriction_approvals 
+       WHERE status = 'pending' 
+       ORDER BY created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Approve Candidate Restriction
+router.post('/approve-candidate-restriction/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get the approval request
+    const approvalResult = await pool.query(
+      'SELECT * FROM candidate_restriction_approvals WHERE id = $1',
+      [id]
+    );
+    
+    if (approvalResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Approval request not found' });
+    }
+    
+    const approval = approvalResult.rows[0];
+    
+    // Update approval status with proper SuperAdmin info
+    await pool.query(
+      `UPDATE candidate_restriction_approvals 
+       SET status = 'approved', approved_by_user_id = $1, approved_by_name = $2, approved_by_role = $3, approved_at = NOW() 
+       WHERE id = $4`,
+      [null, 'D Sodhi', 'SuperAdmin', id]
+    );
+    
+    // Actually restrict the candidate
+    await pool.query(
+      `INSERT INTO candidate_restrictions (candidate_id, user_id, reason, is_active, restricted_at)
+       VALUES ($1, $2, $3, true, NOW())`,
+      [approval.candidate_id, approval.requested_by_user_id, approval.restriction_reason]
+    );
+    
+    await logAudit(null, 'SuperAdmin', 'CANDIDATE_RESTRICTION_APPROVED', 
+      `Approved restriction for candidate: ${approval.candidate_name}`, 'candidate', approval.candidate_id, req);
+    
+    res.json({ message: 'Candidate restriction approved' });
+  } catch (error) {
+    console.error('Error approving candidate restriction:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reject Candidate Restriction
+router.post('/reject-candidate-restriction/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    
+    // Get the approval request
+    const approvalResult = await pool.query(
+      'SELECT * FROM candidate_restriction_approvals WHERE id = $1',
+      [id]
+    );
+    
+    if (approvalResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Approval request not found' });
+    }
+    
+    const approval = approvalResult.rows[0];
+    
+    // Update approval status with proper SuperAdmin info
+    await pool.query(
+      `UPDATE candidate_restriction_approvals 
+       SET status = 'rejected', approved_by_user_id = $1, approved_by_name = $2, approved_by_role = $3,
+           approved_at = NOW(), rejection_reason = $4 
+       WHERE id = $5`,
+      [null, 'D Sodhi', 'SuperAdmin', reason || null, id]
+    );
+    
+    await logAudit(null, 'SuperAdmin', 'CANDIDATE_RESTRICTION_REJECTED', 
+      `Rejected restriction for candidate: ${approval.candidate_name}${reason ? ` - Reason: ${reason}` : ''}`, 'candidate', approval.candidate_id, req);
+    
+    res.json({ message: 'Candidate restriction rejected' });
+  } catch (error) {
+    console.error('Error rejecting candidate restriction:', error);
     res.status(500).json({ error: error.message });
   }
 });

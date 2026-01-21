@@ -73,41 +73,83 @@ router.get('/stats', (req, res, next) => {
   }
 }, async (req, res) => {
   try {
-    let query;
+    const { startDate, endDate } = req.query;
+    
+    let dateFilter = '';
     let params = [];
+    
+    if (startDate && endDate) {
+      dateFilter = 'AND j.created_at >= $2 AND j.created_at <= $3';
+      params = [startDate, endDate];
+    }
+    
+    let query;
     
     if (req.user) {
       // User is authenticated - get user-specific stats
       const userId = req.user.adminId || req.user.id;
       
-      query = `
-        SELECT 
-          COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') THEN j.id END) as active_jobs,
-          COUNT(DISTINCT c.candidate_id) as active_candidates,
-          COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '7 days' THEN j.id END) as jobs_last_7_days,
-          COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '14 days' AND j.created_at < NOW() - INTERVAL '7 days' THEN j.id END) as jobs_previous_7_days,
-          COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_last_7_days,
-          COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '14 days' AND c.created_at < NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_previous_7_days
-        FROM account_users au
-        JOIN accounts a ON au.account_id = a.account_id
-        LEFT JOIN jobs_enhanced j ON j.account_id = a.account_id
-        LEFT JOIN candidates c ON 1=1
-        WHERE au.user_id = $1
-      `;
-      params = [userId];
+      if (startDate && endDate) {
+        query = `
+          SELECT 
+            COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') THEN j.id END) as active_jobs,
+            COUNT(DISTINCT c.candidate_id) as active_candidates,
+            COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '7 days' THEN j.id END) as jobs_last_7_days,
+            COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '14 days' AND j.created_at < NOW() - INTERVAL '7 days' THEN j.id END) as jobs_previous_7_days,
+            COUNT(DISTINCT CASE WHEN c.created_at >= $2 AND c.created_at <= $3 THEN c.candidate_id END) as filtered_candidates,
+            COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_last_7_days,
+            COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '14 days' AND c.created_at < NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_previous_7_days
+          FROM account_users au
+          JOIN accounts a ON au.account_id = a.account_id
+          LEFT JOIN jobs_enhanced j ON j.account_id = a.account_id ${dateFilter}
+          LEFT JOIN candidates c ON 1=1
+          WHERE au.user_id = $1
+        `;
+        params.unshift(userId);
+      } else {
+        query = `
+          SELECT 
+            COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') THEN j.id END) as active_jobs,
+            COUNT(DISTINCT c.candidate_id) as active_candidates,
+            COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '7 days' THEN j.id END) as jobs_last_7_days,
+            COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '14 days' AND j.created_at < NOW() - INTERVAL '7 days' THEN j.id END) as jobs_previous_7_days,
+            COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_last_7_days,
+            COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '14 days' AND c.created_at < NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_previous_7_days
+          FROM account_users au
+          JOIN accounts a ON au.account_id = a.account_id
+          LEFT JOIN jobs_enhanced j ON j.account_id = a.account_id
+          LEFT JOIN candidates c ON 1=1
+          WHERE au.user_id = $1
+        `;
+        params = [userId];
+      }
     } else {
       // No authentication - get global stats
-      query = `
-        SELECT 
-          COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') THEN j.id END) as active_jobs,
-          COUNT(DISTINCT c.candidate_id) as active_candidates,
-          COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '7 days' THEN j.id END) as jobs_last_7_days,
-          COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '14 days' AND j.created_at < NOW() - INTERVAL '7 days' THEN j.id END) as jobs_previous_7_days,
-          COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_last_7_days,
-          COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '14 days' AND c.created_at < NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_previous_7_days
-        FROM jobs_enhanced j
-        CROSS JOIN candidates c
-      `;
+      if (startDate && endDate) {
+        query = `
+          SELECT 
+            COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= $1 AND j.created_at <= $2 THEN j.id END) as active_jobs,
+            COUNT(DISTINCT CASE WHEN c.created_at >= $1 AND c.created_at <= $2 THEN c.candidate_id END) as active_candidates,
+            COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '7 days' THEN j.id END) as jobs_last_7_days,
+            COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '14 days' AND j.created_at < NOW() - INTERVAL '7 days' THEN j.id END) as jobs_previous_7_days,
+            COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_last_7_days,
+            COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '14 days' AND c.created_at < NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_previous_7_days
+          FROM jobs_enhanced j
+          CROSS JOIN candidates c
+        `;
+      } else {
+        query = `
+          SELECT 
+            COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') THEN j.id END) as active_jobs,
+            COUNT(DISTINCT c.candidate_id) as active_candidates,
+            COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '7 days' THEN j.id END) as jobs_last_7_days,
+            COUNT(DISTINCT CASE WHEN j.status IN ('Published', 'active') AND j.created_at >= NOW() - INTERVAL '14 days' AND j.created_at < NOW() - INTERVAL '7 days' THEN j.id END) as jobs_previous_7_days,
+            COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_last_7_days,
+            COUNT(DISTINCT CASE WHEN c.created_at >= NOW() - INTERVAL '14 days' AND c.created_at < NOW() - INTERVAL '7 days' THEN c.candidate_id END) as candidates_previous_7_days
+          FROM jobs_enhanced j
+          CROSS JOIN candidates c
+        `;
+      }
     }
     
     const result = await pool.query(query, params);
@@ -119,7 +161,7 @@ router.get('/stats', (req, res, next) => {
     
     res.json({
       active_jobs: parseInt(stats.active_jobs) || 0,
-      active_candidates: parseInt(stats.active_candidates) || 0,
+      active_candidates: parseInt(stats.filtered_candidates || stats.active_candidates) || 0,
       jobs_change,
       candidates_change
     });

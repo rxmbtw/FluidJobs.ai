@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Upload, Sparkles, Bold, Italic, Underline, Strikethrough, Undo2, Redo2 } from 'lucide-react';
 import { indianCities } from '../data/indianCities';
 import SuccessModal from './SuccessModal';
+import Loader from './Loader';
 
 interface JobSettingsProps {
   jobTitle?: string;
@@ -19,13 +20,30 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
   const [userRole, setUserRole] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
+  const [selectedImage, setSelectedImage] = useState('');
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [uploadedPdfUrl, setUploadedPdfUrl] = useState('');
+  const [pdfFileName, setPdfFileName] = useState('');
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [uploadedPdfFile, setUploadedPdfFile] = useState<File | null>(null);
+  const [isGeneratingFromPdf, setIsGeneratingFromPdf] = useState(false);
+  const [isUserEditing, setIsUserEditing] = useState(false);
+  const [showPdfSuccessModal, setShowPdfSuccessModal] = useState(false);
+  const [isRestricting, setIsRestricting] = useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   // Get user role
   React.useEffect(() => {
+    // Check both sessionStorage locations for user data
     const userStr = sessionStorage.getItem('fluidjobs_user');
+    const superAdminStr = localStorage.getItem('superadmin');
+    
     if (userStr) {
       const user = JSON.parse(userStr);
       setUserRole(user.role || '');
+    } else if (superAdminStr) {
+      const superAdmin = JSON.parse(superAdminStr);
+      setUserRole('SuperAdmin'); // Set role as SuperAdmin for localStorage users
     }
   }, []);
   const [formData, setFormData] = useState<any>({
@@ -43,7 +61,9 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
     locations: '',
     mode_of_job: '',
     skills: '',
-    job_description: ''
+    job_description: '',
+    selected_image: '',
+    jd_attachment_name: ''
   });
   const [originalFormData, setOriginalFormData] = useState<any>(null);
   const [hasChanges, setHasChanges] = useState(false);
@@ -64,8 +84,6 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
 
   useEffect(() => {
     fetchJobData();
-    const interval = setInterval(fetchJobData, 5000);
-    return () => clearInterval(interval);
   }, [jobId]);
 
   const fetchJobData = async () => {
@@ -141,6 +159,9 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
         setSelectedLocations(locs);
         setJobStatus(job.status || '');
         setIsPublished(job.status === 'Published');
+        setSelectedImage(job.selected_image || '');
+        setUploadedPdfUrl(job.jd_attachment_name || '');
+        setPdfFileName(job.jd_attachment_name || '');
         setHasChanges(false);
       } else {
         console.error('Failed to fetch job data. Status:', response.status);
@@ -254,6 +275,8 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
           job_description: formData.job_description,
           registration_opening_date: formData.registration_opening_date,
           registration_closing_date: formData.registration_closing_date,
+          selected_image: selectedImage,
+          jd_attachment_name: uploadedPdfUrl,
           is_published: isPublished
         })
       });
@@ -285,10 +308,149 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
     return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
   };
 
+  // Job Images (same as JobCreationForm)
+  const jobImages = [
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop'
+  ];
+
+  // FluidJobs Image Collection
+  const fluidJobsImages = {
+    tech: [
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/ai-technology-microchip-background-digital-transformation-concept.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/annie-spratt-QckxruozjRg-unsplash.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/Custom%20Education%20&%20Training%20Systems%20with%20Python%20Development.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/Frontend%20vs%20Backend%20What%20Happens%20Behind%20a%20Website.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/nubelson-fernandes--Xqckh_XVU4-unsplash.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/patrick-tomasso-fMntI8HAAB8-unsplash.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/person-front-computer-working-html.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/representation-user-experience-interface-design.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/roman-synkevych-E-V6EMtGSUU-unsplash.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Tech/software-development-6523979_1280.jpg'
+    ],
+    management: [
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/business-meeting-office.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/business-people-board-room-meeting.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/close-up-woman-working-laptop.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/closeup-job-applicant-giving-his-resume-job-interview-office.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/Data%20Science%20Meeting.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/hunters-race-MYbhN8KaaEc-unsplash.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/lukas-blazek-mcSDtbWXUZU-unsplash.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/portrait-smiling-woman-startup-office-coding.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/smiley-man-work-holding-laptop-posing.jpg',
+      'https://s3.fluidjobs.ai:9002/fluidjobsai/FLuidJobs%20AI%20-%20Image%20Deck/Management/woman-retoucher-looking-camera-smiling-sitting-creative-design-media-agency.jpg'
+    ]
+  };
+
+  const handleRestrictUnrestrict = async (action: 'restrict' | 'unrestrict') => {
+    if (!jobId) return;
+    
+    setIsRestricting(true);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/${action}/${jobId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.ok) {
+        setSuccessMessage({
+          title: 'Success!',
+          message: `Job ${action}ed successfully!`
+        });
+        setShowSuccessModal(true);
+        fetchJobData(); // Refresh job data
+      } else {
+        alert(`Failed to ${action} job`);
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing job:`, error);
+      alert(`Error ${action}ing job`);
+    } finally {
+      setIsRestricting(false);
+    }
+  };
+
+  const generateDescription = async () => {
+    if (uploadedPdfFile) {
+      setIsGeneratingFromPdf(true);
+      try {
+        const formDataGenerate = new FormData();
+        formDataGenerate.append('jdFile', uploadedPdfFile);
+        
+        const generateResponse = await fetch('http://localhost:8000/api/jobs-enhanced/generate-jd-from-pdf', {
+          method: 'POST',
+          body: formDataGenerate
+        });
+        const generateData = await generateResponse.json();
+        
+        if (generateData.success && generateData.jobDescription) {
+          setIsUserEditing(false);
+          setFormData((prev: any) => ({ ...prev, job_description: generateData.jobDescription }));
+          setShowPdfSuccessModal(true);
+        } else {
+          alert('Failed to generate description from PDF');
+        }
+      } catch (error) {
+        console.error('Error generating from PDF:', error);
+        alert('Failed to generate description from PDF');
+      } finally {
+        setIsGeneratingFromPdf(false);
+      }
+    } else {
+      const description = `We are looking for a talented ${formData.job_title} to join our dynamic team. 
+
+Key Responsibilities:
+• Develop and maintain high-quality software solutions
+• Collaborate with cross-functional teams
+• Participate in code reviews and technical discussions
+• Contribute to architectural decisions
+
+Requirements:
+• ${formData.min_experience}-${formData.max_experience} years of experience
+• Strong technical skills and problem-solving abilities
+• Excellent communication and teamwork skills
+
+What We Offer:
+• Competitive salary package
+• Flexible working arrangements
+• Growth opportunities
+• Collaborative work environment`;
+
+      setIsUserEditing(false);
+      setFormData((prev: any) => ({ ...prev, job_description: description }));
+    }
+  };
+
+  const execEditorCommand = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+  };
+
+  const handleEditorChange = () => {
+    if (editorRef.current) {
+      setIsUserEditing(true);
+      setFormData((prev: any) => ({ ...prev, job_description: editorRef.current!.innerHTML }));
+    }
+  };
+
+  useEffect(() => {
+    if (editorRef.current && formData.job_description) {
+      editorRef.current.innerHTML = formData.job_description;
+    }
+  }, [formData.job_description]);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <Loader />
       </div>
     );
   }
@@ -297,7 +459,27 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
     <>
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Job Settings</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Job Settings</h1>
+          {userRole === 'SuperAdmin' && (
+            <div className="flex space-x-3">
+              <button
+                onClick={() => handleRestrictUnrestrict('restrict')}
+                disabled={isRestricting}
+                className="px-6 py-2 bg-red-100 text-red-700 border border-red-200 rounded-lg hover:bg-red-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isRestricting ? 'Processing...' : 'Restrict'}
+              </button>
+              <button
+                onClick={() => handleRestrictUnrestrict('unrestrict')}
+                disabled={isRestricting}
+                className="px-6 py-2 bg-green-100 text-green-700 border border-green-200 rounded-lg hover:bg-green-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isRestricting ? 'Processing...' : 'Unrestrict'}
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="flex gap-6">
           {/* Main Content */}
@@ -590,6 +772,99 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
               </div>
             </div>
 
+            {/* Job Posting Image Selection */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">
+                Job Posting Image <span className="text-red-500">*</span>
+              </h3>
+              <div className="grid grid-cols-5 gap-3">
+                {jobImages.map((image, index) => (
+                  <div
+                    key={index}
+                    onClick={() => {
+                      setSelectedImage(image);
+                      setFormData((prev: any) => ({ ...prev, selected_image: image }));
+                      setHasChanges(true);
+                    }}
+                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                      selectedImage === image
+                        ? 'border-indigo-600 ring-2 ring-indigo-200'
+                        : 'border-gray-200 hover:border-indigo-300'
+                    }`}
+                  >
+                    <img
+                      src={image}
+                      alt={`Job image ${index + 1}`}
+                      className="w-full h-24 object-cover"
+                    />
+                    {selectedImage === image && (
+                      <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                        <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex justify-end mt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowImageModal(true)}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  More Images
+                </button>
+              </div>
+            </div>
+
+            {/* Job Description PDF */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">
+                Job Description PDF
+              </h3>
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setIsUploadingPdf(true);
+                    const formDataUpload = new FormData();
+                    formDataUpload.append('jdFile', file);
+                    
+                    try {
+                      const uploadResponse = await fetch('http://localhost:8000/api/jobs-enhanced/upload-jd', {
+                        method: 'POST',
+                        body: formDataUpload
+                      });
+                      const uploadData = await uploadResponse.json();
+                      
+                      if (uploadData.success) {
+                        setUploadedPdfUrl(uploadData.filename);
+                        setPdfFileName(uploadData.originalName);
+                        setUploadedPdfFile(file);
+                        setFormData((prev: any) => ({ ...prev, jd_attachment_name: uploadData.filename }));
+                        setHasChanges(true);
+                      } else {
+                        alert('Failed to upload PDF');
+                      }
+                    } catch (error) {
+                      console.error('Error uploading PDF:', error);
+                      alert('Failed to upload PDF');
+                    } finally {
+                      setIsUploadingPdf(false);
+                    }
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              {isUploadingPdf && <p className="text-sm text-gray-500 mt-1">🔄 Uploading PDF...</p>}
+              {pdfFileName && <p className="text-sm text-green-600 mt-1">✓ {pdfFileName} uploaded. Click "Generate Description" to extract text.</p>}
+            </div>
             {/* Skills */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h3 className="text-sm font-semibold text-gray-900 mb-4">
@@ -632,49 +907,98 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
               <h3 className="text-sm font-semibold text-gray-900 mb-4">
                 Job Description <span className="text-red-500">*</span>
               </h3>
+              <div className="space-y-1">
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={generateDescription}
+                    disabled={isGeneratingFromPdf}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors text-sm ${
+                      isGeneratingFromPdf
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                    }`}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {isGeneratingFromPdf ? 'Generating...' : uploadedPdfFile ? 'Generate from PDF' : 'Generate Description'}
+                  </button>
+                </div>
+            
+                <div className="border rounded-lg border-gray-300">
+                  {/* Toolbar */}
+                  <div className="flex items-center gap-2 p-2 bg-gray-50 border-b border-gray-300 rounded-t-lg flex-wrap">
+                    <select
+                      onChange={(e) => execEditorCommand('formatBlock', e.target.value)}
+                      className="px-3 py-1 border border-gray-300 rounded text-sm"
+                      defaultValue="p"
+                    >
+                      <option value="p">Paragraph</option>
+                      <option value="h1">Heading 1</option>
+                      <option value="h2">Heading 2</option>
+                      <option value="h3">Heading 3</option>
+                    </select>
 
-              {/* Toolbar */}
-              <div className="flex items-center gap-2 mb-4 p-2 border border-gray-300 rounded-t-lg bg-gray-50">
-                <button type="button" onClick={() => document.execCommand('undo', false)} className="p-2 hover:bg-gray-200 rounded">
-                  ↶
-                </button>
-                <button type="button" onClick={() => document.execCommand('redo', false)} className="p-2 hover:bg-gray-200 rounded">
-                  ↷
-                </button>
-                <select className="px-2 py-1 border border-gray-300 rounded text-sm">
-                  <option>Paragraph</option>
-                </select>
-                <button type="button" onClick={() => document.execCommand('bold', false)} className="px-3 py-1 hover:bg-gray-200 rounded font-bold">
-                  B
-                </button>
-                <button type="button" onClick={() => document.execCommand('italic', false)} className="px-3 py-1 hover:bg-gray-200 rounded italic">
-                  I
-                </button>
-                <button type="button" onClick={() => document.execCommand('underline', false)} className="px-3 py-1 hover:bg-gray-200 rounded underline">
-                  U
-                </button>
-                <button type="button" onClick={() => document.execCommand('strikeThrough', false)} className="px-3 py-1 hover:bg-gray-200 rounded line-through">
-                  S
-                </button>
-                <button type="button" onClick={() => document.execCommand('insertUnorderedList', false)} className="px-3 py-1 hover:bg-gray-200 rounded">
-                  • List
-                </button>
-                <button type="button" onClick={() => document.execCommand('insertOrderedList', false)} className="px-3 py-1 hover:bg-gray-200 rounded">
-                  1. List
-                </button>
-                <button type="button" onClick={() => document.execCommand('insertHorizontalRule', false)} className="px-3 py-1 hover:bg-gray-200 rounded">
-                  —
-                </button>
+                    <div className="w-px h-6 bg-gray-300"></div>
+
+                    <button type="button" onClick={() => execEditorCommand('bold')} className="p-2 hover:bg-gray-200 rounded" title="Bold">
+                      <Bold className="w-4 h-4" />
+                    </button>
+                    <button type="button" onClick={() => execEditorCommand('italic')} className="p-2 hover:bg-gray-200 rounded" title="Italic">
+                      <Italic className="w-4 h-4" />
+                    </button>
+                    <button type="button" onClick={() => execEditorCommand('underline')} className="p-2 hover:bg-gray-200 rounded" title="Underline">
+                      <Underline className="w-4 h-4" />
+                    </button>
+                    <button type="button" onClick={() => execEditorCommand('strikeThrough')} className="p-2 hover:bg-gray-200 rounded" title="Strikethrough">
+                      <Strikethrough className="w-4 h-4" />
+                    </button>
+
+                    <div className="w-px h-6 bg-gray-300"></div>
+
+                    <button type="button" onClick={() => execEditorCommand('insertUnorderedList')} className="px-3 py-1 hover:bg-gray-200 rounded text-sm" title="Bullet List">
+                      • List
+                    </button>
+                    <button type="button" onClick={() => execEditorCommand('insertOrderedList')} className="px-3 py-1 hover:bg-gray-200 rounded text-sm" title="Numbered List">
+                      1. List
+                    </button>
+
+                    <div className="w-px h-6 bg-gray-300"></div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = prompt('Enter URL:');
+                        if (url) execEditorCommand('createLink', url);
+                      }}
+                      className="px-3 py-1 hover:bg-gray-200 rounded text-sm"
+                    >
+                      Link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editorRef.current) {
+                          editorRef.current.innerHTML = '';
+                          setFormData((prev: any) => ({ ...prev, job_description: '' }));
+                        }
+                      }}
+                      className="px-3 py-1 hover:bg-gray-200 rounded text-sm text-red-600"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  {/* Editor */}
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    onInput={handleEditorChange}
+                    className="min-h-[200px] max-h-[400px] overflow-y-auto p-3 focus:outline-none"
+                    style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}
+                    data-placeholder="Enter job description here..."
+                  />
+                </div>
               </div>
-
-              {/* Editor */}
-              <textarea
-                name="job_description"
-                value={formData.job_description}
-                onChange={handleInputChange}
-                rows={15}
-                className="w-full p-4 border border-gray-300 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 whitespace-pre-wrap"
-              />
             </div>
 
             {/* Save Button */}
@@ -709,7 +1033,154 @@ const JobSettings: React.FC<JobSettingsProps> = ({ jobTitle, jobId, onJobUpdate 
       message={successMessage.message}
     />
 
-    {/* Unpublish Confirmation Modal */}
+    {/* PDF Generation Success Modal */}
+    <SuccessModal
+      isOpen={showPdfSuccessModal}
+      onClose={() => setShowPdfSuccessModal(false)}
+      title="Success!"
+      message="✅ Job description generated from PDF successfully!"
+    />
+
+    {/* Image Selection Modal */}
+    {showImageModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto mx-4">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-semibold text-gray-900">Select Job Posting Image</h2>
+            <button
+              onClick={() => setShowImageModal(false)}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Tech Images */}
+          <div className="mb-8">
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Technology & Development</h3>
+            <div className="grid grid-cols-4 gap-4">
+              {fluidJobsImages.tech.map((image, index) => (
+                <div
+                  key={`tech-${index}`}
+                  onClick={() => {
+                    setSelectedImage(image);
+                    setFormData((prev: any) => ({ ...prev, selected_image: image }));
+                    setHasChanges(true);
+                    setShowImageModal(false);
+                  }}
+                  className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
+                    selectedImage === image
+                      ? 'border-indigo-600 ring-2 ring-indigo-200'
+                      : 'border-gray-200 hover:border-indigo-300'
+                  }`}
+                >
+                  <img
+                    src={image}
+                    alt={`Tech image ${index + 1}`}
+                    className="w-full h-32 object-cover"
+                    onError={(e) => {
+                      console.log('Image failed to load:', image);
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                  {selectedImage === image && (
+                    <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                      <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Management Images */}
+          <div className="mb-6">
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Management & Business</h3>
+            <div className="grid grid-cols-4 gap-4">
+              {fluidJobsImages.management.map((image, index) => (
+                <div
+                  key={`mgmt-${index}`}
+                  onClick={() => {
+                    setSelectedImage(image);
+                    setFormData((prev: any) => ({ ...prev, selected_image: image }));
+                    setHasChanges(true);
+                    setShowImageModal(false);
+                  }}
+                  className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
+                    selectedImage === image
+                      ? 'border-indigo-600 ring-2 ring-indigo-200'
+                      : 'border-gray-200 hover:border-indigo-300'
+                  }`}
+                >
+                  <img
+                    src={image}
+                    alt={`Management image ${index + 1}`}
+                    className="w-full h-32 object-cover"
+                    onError={(e) => {
+                      console.log('Image failed to load:', image);
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                  {selectedImage === image && (
+                    <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                      <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Original Images */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-800 mb-4">General Professional</h3>
+            <div className="grid grid-cols-4 gap-4">
+              {jobImages.map((image, index) => (
+                <div
+                  key={`original-${index}`}
+                  onClick={() => {
+                    setSelectedImage(image);
+                    setFormData((prev: any) => ({ ...prev, selected_image: image }));
+                    setHasChanges(true);
+                    setShowImageModal(false);
+                  }}
+                  className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
+                    selectedImage === image
+                      ? 'border-indigo-600 ring-2 ring-indigo-200'
+                      : 'border-gray-200 hover:border-indigo-300'
+                  }`}
+                >
+                  <img
+                    src={image}
+                    alt={`Professional image ${index + 1}`}
+                    className="w-full h-32 object-cover"
+                  />
+                  {selectedImage === image && (
+                    <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                      <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     {showUnpublishModal && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
