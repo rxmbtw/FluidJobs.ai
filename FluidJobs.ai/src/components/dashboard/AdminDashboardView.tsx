@@ -43,6 +43,7 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onTabChange, on
   });
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [activeJobs, setActiveJobs] = useState<ActiveJob[]>([]);
+  const [closedJobs, setClosedJobs] = useState<ActiveJob[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const admin = JSON.parse(sessionStorage.getItem('fluidjobs_user') || '{}');
@@ -51,7 +52,7 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onTabChange, on
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsInitialLoading(false);
-    }, 2000);
+    }, 500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -59,11 +60,11 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onTabChange, on
     fetchStats();
     fetchAccounts();
     fetchActiveJobs();
+    fetchClosedJobs();
   }, [dashboardDateRange]);
 
   const fetchStats = async () => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
       const token = sessionStorage.getItem('fluidjobs_token');
       let url = 'http://localhost:8000/api/jobs-enhanced/stats';
       if (dashboardDateRange?.start && dashboardDateRange?.end) {
@@ -84,7 +85,6 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onTabChange, on
 
   const fetchAccounts = async () => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
       const token = sessionStorage.getItem('fluidjobs_token');
       if (!token) return;
       
@@ -104,7 +104,6 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onTabChange, on
 
   const fetchActiveJobs = async () => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
       const token = sessionStorage.getItem('fluidjobs_token');
       const response = await axios.get('http://localhost:8000/api/jobs-enhanced/active', {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
@@ -118,6 +117,21 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onTabChange, on
     }
   };
 
+  const fetchClosedJobs = async () => {
+    try {
+      const token = sessionStorage.getItem('fluidjobs_token');
+      const response = await axios.get('http://localhost:8000/api/jobs-enhanced/closed', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      const data = response.data as { success: boolean; jobs: ActiveJob[] };
+      if (data.success) {
+        setClosedJobs(data.jobs || []);
+      }
+    } catch (error) {
+      console.error('Error fetching closed jobs:', error);
+    }
+  };
+
   if (isInitialLoading) {
     return <Loader />;
   }
@@ -125,18 +139,21 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onTabChange, on
   return (
     <div className="p-8">
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        <div 
+          onClick={() => onTabChange('accounts')}
+          className="bg-white p-6 rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
+        >
+          <p className="text-gray-600 text-sm mb-2">My Accounts</p>
+          <p className="text-4xl font-semibold text-gray-900">{accounts.length}</p>
+        </div>
+
         <div 
           onClick={() => onTabChange('job-openings')}
           className="bg-white p-6 rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
         >
           <p className="text-gray-600 text-sm mb-2">Total Active Jobs</p>
-          <p className="text-4xl font-semibold text-gray-900 mb-2">{activeJobs.length}</p>
-          {stats.jobs_change !== 0 && (
-            <p className={`text-sm ${stats.jobs_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {stats.jobs_change > 0 ? '↑' : '↓'} {stats.jobs_change > 0 ? '+' : ''}{stats.jobs_change}
-            </p>
-          )}
+          <p className="text-4xl font-semibold text-gray-900">{activeJobs.length}</p>
         </div>
 
         <div 
@@ -153,14 +170,11 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onTabChange, on
         </div>
 
         <div 
-          onClick={() => onTabChange('accounts')}
+          onClick={() => onTabChange('job-openings')}
           className="bg-white p-6 rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
         >
-          <p className="text-gray-600 text-sm mb-2">My Accounts</p>
-          <p className="text-4xl font-semibold text-gray-900 mb-2">{accounts.length}</p>
-          <p className="text-sm text-green-600">
-            {accounts.filter(acc => acc.status === 'Active' || !acc.status).length} Active
-          </p>
+          <p className="text-gray-600 text-sm mb-2">Closed Positions</p>
+          <p className="text-4xl font-semibold text-gray-900">{closedJobs.length}</p>
         </div>
       </div>
 

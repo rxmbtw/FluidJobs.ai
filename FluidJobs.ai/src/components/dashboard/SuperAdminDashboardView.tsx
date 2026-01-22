@@ -168,7 +168,7 @@ const SuperAdminDashboardView: React.FC<SuperAdminDashboardViewProps> = ({ onTab
           className="bg-white p-6 rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
         >
           <p className="text-gray-600 text-sm mb-2">Closed Positions</p>
-          <p className="text-4xl font-semibold text-gray-900">{stats.closed_positions || closedJobs.length}</p>
+          <p className="text-4xl font-semibold text-gray-900">{closedJobs.length}</p>
         </div>
       </div>
 

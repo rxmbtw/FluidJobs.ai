@@ -448,6 +448,56 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
       fetchRestrictionStatus(selectedCandidate.id);
     }
   }, [selectedCandidate]);
+
+  // Listen for candidate profile opening from approval cards
+  React.useEffect(() => {
+    const handleOpenCandidate = () => {
+      const candidateId = sessionStorage.getItem('openCandidateId');
+      const candidateName = sessionStorage.getItem('openCandidateName');
+      
+      console.log('Checking for candidate:', { candidateId, candidateName });
+      console.log('Available candidates:', candidates.map(c => ({ id: c.id, name: c.name })));
+      
+      if (candidateId || candidateName) {
+        let candidate = null;
+        
+        // First try to find by ID
+        if (candidateId) {
+          candidate = candidates.find(c => c.id === candidateId);
+          console.log('Found by ID:', candidate);
+        }
+        
+        // If not found by ID, try to find by name
+        if (!candidate && candidateName) {
+          candidate = candidates.find(c => c.name === candidateName);
+          console.log('Found by name:', candidate);
+        }
+        
+        if (candidate) {
+          console.log('Setting selected candidate:', candidate.name);
+          setSelectedCandidate(candidate);
+        } else {
+          console.log('No candidate found matching criteria');
+        }
+        
+        // Clean up
+        sessionStorage.removeItem('openCandidateId');
+        sessionStorage.removeItem('openCandidateName');
+      }
+    };
+
+    // Check immediately when candidates load
+    if (candidates.length > 0) {
+      handleOpenCandidate();
+    }
+
+    // Set up interval to check for candidate ID/name
+    const interval = setInterval(handleOpenCandidate, 100);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [candidates]);
   
   // Close dropdown when clicking outside
   React.useEffect(() => {

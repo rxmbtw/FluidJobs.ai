@@ -259,47 +259,45 @@ router.get('/approved-jobs', async (req, res) => {
     const { startDate, endDate } = req.query;
     
     let dateFilter = '';
-    let params = ['Published'];
+    let params = [];
     
     if (startDate && endDate) {
-      dateFilter = 'AND j.approved_at >= $2 AND j.approved_at <= $3';
+      dateFilter = 'AND j.created_at >= $1 AND j.created_at <= $2';
       params.push(startDate, endDate);
     }
     
-    // Get approved jobs
+    // Get all active jobs as approved
     const jobsResult = await pool.query(
-      `SELECT j.*, u.name as created_by_name, 'job' as approval_type
+      `SELECT j.*, u.name as created_by_name, 'job' as approval_type,
+              COALESCE(j.approved_at, j.created_at) as approved_at
        FROM jobs_enhanced j 
        LEFT JOIN users u ON j.created_by_user_id = u.id 
-       WHERE j.status = $1 AND j.approved_at IS NOT NULL ${dateFilter}
-       ORDER BY j.approved_at DESC`,
+       WHERE j.status NOT IN ('pending', 'rejected', 'deleted') ${dateFilter}
+       ORDER BY COALESCE(j.approved_at, j.created_at) DESC`,
       params
     );
-    
-    // Reset params for candidate restrictions
-    params = ['approved'];
-    if (startDate && endDate) {
-      dateFilter = 'AND approved_at >= $2 AND approved_at <= $3';
-      params.push(startDate, endDate);
-    } else {
-      dateFilter = '';
-    }
     
     // Get approved candidate restrictions
     const candidateResult = await pool.query(
-      `SELECT *, 'candidate_restriction' as approval_type
-       FROM candidate_restriction_approvals 
-       WHERE status = $1 AND approved_at IS NOT NULL ${dateFilter}
-       ORDER BY approved_at DESC`,
-      params
+      `SELECT cra.*, 
+              COALESCE(ru.name, sa_req.name, cra.requested_by_name) as requested_by_username,
+              COALESCE(sa_app.name, au.name, cra.approved_by_name) as approved_by_username,
+              'candidate_restriction' as approval_type
+       FROM candidate_restriction_approvals cra
+       LEFT JOIN users ru ON cra.requested_by_user_id = ru.id
+       LEFT JOIN superadmins sa_req ON cra.requested_by_user_id = sa_req.id
+       LEFT JOIN users au ON cra.approved_by_user_id = au.id
+       LEFT JOIN superadmins sa_app ON cra.approved_by_user_id = sa_app.id
+       WHERE cra.status IN ('approved', 'unrestricted')
+       ORDER BY COALESCE(cra.approved_at, cra.created_at) DESC`
     );
     
-    // Combine and sort by approved_at
     const combined = [...jobsResult.rows, ...candidateResult.rows]
       .sort((a, b) => new Date(b.approved_at || b.created_at) - new Date(a.approved_at || a.created_at));
     
     res.json(combined);
   } catch (error) {
+    console.error('Error fetching approved jobs:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -401,8 +399,18 @@ router.post('/candidate-restrictions', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     
-    // If SuperAdmin is restricting, auto-approve
+    // If SuperAdmin is restricting, auto-approve and create approval record
     if (requested_by_role === 'SuperAdmin') {
+      // Create approval record with same user as requester and approver
+      const approvalResult = await pool.query(
+        `INSERT INTO candidate_restriction_approvals (
+          candidate_id, candidate_name, requested_by_user_id, 
+          requested_by_name, requested_by_role, restriction_reason,
+          status, approved_by_user_id, approved_by_name, approved_by_role, approved_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, 'approved', $3, $4, $5, NOW()) RETURNING id`,
+        [candidate_id, candidate_name, requested_by_user_id, requested_by_name, requested_by_role, restriction_reason]
+      );
+      
       // Directly restrict the candidate
       await pool.query(
         `INSERT INTO candidate_restrictions (candidate_id, user_id, reason, is_active, restricted_at)
@@ -416,7 +424,8 @@ router.post('/candidate-restrictions', async (req, res) => {
       return res.json({ 
         success: true, 
         message: 'Candidate restricted successfully',
-        auto_approved: true 
+        auto_approved: true,
+        approval_id: approvalResult.rows[0].id
       });
     }
     
@@ -474,12 +483,16 @@ router.post('/approve-candidate-restriction/:id', async (req, res) => {
     
     const approval = approvalResult.rows[0];
     
-    // Update approval status with proper SuperAdmin info
+    // Get actual SuperAdmin info from session/token
+    const superAdminResult = await pool.query('SELECT id, name FROM superadmins LIMIT 1');
+    const superAdmin = superAdminResult.rows[0] || { id: 1, name: 'D Sodhi' };
+    
+    // Update approval status with actual SuperAdmin info
     await pool.query(
       `UPDATE candidate_restriction_approvals 
        SET status = 'approved', approved_by_user_id = $1, approved_by_name = $2, approved_by_role = $3, approved_at = NOW() 
        WHERE id = $4`,
-      [null, 'D Sodhi', 'SuperAdmin', id]
+      [superAdmin.id, superAdmin.name, 'SuperAdmin', id]
     );
     
     // Actually restrict the candidate
@@ -489,7 +502,7 @@ router.post('/approve-candidate-restriction/:id', async (req, res) => {
       [approval.candidate_id, approval.requested_by_user_id, approval.restriction_reason]
     );
     
-    await logAudit(null, 'SuperAdmin', 'CANDIDATE_RESTRICTION_APPROVED', 
+    await logAudit(superAdmin.id, superAdmin.name, 'CANDIDATE_RESTRICTION_APPROVED', 
       `Approved restriction for candidate: ${approval.candidate_name}`, 'candidate', approval.candidate_id, req);
     
     res.json({ message: 'Candidate restriction approved' });
@@ -517,21 +530,75 @@ router.post('/reject-candidate-restriction/:id', async (req, res) => {
     
     const approval = approvalResult.rows[0];
     
-    // Update approval status with proper SuperAdmin info
+    // Get actual SuperAdmin info from session/token
+    const superAdminResult = await pool.query('SELECT id, name FROM superadmins LIMIT 1');
+    const superAdmin = superAdminResult.rows[0] || { id: 1, name: 'D Sodhi' };
+    
+    // Update approval status with actual SuperAdmin info
     await pool.query(
       `UPDATE candidate_restriction_approvals 
        SET status = 'rejected', approved_by_user_id = $1, approved_by_name = $2, approved_by_role = $3,
            approved_at = NOW(), rejection_reason = $4 
        WHERE id = $5`,
-      [null, 'D Sodhi', 'SuperAdmin', reason || null, id]
+      [superAdmin.id, superAdmin.name, 'SuperAdmin', reason || null, id]
     );
     
-    await logAudit(null, 'SuperAdmin', 'CANDIDATE_RESTRICTION_REJECTED', 
+    await logAudit(superAdmin.id, superAdmin.name, 'CANDIDATE_RESTRICTION_REJECTED', 
       `Rejected restriction for candidate: ${approval.candidate_name}${reason ? ` - Reason: ${reason}` : ''}`, 'candidate', approval.candidate_id, req);
     
     res.json({ message: 'Candidate restriction rejected' });
   } catch (error) {
     console.error('Error rejecting candidate restriction:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Unrestrict Candidate
+router.post('/unrestrict-candidate/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, unrestricted_by_user_id, unrestricted_by_name, unrestricted_by_role } = req.body;
+    
+    // Get the original restriction approval
+    const approvalResult = await pool.query(
+      'SELECT * FROM candidate_restriction_approvals WHERE candidate_id = $1 AND status = $2 ORDER BY approved_at DESC LIMIT 1',
+      [id, 'approved']
+    );
+    
+    if (approvalResult.rows.length === 0) {
+      return res.status(404).json({ error: 'No approved restriction found for this candidate' });
+    }
+    
+    const originalApproval = approvalResult.rows[0];
+    
+    // Get actual user info
+    const userResult = unrestricted_by_role === 'SuperAdmin' 
+      ? await pool.query('SELECT id, name FROM superadmins WHERE id = $1', [unrestricted_by_user_id])
+      : await pool.query('SELECT id, name FROM users WHERE id = $1', [unrestricted_by_user_id]);
+    
+    const user = userResult.rows[0] || { id: unrestricted_by_user_id, name: unrestricted_by_name };
+    
+    // Update the approval record with unrestriction info
+    await pool.query(
+      `UPDATE candidate_restriction_approvals 
+       SET status = 'unrestricted', unrestricted_by_user_id = $1, unrestricted_by_name = $2, 
+           unrestricted_by_role = $3, unrestricted_at = NOW(), unrestriction_reason = $4
+       WHERE id = $5`,
+      [user.id, user.name, unrestricted_by_role, reason, originalApproval.id]
+    );
+    
+    // Deactivate the restriction
+    await pool.query(
+      `UPDATE candidate_restrictions SET is_active = false WHERE candidate_id = $1 AND is_active = true`,
+      [id]
+    );
+    
+    await logAudit(user.id, user.name, 'CANDIDATE_UNRESTRICTED', 
+      `Unrestricted candidate: ${originalApproval.candidate_name} - Reason: ${reason}`, 'candidate', id, req);
+    
+    res.json({ message: 'Candidate unrestricted successfully' });
+  } catch (error) {
+    console.error('Error unrestricting candidate:', error);
     res.status(500).json({ error: error.message });
   }
 });

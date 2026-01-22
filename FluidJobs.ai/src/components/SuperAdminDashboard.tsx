@@ -292,8 +292,6 @@ const SuperAdminDashboard: React.FC = () => {
   useEffect(() => {
     const initializeDashboard = async () => {
       setIsInitialLoading(true);
-      // Add 2 second delay for initial loading
-      await new Promise(resolve => setTimeout(resolve, 2000));
       
       fetchStats();
       fetchPendingApprovals();
@@ -541,9 +539,28 @@ const SuperAdminDashboard: React.FC = () => {
   };
 
   const handleReject = async (id: number, approvalType: string = 'job') => {
-    const item = pendingApprovals.find(j => j.id === id) || allApprovals.find(j => j.id === id);
-    setJobToReject({ ...item, approval_type: approvalType });
-    setShowRejectModal(true);
+    if (approvalType === 'candidate_restriction') {
+      // Direct rejection for candidate restrictions without reason modal
+      try {
+        const response = await axios.post(`http://localhost:8000/api/superadmin/reject-candidate-restriction/${id}`);
+        
+        if (response.status === 200) {
+          fetchPendingApprovals();
+          fetchStats();
+          if (approvalTab === 'all') {
+            fetchAllApprovals();
+          }
+        }
+      } catch (error) {
+        console.error('Error rejecting candidate restriction:', error);
+        alert('Failed to reject. Please try again.');
+      }
+    } else {
+      // Show modal for job rejections
+      const item = pendingApprovals.find(j => j.id === id) || allApprovals.find(j => j.id === id);
+      setJobToReject({ ...item, approval_type: approvalType });
+      setShowRejectModal(true);
+    }
   };
 
   const handleRejectSubmit = async () => {
@@ -1533,37 +1550,48 @@ const SuperAdminDashboard: React.FC = () => {
                                       </span>
                                     </div>
                                     
-                                    <div className="grid grid-cols-3 gap-x-8 gap-y-2 mb-4">
+                                    <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4">
                                       <div>
                                         <div className="flex items-center mb-2">
                                           <span className="text-sm font-medium text-gray-600 mr-2">Candidate Name:</span>
                                           <span className="text-sm text-gray-900">{item.candidate_name}</span>
                                         </div>
                                         <div className="flex items-center">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Requested on:</span>
-                                          <span className="text-sm text-gray-900">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                                        </div>
-                                      </div>
-                                      <div>
-                                        <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Role:</span>
-                                          <span className="text-sm text-gray-900">{item.requested_by_role}</span>
-                                        </div>
-                                        <div className="flex items-center">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Requested by:</span>
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Requested By:</span>
                                           <span className="text-sm text-gray-900">{item.requested_by_name}</span>
                                         </div>
                                       </div>
                                       <div>
-                                        <div className="flex items-start">
+                                        <div className="flex items-start mb-2">
                                           <span className="text-sm font-medium text-gray-600 mr-2">Restriction Reason:</span>
                                           <span className="text-sm text-gray-900">{item.restriction_reason}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Requested on:</span>
+                                          <span className="text-sm text-gray-900">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                                         </div>
                                       </div>
                                     </div>
                                   </div>
                                   
                                   <div className="flex space-x-2 ml-4">
+                                    <button
+                                      onClick={() => {
+                                        setActiveTab('candidates');
+                                        // Navigate to specific candidate profile
+                                        setTimeout(() => {
+                                          window.dispatchEvent(new CustomEvent('openCandidateProfile', { 
+                                            detail: { 
+                                              candidateId: item.candidate_id || item.id,
+                                              candidateName: item.candidate_name
+                                            } 
+                                          }));
+                                        }, 100);
+                                      }}
+                                      className="px-4 py-2 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 font-medium"
+                                    >
+                                      View Candidate
+                                    </button>
                                     <button
                                       onClick={() => handleReject(item.id, 'candidate_restriction')}
                                       className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 font-medium"
@@ -1583,72 +1611,88 @@ const SuperAdminDashboard: React.FC = () => {
                               // Job Approval Card
                               <div 
                                 key={`job-${item.id}`} 
-                                className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                                onClick={() => {
-                                  setActiveTab('job-openings');
-                                  setTimeout(() => {
-                                    const jobData = {
-                                      jobId: item.id.toString(),
-                                      title: item.title
-                                    };
-                                    window.dispatchEvent(new CustomEvent('openJobDashboard', { 
-                                      detail: { job: jobData, defaultTab: 'job-settings' } 
-                                    }));
-                                  }, 100);
-                                }}
+                                className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
                               >
                                 <div className="flex justify-between items-start">
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-3">
                                       <h4 className="text-xl font-semibold text-gray-900">{item.title}</h4>
-                                      {item.is_republish ? (
-                                        <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
-                                          Re-publish Request
-                                        </span>
-                                      ) : (
-                                        <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded">
-                                          New Job
-                                        </span>
-                                      )}
+                                      {(() => {
+                                        const daysSincePosted = Math.floor((new Date().getTime() - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24));
+                                        const isNewJob = daysSincePosted <= 2;
+                                        return (
+                                          <>
+                                            {isNewJob && (
+                                              <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded">
+                                                New Job
+                                              </span>
+                                            )}
+                                            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded">
+                                              Pending
+                                            </span>
+                                          </>
+                                        );
+                                      })()}
                                     </div>
                                     
                                     <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4">
-                                      <div className="flex items-center">
-                                        <span className="text-sm font-medium text-gray-600 mr-2">Job Type:</span>
-                                        <span className="text-sm text-gray-900">{item.job_type || 'N/A'}</span>
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Job Type:</span>
+                                          <span className="text-sm text-gray-900">{item.job_type || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Salary Range:</span>
+                                          <span className="text-sm text-gray-900">{formatSalary(item.salary_range)}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Posted By:</span>
+                                          <span className="text-sm text-gray-900">{item.created_by_name || 'Unknown'}</span>
+                                        </div>
                                       </div>
-                                      <div className="flex items-center">
-                                        <span className="text-sm font-medium text-gray-600 mr-2">Location:</span>
-                                        <span className="text-sm text-gray-900">{item.location || 'N/A'}</span>
-                                      </div>
-                                      <div className="flex items-center">
-                                        <span className="text-sm font-medium text-gray-600 mr-2">Salary Range:</span>
-                                        <span className="text-sm text-gray-900">{formatSalary(item.salary_range)}</span>
-                                      </div>
-                                      <div className="flex items-center">
-                                        <span className="text-sm font-medium text-gray-600 mr-2">Posted By:</span>
-                                        <span className="text-sm text-gray-900">{item.created_by_name || 'Unknown'}</span>
+                                      <div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Location:</span>
+                                          <span className="text-sm text-gray-900">{item.location || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Industry:</span>
+                                          <span className="text-sm text-gray-900">{item.job_domain || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Posted on:</span>
+                                          <span className="text-sm text-gray-900">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                        </div>
                                       </div>
                                     </div>
-                                    
-                                    <p className="text-sm text-gray-500">Posted on: {new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                                   </div>
                                   
                                   <div className="flex space-x-2 ml-4">
                                     <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleReject(item.id, 'job');
+                                      onClick={() => {
+                                        setActiveTab('job-openings');
+                                        setTimeout(() => {
+                                          const jobData = {
+                                            jobId: item.id.toString(),
+                                            title: item.title
+                                          };
+                                          window.dispatchEvent(new CustomEvent('openJobDashboard', { 
+                                            detail: { job: jobData, defaultTab: 'job-settings' } 
+                                          }));
+                                        }, 100);
                                       }}
+                                      className="px-4 py-2 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 font-medium"
+                                    >
+                                      View Job
+                                    </button>
+                                    <button
+                                      onClick={() => handleReject(item.id, 'job')}
                                       className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 font-medium"
                                     >
                                       Reject
                                     </button>
                                     <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleApprove(item.id, 'job');
-                                      }}
+                                      onClick={() => handleApprove(item.id, 'job')}
                                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
                                     >
                                       Approve
@@ -1681,47 +1725,83 @@ const SuperAdminDashboard: React.FC = () => {
                               // Approved Candidate Restriction Card
                               <div 
                                 key={`candidate-approved-${item.id}`} 
-                                className="bg-white border border-green-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
+                                className="bg-white border border-green-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow relative"
                               >
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-3">
-                                      <h4 className="text-xl font-semibold text-gray-900">Restricted Candidate</h4>
-                                      <span className="px-3 py-1 bg-green-600 text-white rounded-md text-sm font-medium">Approved</span>
+                                <div className="absolute top-4 right-4">
+                                  <button
+                                    onClick={() => {
+                                      setActiveTab('candidates');
+                                      // Navigate to specific candidate profile
+                                      setTimeout(() => {
+                                        window.dispatchEvent(new CustomEvent('openCandidateProfile', { 
+                                          detail: { 
+                                            candidateId: item.candidate_id || item.id,
+                                            candidateName: item.candidate_name
+                                          } 
+                                        }));
+                                      }, 100);
+                                    }}
+                                    className="px-3 py-1 border border-blue-300 text-blue-600 rounded-md hover:bg-blue-50 text-sm font-medium"
+                                  >
+                                    View Candidate
+                                  </button>
+                                </div>
+                                <div className="pr-32">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <h4 className="text-xl font-semibold text-gray-900">Restricted Candidate</h4>
+                                    <span className="px-3 py-1 bg-green-600 text-white rounded-md text-sm font-medium">Approved</span>
+                                    {item.status === 'unrestricted' && (
+                                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+                                        Unrestricted
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  <div className={`grid ${item.status === 'unrestricted' ? 'grid-cols-3' : 'grid-cols-2'} gap-x-8 gap-y-2 mb-4`}>
+                                    <div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Candidate Name:</span>
+                                        <span className="text-sm text-gray-900">{item.candidate_name}</span>
+                                      </div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Requested by:</span>
+                                        <span className="text-sm text-gray-900">{item.requested_by_username || item.requested_by_name}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Requested date:</span>
+                                        <span className="text-sm text-gray-900">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                      </div>
                                     </div>
-                                    
-                                    <div className="grid grid-cols-3 gap-x-8 gap-y-2 mb-4">
+                                    <div>
+                                      <div className="flex items-start mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Restriction Reason:</span>
+                                        <span className="text-sm text-gray-900">{item.restriction_reason}</span>
+                                      </div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Approved By:</span>
+                                        <span className="text-sm text-gray-900">{item.approved_by_username || item.approved_by_name || 'D Sodhi'}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Approved on:</span>
+                                        <span className="text-sm text-gray-900">{new Date(item.approved_at || item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                      </div>
+                                    </div>
+                                    {item.status === 'unrestricted' && (
                                       <div>
                                         <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Candidate Name:</span>
-                                          <span className="text-sm text-gray-900">{item.candidate_name}</span>
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Unrestricted by:</span>
+                                          <span className="text-sm text-gray-900">{item.unrestricted_by_username || item.unrestricted_by_name || 'Unknown'}</span>
                                         </div>
-                                        <div className="flex items-center">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Approved on:</span>
-                                          <span className="text-sm text-gray-900">{new Date(item.approved_at || item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                                        </div>
-                                      </div>
-                                      <div>
                                         <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Approved By:</span>
-                                          <span className="text-sm text-gray-900">{item.approved_by_name || 'D Sodhi'} / {item.approved_by_role || 'SuperAdmin'}</span>
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Unrestricted on:</span>
+                                          <span className="text-sm text-gray-900">{new Date(item.unrestricted_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                                         </div>
-                                        <div className="flex items-center">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Role:</span>
-                                          <span className="text-sm text-gray-900">{item.requested_by_role}</span>
-                                        </div>
-                                        <div className="flex items-center">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Requested by:</span>
-                                          <span className="text-sm text-gray-900">{item.requested_by_name}</span>
-                                        </div>
-                                      </div>
-                                      <div>
                                         <div className="flex items-start">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Restriction Reason:</span>
-                                          <span className="text-sm text-gray-900">{item.restriction_reason}</span>
+                                          <span className="text-sm font-medium text-gray-600 mr-2">Unrestriction reason:</span>
+                                          <span className="text-sm text-gray-900">{item.unrestriction_reason || 'No reason provided'}</span>
                                         </div>
                                       </div>
-                                    </div>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -1729,37 +1809,53 @@ const SuperAdminDashboard: React.FC = () => {
                               // Approved Job Card
                               <div 
                                 key={`job-approved-${item.id}`} 
-                                className="bg-white border border-green-200 rounded-lg p-6 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                                onClick={() => {
-                                  setActiveTab('job-openings');
-                                  setTimeout(() => {
-                                    const jobData = {
-                                      jobId: item.id.toString(),
-                                      title: item.title
-                                    };
-                                    window.dispatchEvent(new CustomEvent('openJobDashboard', { 
-                                      detail: { job: jobData, defaultTab: 'job-settings' } 
-                                    }));
-                                  }, 100);
-                                }}
+                                className="bg-white border border-green-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow relative"
                               >
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-3">
-                                      <h4 className="text-xl font-semibold text-gray-900">{item.title}</h4>
-                                      <span className="px-3 py-1 bg-green-600 text-white rounded-md text-sm font-medium">Approved</span>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4">
-                                      <div className="flex items-center">
+                                <div className="absolute top-4 right-4">
+                                  <button
+                                    onClick={() => {
+                                      setActiveTab('job-openings');
+                                      setTimeout(() => {
+                                        const jobData = {
+                                          jobId: item.id.toString(),
+                                          title: item.title
+                                        };
+                                        window.dispatchEvent(new CustomEvent('openJobDashboard', { 
+                                          detail: { job: jobData, defaultTab: 'job-settings' } 
+                                        }));
+                                      }, 100);
+                                    }}
+                                    className="px-3 py-1 border border-blue-300 text-blue-600 rounded-md hover:bg-blue-50 text-sm font-medium"
+                                  >
+                                    View Job
+                                  </button>
+                                </div>
+                                <div className="pr-24">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <h4 className="text-xl font-semibold text-gray-900">{item.title}</h4>
+                                    {(() => {
+                                      const daysSincePosted = Math.floor((new Date().getTime() - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24));
+                                      const isNewJob = daysSincePosted <= 2;
+                                      return (
+                                        <>
+                                          {isNewJob && (
+                                            <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded">
+                                              New Job
+                                            </span>
+                                          )}
+                                          <span className="px-3 py-1 bg-green-600 text-white rounded-md text-sm font-medium">Approved</span>
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-3 gap-x-8 gap-y-2 mb-4">
+                                    <div>
+                                      <div className="flex items-center mb-2">
                                         <span className="text-sm font-medium text-gray-600 mr-2">Job Type:</span>
                                         <span className="text-sm text-gray-900">{item.job_type || 'N/A'}</span>
                                       </div>
-                                      <div className="flex items-center">
-                                        <span className="text-sm font-medium text-gray-600 mr-2">Location:</span>
-                                        <span className="text-sm text-gray-900">{item.location || 'N/A'}</span>
-                                      </div>
-                                      <div className="flex items-center">
+                                      <div className="flex items-center mb-2">
                                         <span className="text-sm font-medium text-gray-600 mr-2">Salary Range:</span>
                                         <span className="text-sm text-gray-900">{formatSalary(item.salary_range)}</span>
                                       </div>
@@ -1768,8 +1864,30 @@ const SuperAdminDashboard: React.FC = () => {
                                         <span className="text-sm text-gray-900">{item.created_by_name || 'Unknown'}</span>
                                       </div>
                                     </div>
-                                    
-                                    <p className="text-sm text-gray-500">Approved on: {new Date(item.approved_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                    <div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Location:</span>
+                                        <span className="text-sm text-gray-900">{item.location || 'N/A'}</span>
+                                      </div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Industry:</span>
+                                        <span className="text-sm text-gray-900">{item.job_domain || 'N/A'}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Posted on:</span>
+                                        <span className="text-sm text-gray-900">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Approved By:</span>
+                                        <span className="text-sm text-gray-900">{item.created_by_name || 'SuperAdmin'}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Approved on:</span>
+                                        <span className="text-sm text-gray-900">{new Date(item.approved_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -1798,129 +1916,150 @@ const SuperAdminDashboard: React.FC = () => {
                               // Rejected Candidate Restriction Card
                               <div 
                                 key={`candidate-rejected-${item.id}`} 
-                                className="bg-white border border-red-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
+                                className="bg-white border border-red-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow relative"
                               >
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-3">
-                                      <h4 className="text-xl font-semibold text-gray-900">Restricted Candidate</h4>
-                                      <span className="px-3 py-1 bg-red-600 text-white rounded-md text-sm font-medium">Rejected</span>
+                                <div className="absolute top-4 right-4">
+                                  <button
+                                    onClick={() => {
+                                      setActiveTab('candidates');
+                                      // Navigate to specific candidate profile
+                                      setTimeout(() => {
+                                        window.dispatchEvent(new CustomEvent('openCandidateProfile', { 
+                                          detail: { 
+                                            candidateId: item.candidate_id || item.id,
+                                            candidateName: item.candidate_name
+                                          } 
+                                        }));
+                                      }, 100);
+                                    }}
+                                    className="px-3 py-1 border border-blue-300 text-blue-600 rounded-md hover:bg-blue-50 text-sm font-medium"
+                                  >
+                                    View Candidate
+                                  </button>
+                                </div>
+                                <div className="pr-32">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <h4 className="text-xl font-semibold text-gray-900">Restricted Candidate</h4>
+                                    <span className="px-3 py-1 bg-red-600 text-white rounded-md text-sm font-medium">Rejected</span>
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4">
+                                    <div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Candidate Name:</span>
+                                        <span className="text-sm text-gray-900">{item.candidate_name}</span>
+                                      </div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Requested by:</span>
+                                        <span className="text-sm text-gray-900">{item.requested_by_name}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Requested on:</span>
+                                        <span className="text-sm text-gray-900">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                      </div>
                                     </div>
-                                    
-                                    <div className="grid grid-cols-3 gap-x-8 gap-y-2 mb-4">
-                                      <div>
-                                        <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Candidate Name:</span>
-                                          <span className="text-sm text-gray-900">{item.candidate_name}</span>
-                                        </div>
-                                        <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Restriction Reason:</span>
-                                          <span className="text-sm text-gray-900">{item.restriction_reason}</span>
-                                        </div>
-                                        <div className="flex items-center">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Rejected on:</span>
-                                          <span className="text-sm text-gray-900">{new Date(item.approved_at || item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                                        </div>
+                                    <div>
+                                      <div className="flex items-start mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Restriction Reason:</span>
+                                        <span className="text-sm text-gray-900">{item.restriction_reason}</span>
                                       </div>
-                                      <div>
-                                        <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Role:</span>
-                                          <span className="text-sm text-gray-900">{item.requested_by_role}</span>
-                                        </div>
-                                        <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Requested by:</span>
-                                          <span className="text-sm text-gray-900">{item.requested_by_name}</span>
-                                        </div>
-                                        <div className="flex items-center">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Requested on:</span>
-                                          <span className="text-sm text-gray-900">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                                        </div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Rejected by:</span>
+                                        <span className="text-sm text-gray-900">{item.approved_by_name || 'D Sodhi'}</span>
                                       </div>
-                                      <div>
-                                        <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Rejected by Role:</span>
-                                          <span className="text-sm text-gray-900">{item.approved_by_role || 'SuperAdmin'}</span>
-                                        </div>
-                                        <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Rejected by:</span>
-                                          <span className="text-sm text-gray-900">{item.approved_by_name || 'D Sodhi'}</span>
-                                        </div>
-                                        <div className="flex items-start">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Rejection Reason:</span>
-                                          <span className="text-sm text-gray-900">{item.rejection_reason || 'No reason provided'}</span>
-                                        </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Rejected on:</span>
+                                        <span className="text-sm text-gray-900">{new Date(item.approved_at || item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                                       </div>
                                     </div>
                                   </div>
                                 </div>
                               </div>
                             ) : (
-                              // Rejected Job Card (existing code)
+                              // Rejected Job Card
                               <div 
                                 key={`job-rejected-${item.id}`} 
-                                className="bg-white border border-red-200 rounded-lg p-6 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                                onClick={() => {
-                                  setActiveTab('job-openings');
-                                  setTimeout(() => {
-                                    const jobData = {
-                                      jobId: item.id.toString(),
-                                      title: item.title
-                                    };
-                                    window.dispatchEvent(new CustomEvent('openJobDashboard', { 
-                                      detail: { job: jobData, defaultTab: 'job-settings' } 
-                                    }));
-                                  }, 100);
-                                }}
+                                className="bg-white border border-red-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow relative"
                               >
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-3">
-                                      <h4 className="text-xl font-semibold text-gray-900">{item.title}</h4>
-                                      <span className="px-3 py-1 bg-red-600 text-white rounded-md text-sm font-medium">Rejected</span>
+                                <div className="absolute top-4 right-4">
+                                  <button
+                                    onClick={() => {
+                                      setActiveTab('job-openings');
+                                      setTimeout(() => {
+                                        const jobData = {
+                                          jobId: item.id.toString(),
+                                          title: item.title
+                                        };
+                                        window.dispatchEvent(new CustomEvent('openJobDashboard', { 
+                                          detail: { job: jobData, defaultTab: 'job-settings' } 
+                                        }));
+                                      }, 100);
+                                    }}
+                                    className="px-3 py-1 border border-blue-300 text-blue-600 rounded-md hover:bg-blue-50 text-sm font-medium"
+                                  >
+                                    View Job
+                                  </button>
+                                </div>
+                                <div className="pr-24">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <h4 className="text-xl font-semibold text-gray-900">{item.title}</h4>
+                                    {(() => {
+                                      const daysSincePosted = Math.floor((new Date().getTime() - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24));
+                                      const isNewJob = daysSincePosted <= 2;
+                                      return (
+                                        <>
+                                          {isNewJob && (
+                                            <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded">
+                                              New Job
+                                            </span>
+                                          )}
+                                          <span className="px-3 py-1 bg-red-600 text-white rounded-md text-sm font-medium">Rejected</span>
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-3 gap-x-8 gap-y-2 mb-4">
+                                    <div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Job Type:</span>
+                                        <span className="text-sm text-gray-900">{item.job_type || 'N/A'}</span>
+                                      </div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Salary Range:</span>
+                                        <span className="text-sm text-gray-900">{formatSalary(item.salary_range)}</span>
+                                      </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Posted By:</span>
+                                        <span className="text-sm text-gray-900">{item.created_by_name || 'Unknown'}</span>
+                                      </div>
                                     </div>
-                                    
-                                    <div className="grid grid-cols-3 gap-x-8 gap-y-2 mb-4">
-                                      <div>
-                                        <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Job Type:</span>
-                                          <span className="text-sm text-gray-900">{item.job_type || 'N/A'}</span>
-                                        </div>
-                                        <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Salary Range:</span>
-                                          <span className="text-sm text-gray-900">{formatSalary(item.salary_range)}</span>
-                                        </div>
-                                        <div className="flex items-center">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Rejected on:</span>
-                                          <span className="text-sm text-gray-900">{new Date(item.approved_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                                        </div>
+                                    <div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Location:</span>
+                                        <span className="text-sm text-gray-900">{item.location || 'N/A'}</span>
                                       </div>
-                                      <div>
-                                        <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Location:</span>
-                                          <span className="text-sm text-gray-900">{item.location || 'N/A'}</span>
-                                        </div>
-                                        <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Posted By:</span>
-                                          <span className="text-sm text-gray-900">{item.created_by_name || 'Unknown'}</span>
-                                        </div>
-                                        <div className="flex items-center">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Posted on:</span>
-                                          <span className="text-sm text-gray-900">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                                        </div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Industry:</span>
+                                        <span className="text-sm text-gray-900">{item.job_domain || 'N/A'}</span>
                                       </div>
-                                      <div>
-                                        <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Role:</span>
-                                          <span className="text-sm text-gray-900">{item.rejected_by_role || item.rejector_role || 'SuperAdmin'}</span>
-                                        </div>
-                                        <div className="flex items-center mb-2">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Username:</span>
-                                          <span className="text-sm text-gray-900">{item.rejected_by_name || item.rejected_by || item.rejector_name || item.rejected_by_username || 'Unknown'}</span>
-                                        </div>
-                                        <div className="flex items-start">
-                                          <span className="text-sm font-medium text-gray-600 mr-2">Rejection Reason:</span>
-                                          <span className="text-sm text-gray-900">{item.rejection_reason || 'No reason provided'}</span>
-                                        </div>
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Posted on:</span>
+                                        <span className="text-sm text-gray-900">{new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Rejected by:</span>
+                                        <span className="text-sm text-gray-900">{item.rejected_by_name || item.rejected_by || item.rejector_name || item.rejected_by_username || 'SuperAdmin'}</span>
+                                      </div>
+                                      <div className="flex items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Rejected on:</span>
+                                        <span className="text-sm text-gray-900">{new Date(item.approved_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                      </div>
+                                      <div className="flex items-start">
+                                        <span className="text-sm font-medium text-gray-600 mr-2">Rejection Reason:</span>
+                                        <span className="text-sm text-gray-900">{item.rejection_reason || 'No reason provided'}</span>
                                       </div>
                                     </div>
                                   </div>

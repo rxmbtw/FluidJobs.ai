@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Users, Eye, Mail, Phone, Linkedin, User, Briefcase } from 'lucide-react';
+import { Search, Filter, Users, Eye, Mail, Phone, Linkedin, User, Briefcase, Ban, Check } from 'lucide-react';
 import { indianCities } from '../data/indianCities';
+import SuccessModal from './SuccessModal';
 
 interface Candidate {
   id: string;
@@ -43,6 +44,15 @@ const ManageCandidatesJobSpecific: React.FC<ManageCandidatesJobSpecificProps> = 
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sortOrder, setSortOrder] = useState('asc');
+  const [isRestricted, setIsRestricted] = useState(false);
+  const [showRestrictModal, setShowRestrictModal] = useState(false);
+  const [showUnrestrictModal, setShowUnrestrictModal] = useState(false);
+  const [restrictReason, setRestrictReason] = useState('');
+  const [unrestrictReason, setUnrestrictReason] = useState('');
+  const [submittingRestriction, setSubmittingRestriction] = useState(false);
+  const [submittingUnrestriction, setSubmittingUnrestriction] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
   
   const [filters, setFilters] = useState({
     location: '',
@@ -108,9 +118,121 @@ const ManageCandidatesJobSpecific: React.FC<ManageCandidatesJobSpecificProps> = 
 
   const isShortlisted = selectedCandidate ? shortlistedCandidates.some(c => c.id === selectedCandidate.id) : false;
 
+  const handleRestrictClick = () => {
+    setShowRestrictModal(true);
+  };
+
+  const handleUnrestrictClick = () => {
+    setShowUnrestrictModal(true);
+  };
+
+  const handleRestrictSubmit = async () => {
+    if (!restrictReason.trim()) {
+      alert('Please enter a reason for restriction');
+      return;
+    }
+
+    try {
+      setSubmittingRestriction(true);
+      const userStr = sessionStorage.getItem('fluidjobs_user');
+      const user = userStr ? JSON.parse(userStr) : { id: 1, name: 'Admin', role: 'SuperAdmin' };
+      
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidate-restrictions/restrict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidateId: selectedCandidate?.id,
+          userId: user.id,
+          reason: restrictReason,
+          userName: user.name || user.username || 'Unknown User',
+          userRole: user.role || 'SuperAdmin',
+          candidateName: selectedCandidate?.name
+        })
+      });
+
+      if (response.ok) {
+        setIsRestricted(true);
+        setShowRestrictModal(false);
+        setRestrictReason('');
+        setSuccessMessage({
+          title: 'Success!',
+          message: 'Candidate restricted successfully'
+        });
+        setShowSuccessModal(true);
+      } else {
+        alert('Failed to restrict candidate');
+      }
+    } catch (error) {
+      console.error('Error restricting candidate:', error);
+      alert('Failed to restrict candidate');
+    } finally {
+      setSubmittingRestriction(false);
+    }
+  };
+
+  const handleUnrestrictSubmit = async () => {
+    if (!unrestrictReason.trim()) {
+      alert('Please enter a reason for unrestriction');
+      return;
+    }
+
+    try {
+      setSubmittingUnrestriction(true);
+      const userStr = sessionStorage.getItem('fluidjobs_user');
+      const user = userStr ? JSON.parse(userStr) : { id: 1, name: 'Admin', role: 'SuperAdmin' };
+      
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/superadmin/unrestrict-candidate/${selectedCandidate?.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reason: unrestrictReason,
+          unrestricted_by_user_id: user.id,
+          unrestricted_by_name: user.name || user.username || 'Unknown User',
+          unrestricted_by_role: user.role || 'SuperAdmin'
+        })
+      });
+
+      if (response.ok) {
+        setIsRestricted(false);
+        setShowUnrestrictModal(false);
+        setUnrestrictReason('');
+        setSuccessMessage({
+          title: 'Success!',
+          message: 'Candidate unrestricted successfully'
+        });
+        setShowSuccessModal(true);
+      } else {
+        alert('Failed to unrestrict candidate');
+      }
+    } catch (error) {
+      console.error('Error unrestricting candidate:', error);
+      alert('Failed to unrestrict candidate');
+    } finally {
+      setSubmittingUnrestriction(false);
+    }
+  };
+
+  const fetchRestrictionStatus = async (candidateId: string) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidate-restrictions/status/${candidateId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setIsRestricted(data.isRestricted);
+      }
+    } catch (error) {
+      console.error('Error fetching restriction status:', error);
+    }
+  };
+
   React.useEffect(() => {
     fetchCandidates();
   }, []);
+
+  React.useEffect(() => {
+    if (selectedCandidate) {
+      fetchRestrictionStatus(selectedCandidate.id);
+    }
+  }, [selectedCandidate]);
 
   const filteredCandidates = useMemo(() => {
     let filtered = candidates.filter(candidate => {
@@ -396,21 +518,62 @@ const ManageCandidatesJobSpecific: React.FC<ManageCandidatesJobSpecificProps> = 
           <>
             <div className="bg-white border-b border-gray-100 p-3">
               <div className="flex justify-between items-center mb-6">
-                <button 
-                  className="flex items-center space-x-2 px-6 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-800 transition"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Verify Details</span>
-                </button>
                 <div className="flex space-x-3">
+                  <button 
+                    onClick={handleRestrictClick}
+                    disabled={isRestricted}
+                    className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-medium transition border ${
+                      isRestricted ? 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 26 26" fill="none" className="flex-shrink-0">
+                      <path d="M3 3L23 23" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                      <path d="M10.9 10.9C10.4 11.4 10 12.1 10 13C10 14.7 11.3 16 13 16C13.9 16 14.6 15.6 15.1 15.1" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                      <path d="M7.5 7.5C5.5 9 4 11 4 13C4 14.5 7 19 13 19C15 19 16.5 18.5 18 17.5" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                      <path d="M20 14C21 12.5 22 11.5 22 13C22 14.5 19 19 13 19" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                      <path d="M13 7C17 7 20 10 22 13" stroke={isRestricted ? '#D1D5DB' : '#6B6B6B'} strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                    <span>Restrict</span>
+                  </button>
+                  <button 
+                    onClick={handleUnrestrictClick}
+                    disabled={!isRestricted}
+                    className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-medium transition border ${
+                      !isRestricted ? 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed' : 'bg-white text-green-700 border-green-300 hover:bg-green-50'
+                    }`}
+                  >
+                    <Check className="w-5 h-5" />
+                    <span>Unrestrict</span>
+                  </button>
+                </div>
+                <div className="flex space-x-3">
+                  <button 
+                    className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-medium ${
+                      isRestricted ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                    }`}
+                  >
+                    {isRestricted ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="3" width="18" height="18" rx="3" stroke="#FF0004" strokeWidth="1.5"/>
+                        <circle cx="12" cy="8" r="0.75" fill="#FF0004"/>
+                        <line x1="12" y1="12" x2="12" y2="16" stroke="#FF0004" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="3" width="18" height="18" rx="3" stroke="#28860B" strokeWidth="1.5"/>
+                        <polyline points="8,12 11,15 16,9" stroke="#28860B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                      </svg>
+                    )}
+                    <span>{isRestricted ? 'Inactive' : 'Active'}</span>
+                  </button>
                   <button
                     onClick={handleShortlist}
-                    disabled={isShortlisted}
+                    disabled={isShortlisted || isRestricted}
                     className={`px-6 py-2.5 rounded-full text-sm font-medium transition ${
                       isShortlisted
                         ? 'bg-yellow-100 text-yellow-700 cursor-not-allowed'
+                        : isRestricted
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}
                   >
@@ -530,6 +693,104 @@ const ManageCandidatesJobSpecific: React.FC<ManageCandidatesJobSpecificProps> = 
       </div>
 
 
+      {/* Unrestrict Modal */}
+      {showUnrestrictModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Unrestrict Candidate</h2>
+              <button
+                onClick={() => setShowUnrestrictModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Unrestricting: <strong>{selectedCandidate?.name}</strong>
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Reason for Unrestriction *</label>
+                <textarea
+                  value={unrestrictReason}
+                  onChange={(e) => setUnrestrictReason(e.target.value)}
+                  placeholder="Enter reason for unrestricting this candidate..."
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              <button
+                onClick={handleUnrestrictSubmit}
+                disabled={submittingUnrestriction || !unrestrictReason.trim()}
+                className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submittingUnrestriction ? 'Unrestricting...' : 'Unrestrict Candidate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restrict Modal */}
+      {showRestrictModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Restrict Candidate</h2>
+              <button
+                onClick={() => setShowRestrictModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Restricting: <strong>{selectedCandidate?.name}</strong>
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Reason for Restriction *</label>
+                <textarea
+                  value={restrictReason}
+                  onChange={(e) => setRestrictReason(e.target.value)}
+                  placeholder="Enter reason for restricting this candidate..."
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              <button
+                onClick={handleRestrictSubmit}
+                disabled={submittingRestriction || !restrictReason.trim()}
+                className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submittingRestriction ? 'Restricting...' : 'Restrict Candidate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title={successMessage.title}
+        message={successMessage.message}
+      />
     </div>
   );
 };
