@@ -9,8 +9,9 @@ import SuccessModal from './SuccessModal';
 import ErrorModal from './ErrorModal';
 import ThemedBulkImport from './ThemedBulkImport';
 import { ThemeProvider } from './ThemeContext';
-import JobCreationForm from './JobCreationForm';
 import AdminDashboardView from './dashboard/AdminDashboardView';
+import AdminUserManagement from './AdminUserManagement';
+import JobCreationForm from './JobCreationForm';
 import Loader from './Loader';
 import { DateFilterDropdown } from './DateFilterDropdown';
 
@@ -49,6 +50,24 @@ const CompanyDashboard: React.FC = () => {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [jobTab, setJobTab] = useState('all');
   const [dashboardDateRange, setDashboardDateRange] = useState({ start: '', end: '' });
+  const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', role: '' });
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [availablePermissions, setAvailablePermissions] = useState<any[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<{[key: string]: boolean}>({});
+
+  // Role-based access control
+  const userRole = admin.role || 'User';
+  const canCreateJobs = ['Admin', 'Recruiter'].includes(userRole);
+  const canManageUsers = ['Admin'].includes(userRole);
+  const canViewPermissions = ['HR', 'Interviewer', 'Sales'].includes(userRole);
+  const canViewAccounts = ['Admin', 'Recruiter', 'HR'].includes(userRole);
+  const canManageCandidates = ['Admin', 'HR', 'Recruiter'].includes(userRole);
+  const canViewJobs = ['Admin', 'Recruiter', 'HR', 'Interviewer', 'Sales'].includes(userRole);
+  const canSendInvites = ['Admin', 'HR', 'Recruiter'].includes(userRole);
+  const canBulkImport = ['Admin', 'HR'].includes(userRole);
 
   const navigate = useNavigate();
 
@@ -124,10 +143,23 @@ const CompanyDashboard: React.FC = () => {
       if (showJobDropdown && !safeClosest(target, '.job-dropdown-container')) {
         setShowJobDropdown(false);
       }
+      if (showRoleDropdown && !safeClosest(target, '.role-dropdown-container')) {
+        setShowRoleDropdown(false);
+      }
     };
+    
+    const handleNavigateToCreateUser = () => {
+      setActiveTab('create-user-page');
+    };
+    
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isNewDropdownOpen, isProfileOpen, showJobDropdown]);
+    window.addEventListener('navigateToCreateUser', handleNavigateToCreateUser);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('navigateToCreateUser', handleNavigateToCreateUser);
+    };
+  }, [isNewDropdownOpen, isProfileOpen, showJobDropdown, showRoleDropdown]);
 
   React.useEffect(() => {
     if (showInviteModal) {
@@ -277,6 +309,156 @@ const CompanyDashboard: React.FC = () => {
     navigate('/');
   };
 
+  const checkEmailExists = async (email: string) => {
+    if (!email || !email.includes('@')) {
+      setEmailError('');
+      return;
+    }
+
+    setCheckingEmail(true);
+    try {
+      const token = sessionStorage.getItem('fluidjobs_token');
+      const response = await fetch('/api/admin/users/check-email', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ email })
+      });
+      const data = await response.json();
+      
+      if (data.exists) {
+        setEmailError('This email is already registered.');
+      } else {
+        setEmailError('');
+      }
+    } catch (error) {
+      console.error('Error checking email:', error);
+    } finally {
+      setCheckingEmail(false);
+    }
+  };
+
+  const fetchRolePermissions = async (role: string) => {
+    if (!role) {
+      setAvailablePermissions([]);
+      setSelectedPermissions({});
+      return;
+    }
+    
+    try {
+      const token = sessionStorage.getItem('fluidjobs_token');
+      const response = await fetch(`/api/auth/roles/${role}/permissions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAvailablePermissions(data.permissions);
+        const defaultPermissions: {[key: string]: boolean} = {};
+        data.permissions.forEach((perm: any) => {
+          defaultPermissions[perm.name] = perm.has_permission;
+        });
+        setSelectedPermissions(defaultPermissions);
+      } else {
+        const basicPermissions = [
+          { name: 'view_jobs', description: 'View Jobs', category: 'jobs', has_permission: true, source: 'role' },
+          { name: 'create_jobs', description: 'Create Jobs', category: 'jobs', has_permission: role === 'Admin' || role === 'Recruiter', source: 'role' },
+          { name: 'view_candidates', description: 'View Candidates', category: 'candidates', has_permission: true, source: 'role' },
+          { name: 'manage_candidates', description: 'Manage Candidates', category: 'candidates', has_permission: role === 'Admin' || role === 'HR', source: 'role' }
+        ];
+        setAvailablePermissions(basicPermissions);
+        const defaultPermissions: {[key: string]: boolean} = {};
+        basicPermissions.forEach((perm: any) => {
+          defaultPermissions[perm.name] = perm.has_permission;
+        });
+        setSelectedPermissions(defaultPermissions);
+      }
+    } catch (error) {
+      console.error('Error fetching role permissions:', error);
+    }
+  };
+
+  const handlePermissionToggle = (permissionName: string, granted: boolean) => {
+    setSelectedPermissions(prev => ({
+      ...prev,
+      [permissionName]: granted
+    }));
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUser.name || !newUser.email || !newUser.role) {
+      setErrorMessage({
+        title: 'Missing Fields',
+        message: 'Please fill in all required fields'
+      });
+      setShowErrorModal(true);
+      return;
+    }
+    
+    if (emailError) {
+      setErrorMessage({
+        title: 'Email Error',
+        message: 'Please use a different email address'
+      });
+      setShowErrorModal(true);
+      return;
+    }
+    
+    setCreatingUser(true);
+    try {
+      const token = sessionStorage.getItem('fluidjobs_token');
+      const response = await fetch('/api/auth/users', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role,
+          phone: newUser.phone,
+          customPermissions: Object.entries(selectedPermissions).map(([name, granted]) => ({ name, granted }))
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setNewUser({ name: '', email: '', phone: '', role: '' });
+        setEmailError('');
+        setAvailablePermissions([]);
+        setSelectedPermissions({});
+        setSuccessMessage({
+          title: 'User Created!',
+          message: `User created successfully! Temporary password: ${data.tempPassword}`
+        });
+        setShowSuccessModal(true);
+        setActiveTab('settings');
+      } else {
+        const error = await response.json();
+        setErrorMessage({
+          title: 'Error',
+          message: error.error || 'Failed to create user'
+        });
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      setErrorMessage({
+        title: 'Error',
+        message: 'Failed to create user'
+      });
+      setShowErrorModal(true);
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
       {isInitialLoading ? (
@@ -328,60 +510,71 @@ const CompanyDashboard: React.FC = () => {
             {isSidebarExpanded && isNewDropdownOpen && (
               <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-lg shadow-2xl overflow-hidden z-20 border border-gray-200">
                 <nav className="p-2">
-                  <button
-                    onClick={() => {
-                      setActiveTab('create-job');
-                      setIsNewDropdownOpen(false);
-                    }}
-                    className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
-                  >
-                    <Briefcase size={18} />
-                    <span className="text-sm font-medium">Create Job</span>
-                  </button>
-                  <div className="relative">
-                    <div 
-                      onClick={() => setIsCandidateSubmenuOpen(!isCandidateSubmenuOpen)}
-                      className="w-full flex items-center justify-between p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition cursor-pointer"
+                  {canCreateJobs && (
+                    <button
+                      onClick={() => {
+                        setActiveTab('create-job');
+                        setIsNewDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
                     >
-                      <div className="flex items-center space-x-3">
-                        <User size={18} />
-                        <span className="text-sm font-medium">Create Candidate</span>
+                      <Briefcase size={18} />
+                      <span className="text-sm font-medium">Create Job</span>
+                    </button>
+                  )}
+                  {(canSendInvites || canBulkImport) && (
+                    <div className="relative">
+                      <div 
+                        onClick={() => setIsCandidateSubmenuOpen(!isCandidateSubmenuOpen)}
+                        className="w-full flex items-center justify-between p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition cursor-pointer"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <User size={18} />
+                          <span className="text-sm font-medium">Create Candidate</span>
+                        </div>
+                        <svg className={`w-4 h-4 transition-transform duration-200 ${isCandidateSubmenuOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                       </div>
-                      <svg className={`w-4 h-4 transition-transform duration-200 ${isCandidateSubmenuOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                      {isCandidateSubmenuOpen && (
+                        <div className="mt-1 ml-6 space-y-1">
+                          {canSendInvites && (
+                            <button
+                              onClick={() => {
+                                setActiveTab('send-invitation');
+                                setIsNewDropdownOpen(false);
+                                setIsCandidateSubmenuOpen(false);
+                              }}
+                              className="w-full flex items-center space-x-3 p-2 rounded-lg text-gray-600 hover:bg-blue-50 transition text-left text-sm"
+                            >
+                              <Mail size={16} />
+                              <span>Send Invite</span>
+                            </button>
+                          )}
+                          {canBulkImport && (
+                            <button
+                              onClick={() => {
+                                setActiveTab('bulk-import');
+                                setIsNewDropdownOpen(false);
+                                setIsCandidateSubmenuOpen(false);
+                              }}
+                              className="w-full flex items-center space-x-3 p-2 rounded-lg text-gray-600 hover:bg-blue-50 transition text-left text-sm"
+                            >
+                              <Upload size={16} />
+                              <span>Bulk Import</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {isCandidateSubmenuOpen && (
-                      <div className="mt-1 ml-6 space-y-1">
-                        <button
-                          onClick={() => {
-                            setActiveTab('send-invitation');
-                            setIsNewDropdownOpen(false);
-                            setIsCandidateSubmenuOpen(false);
-                          }}
-                          className="w-full flex items-center space-x-3 p-2 rounded-lg text-gray-600 hover:bg-blue-50 transition text-left text-sm"
-                        >
-                          <Mail size={16} />
-                          <span>Send Invite</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setActiveTab('bulk-import');
-                            setIsNewDropdownOpen(false);
-                            setIsCandidateSubmenuOpen(false);
-                          }}
-                          className="w-full flex items-center space-x-3 p-2 rounded-lg text-gray-600 hover:bg-blue-50 transition text-left text-sm"
-                        >
-                          <Upload size={16} />
-                          <span>Bulk Import</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </nav>
               </div>
             )}
           </div>
+
+          {/* Separator line */}
+          <div className="-mx-4 mb-3" style={{ borderTop: '1px solid rgba(229, 231, 235, 0.8)', paddingTop: '16px', boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.05)' }}></div>
 
           <button
             onClick={() => handleTabChange('dashboard')}
@@ -393,55 +586,63 @@ const CompanyDashboard: React.FC = () => {
             {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Dashboard</span>}
           </button>
 
-          <button
-            onClick={() => handleTabChange('accounts')}
-            className={`w-full flex items-center ${isSidebarExpanded ? 'justify-between' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${
-              activeTab === 'accounts' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <div className={`flex items-center ${isSidebarExpanded ? 'space-x-3' : ''}`}>
+          {canViewAccounts && (
+            <button
+              onClick={() => handleTabChange('accounts')}
+              className={`w-full flex items-center ${isSidebarExpanded ? 'justify-between' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${
+                activeTab === 'accounts' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <div className={`flex items-center ${isSidebarExpanded ? 'space-x-3' : ''}`}>
+                <Users size={20} className="flex-shrink-0" />
+                {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Accounts</span>}
+              </div>
+              {isSidebarExpanded && <span className="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded-full">{accounts.length}</span>}
+            </button>
+          )}
+
+          {canViewJobs && (
+            <button
+              onClick={() => handleTabChange('job-openings')}
+              className={`w-full flex items-center ${isSidebarExpanded ? 'justify-between' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${
+                activeTab === 'job-openings' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <div className={`flex items-center ${isSidebarExpanded ? 'space-x-3' : ''}`}>
+                <Briefcase size={20} className="flex-shrink-0" />
+                {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Jobs</span>}
+              </div>
+              {isSidebarExpanded && <span className="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded-full">{jobs.length}</span>}
+            </button>
+          )}
+
+          {canManageCandidates && (
+            <button
+              onClick={() => setActiveTab('candidates')}
+              className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${
+                activeTab === 'candidates' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
               <Users size={20} className="flex-shrink-0" />
-              {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Accounts</span>}
-            </div>
-            {isSidebarExpanded && <span className="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded-full">{accounts.length}</span>}
-          </button>
-
-          <button
-            onClick={() => handleTabChange('job-openings')}
-            className={`w-full flex items-center ${isSidebarExpanded ? 'justify-between' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${
-              activeTab === 'job-openings' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <div className={`flex items-center ${isSidebarExpanded ? 'space-x-3' : ''}`}>
-              <Briefcase size={20} className="flex-shrink-0" />
-              {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Jobs</span>}
-            </div>
-            {isSidebarExpanded && <span className="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded-full">{jobs.length}</span>}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('candidates')}
-            className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${
-              activeTab === 'candidates' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Users size={20} className="flex-shrink-0" />
-            {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Candidates</span>}
-          </button>
+              {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Candidates</span>}
+            </button>
+          )}
         </nav>
 
         {/* Settings Direct Navigation */}
-        <div className="px-4 mb-4" style={{ borderTop: '1px solid rgba(229, 231, 235, 0.8)', paddingTop: '16px', boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.05)' }}>
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg text-left transition-all ${
-              activeTab === 'settings' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Settings size={20} className="flex-shrink-0" />
-            {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Settings</span>}
-          </button>
-        </div>
+        {(canManageUsers || canViewPermissions) && (
+          <div className="px-4 mb-4" style={{ borderTop: '1px solid rgba(229, 231, 235, 0.8)', paddingTop: '16px', boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.05)' }}>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg text-left transition-all ${
+                activeTab === 'settings' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Settings size={20} className="flex-shrink-0" />
+              {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Settings</span>}
+            </button>
+          </div>
+        )}
 
         <div className="p-4 overflow-visible relative profile-container" style={{ borderTop: '1px solid rgba(229, 231, 235, 0.8)', boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.05)' }}>
           <div 
@@ -455,8 +656,8 @@ const CompanyDashboard: React.FC = () => {
                     {admin.name?.charAt(0) || 'A'}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900 whitespace-nowrap">{admin.name || 'Admin'}</p>
-                    <p className="text-xs text-blue-600">Admin</p>
+                    <p className="text-sm font-medium text-gray-900 whitespace-nowrap">{admin.name || 'User'}</p>
+                    <p className="text-xs text-blue-600">{admin.role || 'User'}</p>
                   </div>
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); handleLogout(); }} className="text-red-500 hover:text-red-700">
@@ -475,7 +676,7 @@ const CompanyDashboard: React.FC = () => {
               <div className="p-6 space-y-3">
                 <div>
                   <span className="font-semibold text-blue-600">Role: </span>
-                  <span className="text-gray-900">Admin</span>
+                  <span className="text-gray-900">{admin.role || 'User'}</span>
                 </div>
                 <div>
                   <span className="font-semibold text-blue-600">Email: </span>
@@ -517,7 +718,7 @@ const CompanyDashboard: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'bulk-import' && (
+          {activeTab === 'bulk-import' && canBulkImport && (
             <div className="flex flex-col h-full overflow-hidden">
               <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
                 <h1 className="text-3xl font-semibold text-gray-900">Bulk Import Candidates</h1>
@@ -531,7 +732,7 @@ const CompanyDashboard: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'accounts' && (
+          {activeTab === 'accounts' && canViewAccounts && (
             <div className="flex flex-col h-full overflow-hidden">
               <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
                 <h1 className="text-3xl font-semibold text-gray-900">My Accounts</h1>
@@ -578,7 +779,7 @@ const CompanyDashboard: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'candidates' && (
+          {activeTab === 'candidates' && canManageCandidates && (
             <div className="flex flex-col h-full overflow-hidden">
               <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
                 <h1 className="text-3xl font-semibold text-gray-900">Manage Candidates</h1>
@@ -590,7 +791,7 @@ const CompanyDashboard: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'job-openings' && (
+          {activeTab === 'job-openings' && canViewJobs && (
             <div className="flex flex-col h-full overflow-hidden">
               <div className="flex-1 overflow-auto">
                 <JobOpeningsViewNew 
@@ -604,18 +805,294 @@ const CompanyDashboard: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'settings' && (
+          {activeTab === 'settings' && (canManageUsers || canViewPermissions) && (
             <div className="flex flex-col h-full overflow-hidden">
               <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
                 <h1 className="text-3xl font-semibold text-gray-900">Settings</h1>
-                <p className="text-gray-600">Manage your account settings</p>
+                <p className="text-gray-600">Manage your account settings and users</p>
               </div>
 
               <div className="flex-1 overflow-auto px-8 py-6">
-                <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-                  <Settings size={64} className="mx-auto text-gray-400 mb-4" />
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-2">Admin Settings</h2>
-                  <p className="text-gray-600">Admin settings will come here</p>
+                <div className="space-y-6">
+                  {canManageUsers && (
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                      <AdminUserManagement isCompanyDashboard={true} />
+                    </div>
+                  )}
+                  
+                  {canViewPermissions && (
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                      <div className="mb-6">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">My Permissions</h3>
+                        <p className="text-gray-600">View your current role permissions</p>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="flex items-center space-x-3 mb-3">
+                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                              {admin.name?.charAt(0) || 'U'}
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-gray-900">{admin.name}</h4>
+                              <p className="text-sm text-blue-600 font-medium">{userRole}</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Dashboard Permissions */}
+                          <div className="border border-gray-200 rounded-lg p-4">
+                            <h5 className="font-medium text-gray-900 mb-3">Dashboard Access</h5>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-700">View Dashboard</span>
+                                <span className="text-green-600">✓</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Job Permissions */}
+                          <div className="border border-gray-200 rounded-lg p-4">
+                            <h5 className="font-medium text-gray-900 mb-3">Job Management</h5>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-700">View Jobs</span>
+                                <span className={canViewJobs ? 'text-green-600' : 'text-red-600'}>
+                                  {canViewJobs ? '✓' : '✗'}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-700">Create Jobs</span>
+                                <span className={canCreateJobs ? 'text-green-600' : 'text-red-600'}>
+                                  {canCreateJobs ? '✓' : '✗'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Account Permissions */}
+                          <div className="border border-gray-200 rounded-lg p-4">
+                            <h5 className="font-medium text-gray-900 mb-3">Account Management</h5>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-700">View Accounts</span>
+                                <span className={canViewAccounts ? 'text-green-600' : 'text-red-600'}>
+                                  {canViewAccounts ? '✓' : '✗'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Candidate Permissions */}
+                          <div className="border border-gray-200 rounded-lg p-4">
+                            <h5 className="font-medium text-gray-900 mb-3">Candidate Management</h5>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-700">Manage Candidates</span>
+                                <span className={canManageCandidates ? 'text-green-600' : 'text-red-600'}>
+                                  {canManageCandidates ? '✓' : '✗'}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-700">Send Invites</span>
+                                <span className={canSendInvites ? 'text-green-600' : 'text-red-600'}>
+                                  {canSendInvites ? '✓' : '✗'}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-700">Bulk Import</span>
+                                <span className={canBulkImport ? 'text-green-600' : 'text-red-600'}>
+                                  {canBulkImport ? '✓' : '✗'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* System Permissions */}
+                          <div className="border border-gray-200 rounded-lg p-4 md:col-span-2">
+                            <h5 className="font-medium text-gray-900 mb-3">System Access</h5>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-700">User Management</span>
+                                <span className={canManageUsers ? 'text-green-600' : 'text-red-600'}>
+                                  {canManageUsers ? '✓' : '✗'}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-700">View Permissions</span>
+                                <span className="text-green-600">✓</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                          <p className="text-sm text-gray-600">
+                            <strong>Note:</strong> These permissions are assigned based on your role ({userRole}). 
+                            Contact your administrator if you need additional access.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'create-user-page' && (
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
+                <h1 className="text-3xl font-semibold text-gray-900">Create New User</h1>
+                <p className="text-gray-600">Add a new user to the system</p>
+              </div>
+              <div className="flex-1 overflow-auto px-8 py-6">
+                <div className="bg-white rounded-lg border border-gray-200 p-6 w-full max-w-6xl mx-auto">
+                  <div className="flex gap-6">
+                    {/* Left Container - Form Fields */}
+                    <div className="flex-1 bg-gray-50 rounded-lg p-6">
+                      <h4 className="text-lg font-medium text-gray-900 mb-4">User Details</h4>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                          <input
+                            type="email"
+                            value={newUser.email}
+                            onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                            onBlur={(e) => checkEmailExists(e.target.value)}
+                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                              emailError ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            placeholder="Enter email address"
+                          />
+                          {checkingEmail && <p className="text-xs text-blue-500 mt-1">Checking email...</p>}
+                          {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+                          <input
+                            type="text"
+                            value={newUser.name}
+                            onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Enter full name"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                          <div className="flex">
+                            <select className="px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 bg-white text-center">
+                              <option value="+1">Code</option>
+                            </select>
+                            <input
+                              type="tel"
+                              placeholder="9284xxxxxx"
+                              value={newUser.phone}
+                              onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500 border-l-0"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Role *</label>
+                          <div className="relative role-dropdown-container">
+                            <button
+                              type="button"
+                              onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between"
+                            >
+                              <span>{newUser.role || 'Select role'}</span>
+                              <svg className={`w-5 h-5 transition-transform ${showRoleDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            {showRoleDropdown && (
+                              <div className="absolute bottom-full mb-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                                <div className="p-2">
+                                  {['Recruiter', 'HR', 'Interviewer'].map(role => (
+                                    <div
+                                      key={role}
+                                      onClick={() => {
+                                        setNewUser({...newUser, role});
+                                        setShowRoleDropdown(false);
+                                        fetchRolePermissions(role);
+                                      }}
+                                      className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
+                                    >
+                                      {role}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Container - Permissions */}
+                    {newUser.role && availablePermissions.length > 0 && (
+                      <div className="flex-1 bg-blue-50 rounded-lg p-6">
+                        <h4 className="text-lg font-medium text-blue-900 mb-4">{newUser.role} Permissions</h4>
+                        <div className="max-h-96 overflow-y-auto space-y-4">
+                          {Object.entries(availablePermissions.reduce((acc: Record<string, any[]>, perm: any) => {
+                            if (!acc[perm.category]) acc[perm.category] = [];
+                            acc[perm.category].push(perm);
+                            return acc;
+                          }, {})).map(([category, permissions]) => (
+                            <div key={category} className="bg-white rounded-lg p-4">
+                              <h5 className="text-sm font-semibold text-gray-800 mb-3 capitalize">
+                                {category.replace('_', ' ')}
+                              </h5>
+                              <div className="space-y-2">
+                                {(permissions as any[]).map((perm: any) => (
+                                  <div key={perm.name} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                                    <div className="flex-1">
+                                      <span className="font-medium text-gray-700">{perm.description}</span>
+                                      <div className="text-xs text-gray-500 mt-1">
+                                        {perm.source === 'custom' ? 'Custom' : 'Role Default'}
+                                      </div>
+                                    </div>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedPermissions[perm.name] || false}
+                                      onChange={(e) => handlePermissionToggle(perm.name, e.target.checked)}
+                                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <hr className="border-gray-200 my-6" />
+                  
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => {
+                        setActiveTab('settings');
+                        setNewUser({ name: '', email: '', phone: '', role: '' });
+                        setEmailError('');
+                        setAvailablePermissions([]);
+                        setSelectedPermissions({});
+                      }}
+                      className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreateUser}
+                      disabled={creatingUser || !newUser.name || !newUser.email || !newUser.role || !!emailError || checkingEmail}
+                      className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {creatingUser ? 'Creating...' : 'Create User'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -844,7 +1321,7 @@ const CompanyDashboard: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'create-job' && (
+          {activeTab === 'create-job' && canCreateJobs && (
             <div className="flex flex-col h-full overflow-hidden">
               <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
                 <h1 className="text-3xl font-semibold text-gray-900">Create New Job</h1>
@@ -861,7 +1338,7 @@ const CompanyDashboard: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'send-invitation' && (
+          {activeTab === 'send-invitation' && canSendInvites && (
             <div className="flex flex-col h-full overflow-hidden">
               <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
                 <h1 className="text-3xl font-semibold text-gray-900">Send Invitation</h1>

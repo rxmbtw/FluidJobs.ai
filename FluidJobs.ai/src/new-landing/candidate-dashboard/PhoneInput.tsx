@@ -346,7 +346,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({ value, onChange, className, sty
         type="tel"
         value={phoneNumber}
         onChange={handlePhoneChange}
-        placeholder="9284710996"
+        placeholder="9284xxxxxx"
         style={{ 
           height: inputHeight,
           padding: '0 8px',

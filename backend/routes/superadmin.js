@@ -958,10 +958,87 @@ router.post('/accounts', async (req, res) => {
   }
 });
 
+// Get role permissions for SuperAdmin
+router.get('/roles/:role/permissions', async (req, res) => {
+  try {
+    const { role } = req.params;
+    
+    // Define role-based permissions
+    const rolePermissions = {
+      'SuperAdmin': [
+        { name: 'view_users', description: 'View Users', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'create_users', description: 'Create Users', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'edit_users', description: 'Edit Users', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'delete_users', description: 'Delete Users', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'manage_permissions', description: 'Manage Permissions', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'view_jobs', description: 'View Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'create_jobs', description: 'Create Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'edit_jobs', description: 'Edit Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'delete_jobs', description: 'Delete Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'approve_jobs', description: 'Approve Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'view_candidates', description: 'View Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'manage_candidates', description: 'Manage Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'restrict_candidates', description: 'Restrict Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'view_reports', description: 'View Reports', category: 'reporting', has_permission: true, source: 'role' },
+        { name: 'system_settings', description: 'System Settings', category: 'administration', has_permission: true, source: 'role' }
+      ],
+      'Admin': [
+        { name: 'view_users', description: 'View Users', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'create_users', description: 'Create Users', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'edit_users', description: 'Edit Users', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'manage_permissions', description: 'Manage Permissions', category: 'user_management', has_permission: false, source: 'role' },
+        { name: 'view_jobs', description: 'View Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'create_jobs', description: 'Create Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'edit_jobs', description: 'Edit Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'delete_jobs', description: 'Delete Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'view_candidates', description: 'View Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'manage_candidates', description: 'Manage Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'restrict_candidates', description: 'Restrict Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'view_reports', description: 'View Reports', category: 'reporting', has_permission: true, source: 'role' }
+      ],
+      'Recruiter': [
+        { name: 'view_jobs', description: 'View Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'create_jobs', description: 'Create Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'edit_jobs', description: 'Edit Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'view_candidates', description: 'View Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'manage_candidates', description: 'Manage Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'restrict_candidates', description: 'Restrict Candidates', category: 'candidate_management', has_permission: true, source: 'role' }
+      ],
+      'HR': [
+        { name: 'view_jobs', description: 'View Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'view_candidates', description: 'View Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'manage_candidates', description: 'Manage Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'view_reports', description: 'View Reports', category: 'reporting', has_permission: true, source: 'role' }
+      ],
+      'Sales': [
+        { name: 'view_jobs', description: 'View Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'create_jobs', description: 'Create Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'view_candidates', description: 'View Candidates', category: 'candidate_management', has_permission: true, source: 'role' }
+      ],
+      'Interviewer': [
+        { name: 'view_jobs', description: 'View Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'view_candidates', description: 'View Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'manage_candidates', description: 'Manage Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'conduct_interviews', description: 'Conduct Interviews', category: 'interview_management', has_permission: true, source: 'role' }
+      ]
+    };
+    
+    const permissions = rolePermissions[role] || [];
+    
+    res.json({
+      role: role,
+      permissions: permissions
+    });
+  } catch (error) {
+    console.error('Error fetching role permissions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Create New User
 router.post('/create-user', async (req, res) => {
   try {
-    const { name, email, role } = req.body;
+    const { name, email, role, phone, customPermissions } = req.body;
     
     if (!name || !email || !role) {
       return res.status(400).json({ error: 'Name, email, and role are required' });
@@ -975,6 +1052,20 @@ router.post('/create-user', async (req, res) => {
       'INSERT INTO users (name, email, role, password_hash, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING id',
       [name, email, role, hashedPassword]
     );
+    
+    const userId = result.rows[0].id;
+    
+    // Apply custom permissions if provided
+    if (customPermissions && Array.isArray(customPermissions)) {
+      for (const perm of customPermissions) {
+        if (perm.granted) {
+          await pool.query(
+            'INSERT INTO user_permissions (user_id, permission_name, granted, granted_by, granted_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id, permission_name) DO UPDATE SET granted = $3, granted_by = $4, granted_at = NOW()',
+            [userId, perm.name, true, 1] // 1 is SuperAdmin ID
+          );
+        }
+      }
+    }
     
     await logAudit(null, 'SuperAdmin', 'USER_CREATED', `Created user: ${name} (${email}) with role ${role}`, 'user', result.rows[0].id, req);
     res.json({ 

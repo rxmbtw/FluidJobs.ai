@@ -89,6 +89,7 @@ app.use('/api/saved-jobs', require('./routes/savedJobs'));
 app.use('/api/job-applications', require('./routes/jobApplications'));
 app.use('/api/forgot-password', require('./routes/forgotPassword'));
 app.use('/api/superadmin', require('./routes/superadmin'));
+app.use('/api/admin', require('./routes/admin-users'));
 app.use('/api/candidate-restrictions', require('./routes/candidateRestrictions'));
 app.use('/api/job-stages', require('./routes/jobCandidateStages'));
 app.use('/api/candidate-job-status', require('./routes/candidateJobStatus'));

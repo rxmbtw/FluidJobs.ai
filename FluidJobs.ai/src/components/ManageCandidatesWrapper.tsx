@@ -4,13 +4,17 @@ import ManageCandidates from './ManageCandidates';
 const ManageCandidatesWrapper: React.FC<{ isSuperAdmin?: boolean }> = ({ isSuperAdmin = false }) => {
   useEffect(() => {
     const handleOpenCandidateProfile = (event: CustomEvent) => {
-      const { candidateId } = event.detail;
+      const { candidateId, candidateName } = event.detail;
+      console.log('ManageCandidatesWrapper received event:', { candidateId, candidateName });
+      
       // Store both candidate ID and name in sessionStorage
-      sessionStorage.setItem('openCandidateId', candidateId.toString());
+      if (candidateId) {
+        sessionStorage.setItem('openCandidateId', candidateId.toString());
+      }
       
       // Also try to get candidate name from the event if available
-      if (event.detail.candidateName) {
-        sessionStorage.setItem('openCandidateName', event.detail.candidateName);
+      if (candidateName) {
+        sessionStorage.setItem('openCandidateName', candidateName);
       }
     };
 

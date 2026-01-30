@@ -4,6 +4,13 @@ import { indianCities } from '../data/indianCities';
 import SuccessModal from './SuccessModal';
 import Loader from './Loader';
 
+// Extend Window interface to include our custom property
+declare global {
+  interface Window {
+    pendingCandidateSelection?: boolean;
+  }
+}
+
 interface Candidate {
   id: string;
   applicationDate: string;
@@ -237,8 +244,16 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
             resumeScore: candidate.resume_score || 0
           }));
           setCandidates(formattedCandidates);
-          if (formattedCandidates.length > 0) {
-            setSelectedCandidate(formattedCandidates[0]);
+          console.log('Candidates loaded:', formattedCandidates.length, 'candidates');
+          console.log('Sample candidate IDs:', formattedCandidates.slice(0, 3).map((c: Candidate) => ({ id: c.id, name: c.name })));
+          
+          // Check if there's a pending candidate selection before setting default
+          const pendingCandidateId = sessionStorage.getItem('openCandidateId');
+          const pendingCandidateName = sessionStorage.getItem('openCandidateName');
+          
+          if (pendingCandidateId || pendingCandidateName) {
+            console.log('Found pending candidate selection, skipping default selection');
+            window.pendingCandidateSelection = true;
           }
         } else {
           // Fallback to sample data if no database data
@@ -440,6 +455,15 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
       setUserRole(user.role || '');
     }
     fetchCandidates();
+    
+    // Check for pending candidate selection after initial load
+    setTimeout(() => {
+      const candidateId = sessionStorage.getItem('openCandidateId');
+      const candidateName = sessionStorage.getItem('openCandidateName');
+      if (candidateId || candidateName) {
+        console.log('Found pending candidate selection after component mount:', { candidateId, candidateName });
+      }
+    }, 100);
   }, []);
 
   React.useEffect(() => {
@@ -458,46 +482,125 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
       console.log('Checking for candidate:', { candidateId, candidateName });
       console.log('Available candidates:', candidates.map(c => ({ id: c.id, name: c.name })));
       
-      if (candidateId || candidateName) {
+      if ((candidateId || candidateName) && candidates.length > 0) {
         let candidate = null;
         
-        // First try to find by ID
+        // First try to find by ID (convert to string for comparison)
         if (candidateId) {
-          candidate = candidates.find(c => c.id === candidateId);
+          candidate = candidates.find(c => c.id.toString() === candidateId.toString());
           console.log('Found by ID:', candidate);
         }
         
-        // If not found by ID, try to find by name
+        // If not found by ID, try to find by name (case-insensitive)
         if (!candidate && candidateName) {
-          candidate = candidates.find(c => c.name === candidateName);
+          candidate = candidates.find(c => 
+            c.name.toLowerCase().trim() === candidateName.toLowerCase().trim()
+          );
           console.log('Found by name:', candidate);
+        }
+        
+        // If still not found, try partial name match
+        if (!candidate && candidateName) {
+          candidate = candidates.find(c => 
+            c.name.toLowerCase().includes(candidateName.toLowerCase()) ||
+            candidateName.toLowerCase().includes(c.name.toLowerCase())
+          );
+          console.log('Found by partial name match:', candidate);
         }
         
         if (candidate) {
           console.log('Setting selected candidate:', candidate.name);
           setSelectedCandidate(candidate);
+          
+          // Clear the pending flag and sessionStorage after successful match
+          window.pendingCandidateSelection = false;
+          sessionStorage.removeItem('openCandidateId');
+          sessionStorage.removeItem('openCandidateName');
+          return true; // Stop searching
         } else {
           console.log('No candidate found matching criteria');
         }
-        
-        // Clean up
-        sessionStorage.removeItem('openCandidateId');
-        sessionStorage.removeItem('openCandidateName');
       }
+      return false; // Continue searching
     };
 
     // Check immediately when candidates load
     if (candidates.length > 0) {
-      handleOpenCandidate();
+      const found = handleOpenCandidate();
+      if (found) return; // Stop if found
     }
 
-    // Set up interval to check for candidate ID/name
-    const interval = setInterval(handleOpenCandidate, 100);
+    // Set up interval to check for candidate ID/name but stop when found
+    const interval = setInterval(() => {
+      const found = handleOpenCandidate();
+      if (found) {
+        clearInterval(interval);
+      }
+    }, 500);
 
     return () => {
       clearInterval(interval);
     };
   }, [candidates]);
+
+  // Also listen for the custom event directly
+  React.useEffect(() => {
+    const handleOpenCandidateEvent = (event: CustomEvent) => {
+      const { candidateId, candidateName } = event.detail;
+      console.log('Direct event received:', { candidateId, candidateName });
+      
+      if (candidates.length > 0) {
+        let candidate = null;
+        
+        // Try to find by ID first
+        if (candidateId) {
+          candidate = candidates.find(c => c.id.toString() === candidateId.toString());
+        }
+        
+        // Try by name if ID doesn't work
+        if (!candidate && candidateName) {
+          candidate = candidates.find(c => 
+            c.name.toLowerCase().trim() === candidateName.toLowerCase().trim()
+          );
+        }
+        
+        if (candidate) {
+          console.log('Direct event - setting selected candidate:', candidate.name);
+          setSelectedCandidate(candidate);
+          // Clear the pending flag and sessionStorage after successful match
+          window.pendingCandidateSelection = false;
+          sessionStorage.removeItem('openCandidateId');
+          sessionStorage.removeItem('openCandidateName');
+        }
+      } else {
+        // Store in sessionStorage for later when candidates load
+        if (candidateId) sessionStorage.setItem('openCandidateId', candidateId.toString());
+        if (candidateName) sessionStorage.setItem('openCandidateName', candidateName);
+      }
+    };
+
+    window.addEventListener('openCandidateProfile', handleOpenCandidateEvent as EventListener);
+    return () => {
+      window.removeEventListener('openCandidateProfile', handleOpenCandidateEvent as EventListener);
+    };
+  }, [candidates]);
+
+  // Cleanup sessionStorage after 10 seconds if no match found
+  React.useEffect(() => {
+    const cleanup = setTimeout(() => {
+      const candidateId = sessionStorage.getItem('openCandidateId');
+      const candidateName = sessionStorage.getItem('openCandidateName');
+      
+      if (candidateId || candidateName) {
+        console.log('Cleaning up unmatched candidate selection after timeout');
+        sessionStorage.removeItem('openCandidateId');
+        sessionStorage.removeItem('openCandidateName');
+        window.pendingCandidateSelection = false;
+      }
+    }, 10000); // 10 seconds
+
+    return () => clearTimeout(cleanup);
+  }, []);
   
   // Close dropdown when clicking outside
   React.useEffect(() => {

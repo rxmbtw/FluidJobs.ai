@@ -72,6 +72,8 @@ const SuperAdminDashboard: React.FC = () => {
   const [emailError, setEmailError] = useState('');
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [availablePermissions, setAvailablePermissions] = useState<any[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<{[key: string]: boolean}>({});
   const [showEditAccountModal, setShowEditAccountModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
@@ -236,6 +238,36 @@ const SuperAdminDashboard: React.FC = () => {
     } finally {
       setSendingInvite(false);
     }
+  };
+
+  const fetchRolePermissions = async (role: string) => {
+    if (!role) {
+      setAvailablePermissions([]);
+      setSelectedPermissions({});
+      return;
+    }
+    
+    try {
+      const response = await axios.get<{permissions: any[]}>(`http://localhost:8000/api/superadmin/roles/${role}/permissions`);
+      if (response.data && response.data.permissions) {
+        setAvailablePermissions(response.data.permissions);
+        // Set default permissions based on role defaults
+        const defaultPermissions: {[key: string]: boolean} = {};
+        response.data.permissions.forEach((perm: any) => {
+          defaultPermissions[perm.name] = perm.has_permission;
+        });
+        setSelectedPermissions(defaultPermissions);
+      }
+    } catch (error) {
+      console.error('Error fetching role permissions:', error);
+    }
+  };
+
+  const handlePermissionToggle = (permissionName: string, granted: boolean) => {
+    setSelectedPermissions(prev => ({
+      ...prev,
+      [permissionName]: granted
+    }));
   };
 
   const checkEmailExists = async (email: string) => {
@@ -730,9 +762,14 @@ const SuperAdminDashboard: React.FC = () => {
     
     setCreatingUser(true);
     try {
-      const response = await axios.post('http://localhost:8000/api/superadmin/create-user', newUser);
+      const response = await axios.post('http://localhost:8000/api/superadmin/create-user', {
+        ...newUser,
+        customPermissions: Object.entries(selectedPermissions).map(([name, granted]) => ({ name, granted }))
+      });
       setNewUser({ name: '', email: '', phone: '', role: '' });
       setEmailError('');
+      setAvailablePermissions([]);
+      setSelectedPermissions({});
       fetchUsers();
       setSuccessMessage({
         title: 'User Created!',
@@ -979,6 +1016,9 @@ const SuperAdminDashboard: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Separator line */}
+          <div className="-mx-4 mb-3" style={{ borderTop: '1px solid rgba(229, 231, 235, 0.8)', paddingTop: '16px', boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.05)' }}></div>
 
           <button
             onClick={() => setActiveTab('dashboard')}
@@ -1580,12 +1620,22 @@ const SuperAdminDashboard: React.FC = () => {
                                         setActiveTab('candidates');
                                         // Navigate to specific candidate profile
                                         setTimeout(() => {
-                                          window.dispatchEvent(new CustomEvent('openCandidateProfile', { 
-                                            detail: { 
-                                              candidateId: item.candidate_id || item.id,
-                                              candidateName: item.candidate_name
-                                            } 
-                                          }));
+                                          // Ensure we have a valid candidate ID
+                                          const candidateId = item.candidate_id || item.id;
+                                          const candidateName = item.candidate_name || '';
+                                          
+                                          if (candidateId) {
+                                            // Store candidate info in sessionStorage for reliable access
+                                            sessionStorage.setItem('openCandidateId', candidateId.toString());
+                                            sessionStorage.setItem('openCandidateName', candidateName);
+                                            
+                                            window.dispatchEvent(new CustomEvent('openCandidateProfile', { 
+                                              detail: { 
+                                                candidateId: candidateId,
+                                                candidateName: candidateName
+                                              } 
+                                            }));
+                                          }
                                         }, 100);
                                       }}
                                       className="px-4 py-2 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 font-medium"
@@ -1733,12 +1783,22 @@ const SuperAdminDashboard: React.FC = () => {
                                       setActiveTab('candidates');
                                       // Navigate to specific candidate profile
                                       setTimeout(() => {
-                                        window.dispatchEvent(new CustomEvent('openCandidateProfile', { 
-                                          detail: { 
-                                            candidateId: item.candidate_id || item.id,
-                                            candidateName: item.candidate_name
-                                          } 
-                                        }));
+                                        // Ensure we have a valid candidate ID
+                                        const candidateId = item.candidate_id || item.id;
+                                        const candidateName = item.candidate_name || '';
+                                        
+                                        if (candidateId) {
+                                          // Store candidate info in sessionStorage for reliable access
+                                          sessionStorage.setItem('openCandidateId', candidateId.toString());
+                                          sessionStorage.setItem('openCandidateName', candidateName);
+                                          
+                                          window.dispatchEvent(new CustomEvent('openCandidateProfile', { 
+                                            detail: { 
+                                              candidateId: candidateId,
+                                              candidateName: candidateName
+                                            } 
+                                          }));
+                                        }
                                       }, 100);
                                     }}
                                     className="px-3 py-1 border border-blue-300 text-blue-600 rounded-md hover:bg-blue-50 text-sm font-medium"
@@ -1924,12 +1984,22 @@ const SuperAdminDashboard: React.FC = () => {
                                       setActiveTab('candidates');
                                       // Navigate to specific candidate profile
                                       setTimeout(() => {
-                                        window.dispatchEvent(new CustomEvent('openCandidateProfile', { 
-                                          detail: { 
-                                            candidateId: item.candidate_id || item.id,
-                                            candidateName: item.candidate_name
-                                          } 
-                                        }));
+                                        // Ensure we have a valid candidate ID
+                                        const candidateId = item.candidate_id || item.id;
+                                        const candidateName = item.candidate_name || '';
+                                        
+                                        if (candidateId) {
+                                          // Store candidate info in sessionStorage for reliable access
+                                          sessionStorage.setItem('openCandidateId', candidateId.toString());
+                                          sessionStorage.setItem('openCandidateName', candidateName);
+                                          
+                                          window.dispatchEvent(new CustomEvent('openCandidateProfile', { 
+                                            detail: { 
+                                              candidateId: candidateId,
+                                              candidateName: candidateName
+                                            } 
+                                          }));
+                                        }
                                       }, 100);
                                     }}
                                     className="px-3 py-1 border border-blue-300 text-blue-600 rounded-md hover:bg-blue-50 text-sm font-medium"
@@ -2701,104 +2771,154 @@ const SuperAdminDashboard: React.FC = () => {
                 <p className="text-gray-600">Add a new user to the system</p>
               </div>
               <div className="flex-1 overflow-auto px-8 py-6">
-                <div className="bg-white rounded-lg border border-gray-200 p-6 max-w-2xl mx-auto">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                      <input
-                        type="email"
-                        value={newUser.email}
-                        onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                        onBlur={(e) => checkEmailExists(e.target.value)}
-                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          emailError ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                        placeholder="Enter email address"
-                      />
-                      {checkingEmail && <p className="text-xs text-blue-500 mt-1">Checking email...</p>}
-                      {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
-                      <input
-                        type="text"
-                        value={newUser.name}
-                        onChange={(e) => setNewUser({...newUser, name: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Enter full name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                      <div className="w-full">
-                        <PhoneInput
-                          value={newUser.phone}
-                          onChange={(value) => setNewUser({...newUser, phone: value})}
-                          className="w-full"
-                          style={{ 
-                            backgroundColor: '#FFFFFF', 
-                            color: '#000000', 
-                            height: '48px'
-                          }}
-                          themeState="light"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Role *</label>
-                      <div className="relative role-dropdown-container">
-                        <button
-                          type="button"
-                          onClick={() => setShowRoleDropdown(!showRoleDropdown)}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between"
-                        >
-                          <span>{newUser.role || 'Select role'}</span>
-                          <svg className={`w-5 h-5 transition-transform ${showRoleDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
-                        {showRoleDropdown && (
-                          <div className="absolute bottom-full mb-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
-                            <div className="p-2">
-                              {['SuperAdmin', 'Admin', 'Recruiter', 'HR', 'Sales'].map(role => (
-                                <div
-                                  key={role}
-                                  onClick={() => {
-                                    setNewUser({...newUser, role});
-                                    setShowRoleDropdown(false);
-                                  }}
-                                  className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
-                                >
-                                  {role}
-                                </div>
-                              ))}
-                            </div>
+                <div className="bg-white rounded-lg border border-gray-200 p-6 w-full max-w-6xl mx-auto">
+                  <div className="flex gap-6">
+                    {/* Left Container - Form Fields */}
+                    <div className="flex-1 bg-gray-50 rounded-lg p-6">
+                      <h4 className="text-lg font-medium text-gray-900 mb-4">User Details</h4>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                          <input
+                            type="email"
+                            value={newUser.email}
+                            onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                            onBlur={(e) => checkEmailExists(e.target.value)}
+                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                              emailError ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            placeholder="Enter email address"
+                          />
+                          {checkingEmail && <p className="text-xs text-blue-500 mt-1">Checking email...</p>}
+                          {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+                          <input
+                            type="text"
+                            value={newUser.name}
+                            onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Enter full name"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                          <div className="w-full">
+                            <PhoneInput
+                              value={newUser.phone}
+                              onChange={(value) => setNewUser({...newUser, phone: value})}
+                              className="w-full"
+                              style={{ 
+                                backgroundColor: '#FFFFFF', 
+                                color: '#000000', 
+                                height: '48px'
+                              }}
+                              themeState="light"
+                            />
                           </div>
-                        )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Role *</label>
+                          <div className="relative role-dropdown-container">
+                            <button
+                              type="button"
+                              onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between"
+                            >
+                              <span>{newUser.role || 'Select role'}</span>
+                              <svg className={`w-5 h-5 transition-transform ${showRoleDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            {showRoleDropdown && (
+                              <div className="absolute bottom-full mb-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                                <div className="p-2">
+                                  {['SuperAdmin', 'Admin', 'Recruiter', 'HR', 'Sales', 'Interviewer'].map(role => (
+                                    <div
+                                      key={role}
+                                      onClick={() => {
+                                        setNewUser({...newUser, role});
+                                        setShowRoleDropdown(false);
+                                        fetchRolePermissions(role);
+                                      }}
+                                      className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
+                                    >
+                                      {role}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex space-x-3 pt-4">
-                      <button
-                        onClick={() => {
-                          setActiveTab('dashboard');
-                          setNewUser({ name: '', email: '', phone: '', role: '' });
-                          setEmailError('');
-                        }}
-                        className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={async () => {
-                          await handleCreateUser();
-                          setActiveTab('users');
-                        }}
-                        disabled={creatingUser || !newUser.name || !newUser.email || !newUser.role}
-                        className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {creatingUser ? 'Creating...' : 'Create User'}
-                      </button>
-                    </div>
+
+                    {/* Right Container - Permissions */}
+                    {newUser.role && availablePermissions.length > 0 && (
+                      <div className="flex-1 bg-blue-50 rounded-lg p-6">
+                        <h4 className="text-lg font-medium text-blue-900 mb-4">{newUser.role} Permissions</h4>
+                        <div className="max-h-96 overflow-y-auto space-y-4">
+                          {Object.entries(availablePermissions.reduce((acc: Record<string, any[]>, perm: any) => {
+                            if (!acc[perm.category]) acc[perm.category] = [];
+                            acc[perm.category].push(perm);
+                            return acc;
+                          }, {})).map(([category, permissions]) => (
+                            <div key={category} className="bg-white rounded-lg p-4">
+                              <h5 className="text-sm font-semibold text-gray-800 mb-3 capitalize">
+                                {category.replace('_', ' ')}
+                              </h5>
+                              <div className="space-y-2">
+                                {(permissions as any[]).map((perm: any) => (
+                                  <div key={perm.name} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                                    <div className="flex-1">
+                                      <span className="font-medium text-gray-700">{perm.description}</span>
+                                      <div className="text-xs text-gray-500 mt-1">
+                                        {perm.source === 'custom' ? 'Custom' : 'Role Default'}
+                                      </div>
+                                    </div>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedPermissions[perm.name] || false}
+                                      onChange={(e) => handlePermissionToggle(perm.name, e.target.checked)}
+                                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <hr className="border-gray-200 my-6" />
+                  
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => {
+                        setActiveTab('dashboard');
+                        setNewUser({ name: '', email: '', phone: '', role: '' });
+                        setEmailError('');
+                        setAvailablePermissions([]);
+                        setSelectedPermissions({});
+                      }}
+                      className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await handleCreateUser();
+                        setActiveTab('users');
+                      }}
+                      disabled={creatingUser || !newUser.name || !newUser.email || !newUser.role}
+                      className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {creatingUser ? 'Creating...' : 'Create User'}
+                    </button>
                   </div>
                 </div>
               </div>
