@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import JobSpecificDashboard from './JobSpecificDashboard';
+import NewDashboardContainer from './new-dashboard/NewDashboardContainer';
 import Loader from './Loader';
 
 interface JobData {
@@ -45,11 +45,11 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
   const [loading, setLoading] = useState(true);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  
+
   // Use external search query if provided
   const activeSearchQuery = externalSearchQuery !== undefined ? externalSearchQuery : searchQuery;
   const activeShowFilters = externalShowFilters !== undefined ? externalShowFilters : showFilters;
-  
+
   // Filter states
   const [filterDomain, setFilterDomain] = useState<string>('');
   const [filterJobType, setFilterJobType] = useState<string>('');
@@ -58,10 +58,10 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
   const [filterPostedDate, setFilterPostedDate] = useState<string>('');
   const [filterSkills, setFilterSkills] = useState<string[]>([]);
   const [skillsSearch, setSkillsSearch] = useState('');
-  
+
   // Custom dropdown states
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  
+
   // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -76,19 +76,19 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
 
   useEffect(() => {
     fetchJobs();
-    
+
     // Refresh jobs when component becomes visible
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         fetchJobs();
       }
     };
-    
+
     // Listen for custom event to open job dashboard
     const handleOpenJobDashboard = (event: any) => {
       const { job, defaultTab } = event.detail;
       setDashboardLoading(true);
-      
+
       // Add a small delay to show loading state
       setTimeout(() => {
         const jobData = {
@@ -111,10 +111,10 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
         setDashboardLoading(false);
       }, 800); // 800ms loading delay for smooth transition
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('openJobDashboard', handleOpenJobDashboard);
-    
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('openJobDashboard', handleOpenJobDashboard);
@@ -138,11 +138,11 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
     const handleJobCreated = () => {
       fetchJobs();
     };
-    
+
     const handleJobDeleted = () => {
       fetchJobs();
     };
-    
+
     window.addEventListener('jobCreated', handleJobCreated);
     window.addEventListener('jobDeleted', handleJobDeleted);
     return () => {
@@ -157,7 +157,7 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
       const response = await fetch('http://localhost:8000/api/jobs-enhanced/list');
       const data = await response.json();
       console.log('Fetched jobs:', data);
-      
+
       if (data.success && data.jobs) {
         const formattedJobs: JobData[] = data.jobs.map((job: any) => ({
           jobId: job.job_id.toString(),
@@ -206,27 +206,27 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
       if (jobTab === 'unpublished' && job.status !== 'unpublished') return false;
       if (jobTab === 'closed' && job.status !== 'closed') return false;
     }
-    
+
     // Search filter
     if (activeSearchQuery && !job.title.toLowerCase().includes(activeSearchQuery.toLowerCase())) {
       return false;
     }
-    
+
     // Domain filter
     if (filterDomain && job.job_domain !== filterDomain) {
       return false;
     }
-    
+
     // Job Type filter
     if (filterJobType && job.workplace !== filterJobType) {
       return false;
     }
-    
+
     // Work Mode filter (stored in tags)
     if (filterWorkMode && !job.tags.includes(filterWorkMode)) {
       return false;
     }
-    
+
     // Salary Range filter
     if (filterSalaryRange && job.min_salary && job.max_salary) {
       if (filterSalaryRange === '0-5 LPA') {
@@ -246,26 +246,26 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
         if (job.min_salary < minRange) return false;
       }
     }
-    
+
     // Posted Date filter
     if (filterPostedDate && job.created_at) {
       const jobDate = new Date(job.created_at);
       const now = new Date();
       const daysDiff = Math.floor((now.getTime() - jobDate.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       if (filterPostedDate === '7' && daysDiff > 7) return false;
       if (filterPostedDate === '30' && daysDiff > 30) return false;
       if (filterPostedDate === '90' && daysDiff > 90) return false;
     }
-    
+
     // Skills filter (if any selected skill matches)
     if (filterSkills.length > 0) {
-      const hasMatchingSkill = filterSkills.some(skill => 
+      const hasMatchingSkill = filterSkills.some(skill =>
         job.tags && job.tags.some(tag => tag && tag.toLowerCase().includes(skill.toLowerCase()))
       );
       if (!hasMatchingSkill) return false;
     }
-    
+
     return true;
   });
 
@@ -280,7 +280,7 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
     dropdownKey: string;
   }> = ({ label, value, options, onChange, dropdownKey }) => {
     const isOpen = openDropdown === dropdownKey;
-    
+
     return (
       <div className="custom-dropdown relative">
         <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
@@ -299,9 +299,8 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                   onChange(option);
                   setOpenDropdown(null);
                 }}
-                className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-100 transition ${
-                  value === option ? 'bg-blue-100 text-blue-600' : 'text-gray-700'
-                }`}
+                className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-100 transition ${value === option ? 'bg-blue-100 text-blue-600' : 'text-gray-700'
+                  }`}
               >
                 {option}
               </div>
@@ -324,11 +323,11 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
     placeholder: string;
   }> = ({ label, selectedItems, options, onChange, dropdownKey, searchValue, onSearchChange, placeholder }) => {
     const isOpen = openDropdown === dropdownKey;
-    
+
     const filteredOptions = searchValue
       ? options.filter(option => option.toLowerCase().includes(searchValue.toLowerCase()))
       : options;
-    
+
     const handleToggleItem = (item: string) => {
       if (selectedItems.includes(item)) {
         onChange(selectedItems.filter(i => i !== item));
@@ -336,16 +335,16 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
         onChange([...selectedItems, item]);
       }
     };
-    
+
     const handleRemoveItem = (item: string) => {
       onChange(selectedItems.filter(i => i !== item));
     };
-    
+
     const clearAll = () => {
       onChange([]);
       onSearchChange('');
     };
-    
+
     return (
       <div className="custom-dropdown relative">
         <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
@@ -400,9 +399,8 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                   <div
                     key={index}
                     onClick={() => handleToggleItem(option)}
-                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 transition flex items-center justify-between ${
-                      selectedItems.includes(option) ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
-                    }`}
+                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 transition flex items-center justify-between ${selectedItems.includes(option) ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                      }`}
                   >
                     <span>{option}</span>
                     {selectedItems.includes(option) && (
@@ -453,7 +451,7 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
     if (!min || !max) return 'Not Specified';
     const minNum = typeof min === 'string' ? parseFloat(min) : min;
     const maxNum = typeof max === 'string' ? parseFloat(max) : max;
-    return `₹${(minNum/100000).toFixed(1)} LPA to ₹${(maxNum/100000).toFixed(1)} LPA`;
+    return `₹${(minNum / 100000).toFixed(1)} LPA to ₹${(maxNum / 100000).toFixed(1)} LPA`;
   };
 
   if (dashboardLoading) {
@@ -466,10 +464,9 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
 
   if (showJobDashboard && selectedJobForDashboard) {
     return (
-      <JobSpecificDashboard 
-        jobTitle={selectedJobForDashboard.title}
+      <NewDashboardContainer
         jobId={selectedJobForDashboard.jobId}
-        defaultTab={defaultDashboardTab}
+        jobTitle={selectedJobForDashboard.title}
         onBack={() => {
           setShowJobDashboard(false);
           setSelectedJobForDashboard(null);
@@ -505,7 +502,7 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   />
                 </div>
-                <button 
+                <button
                   onClick={() => setShowFilters(!showFilters)}
                   className="p-3 hover:bg-gray-100 rounded-lg"
                 >
@@ -520,51 +517,46 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
           <div className="flex space-x-3 px-8 pb-4">
             <button
               onClick={() => onJobTabChange?.('all')}
-              className={`px-8 py-3 rounded-full text-sm font-medium transition ${
-                jobTab === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-              }`}
+              className={`px-8 py-3 rounded-full text-sm font-medium transition ${jobTab === 'all'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                }`}
             >
               All Jobs
             </button>
             <button
               onClick={() => onJobTabChange?.('published')}
-              className={`px-8 py-3 rounded-full text-sm font-medium transition ${
-                jobTab === 'published'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-              }`}
+              className={`px-8 py-3 rounded-full text-sm font-medium transition ${jobTab === 'published'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                }`}
             >
               Published
             </button>
             <button
               onClick={() => onJobTabChange?.('pending')}
-              className={`px-8 py-3 rounded-full text-sm font-medium transition ${
-                jobTab === 'pending'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-              }`}
+              className={`px-8 py-3 rounded-full text-sm font-medium transition ${jobTab === 'pending'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                }`}
             >
               Pending
             </button>
             <button
               onClick={() => onJobTabChange?.('unpublished')}
-              className={`px-8 py-3 rounded-full text-sm font-medium transition ${
-                jobTab === 'unpublished'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-              }`}
+              className={`px-8 py-3 rounded-full text-sm font-medium transition ${jobTab === 'unpublished'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                }`}
             >
               Unpublished
             </button>
             <button
               onClick={() => onJobTabChange?.('closed')}
-              className={`px-8 py-3 rounded-full text-sm font-medium transition ${
-                jobTab === 'closed'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-              }`}
+              className={`px-8 py-3 rounded-full text-sm font-medium transition ${jobTab === 'closed'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                }`}
             >
               Closed
             </button>
@@ -591,7 +583,7 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                   Clear All
                 </button>
               </div>
-              
+
               <div className="grid grid-cols-4 gap-4">
                 {/* Job Domain */}
                 <CustomDropdown
@@ -635,9 +627,9 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                   value={filterPostedDate}
                   options={['', 'Last 7 days', 'Last 30 days', 'Last 3 months']}
                   onChange={(value) => {
-                    const mapping: {[key: string]: string} = {
+                    const mapping: { [key: string]: string } = {
                       'Last 7 days': '7',
-                      'Last 30 days': '30', 
+                      'Last 30 days': '30',
                       'Last 3 months': '90'
                     };
                     setFilterPostedDate(mapping[value] || '');
@@ -663,8 +655,8 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
           {/* Job Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {displayedJobs.map((job) => (
-              <div 
-                key={job.jobId} 
+              <div
+                key={job.jobId}
                 className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105 hover:-translate-y-1 cursor-pointer"
                 onClick={() => {
                   setDashboardLoading(true);
@@ -700,7 +692,7 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                       </span>
                     )}
                   </div>
-                  
+
                   <div className="mb-4 pb-4 border-b border-gray-200">
                     <span className="text-sm text-gray-600">Posted on: {formatDate(job.created_at)}</span>
                   </div>
@@ -781,9 +773,9 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                   className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
-              <button 
+              <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="p-3 hover:bg-gray-100 rounded-lg" 
+                className="p-3 hover:bg-gray-100 rounded-lg"
                 title="Filter jobs"
               >
                 <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -813,7 +805,7 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                 Clear All
               </button>
             </div>
-            
+
             <div className="grid grid-cols-4 gap-4">
               {/* Job Domain */}
               <CustomDropdown
@@ -857,9 +849,9 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                 value={filterPostedDate}
                 options={['', 'Last 7 days', 'Last 30 days', 'Last 3 months']}
                 onChange={(value) => {
-                  const mapping: {[key: string]: string} = {
+                  const mapping: { [key: string]: string } = {
                     'Last 7 days': '7',
-                    'Last 30 days': '30', 
+                    'Last 30 days': '30',
                     'Last 3 months': '90'
                   };
                   setFilterPostedDate(mapping[value] || '');
@@ -885,8 +877,8 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
         {/* Job Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {displayedJobs.map((job) => (
-            <div 
-              key={job.jobId} 
+            <div
+              key={job.jobId}
               className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105 hover:-translate-y-1 cursor-pointer"
               onClick={() => {
                 setDashboardLoading(true);
@@ -922,7 +914,7 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                     </span>
                   )}
                 </div>
-                
+
                 <div className="mb-4 pb-4 border-b border-gray-200">
                   <span className="text-sm text-gray-600">Posted on: {formatDate(job.created_at)}</span>
                 </div>
@@ -984,14 +976,14 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                   <X className="w-6 h-6" />
                 </button>
               </div>
-              
+
               <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">Overview</h3>
                     <p className="text-gray-700 leading-relaxed">{selectedJob.description.overview}</p>
                   </div>
-                  
+
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">Primary Responsibilities</h3>
                     <ul className="space-y-2">
@@ -1003,7 +995,7 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                       ))}
                     </ul>
                   </div>
-                  
+
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">Qualifications</h3>
                     <ul className="space-y-2">
@@ -1017,7 +1009,7 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                   </div>
                 </div>
               </div>
-              
+
               <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6">
                 <button className="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">
                   Apply Now

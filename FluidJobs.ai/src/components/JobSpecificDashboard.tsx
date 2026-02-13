@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Users, Zap, Settings } from 'lucide-react';
+import { ArrowLeft, Users, Zap, Settings, ToggleLeft, ToggleRight } from 'lucide-react';
 import ManageCandidatesJobSpecific from './ManageCandidatesJobSpecific';
 import JobSettings from './JobSettings';
 import SuccessModal from './SuccessModal';
+import NewJobSpecificDashboard from './NewJobSpecificDashboard';
 
 interface JobSpecificDashboardProps {
   jobTitle: string;
@@ -41,6 +42,7 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
   const [finalSelectedCandidates, setFinalSelectedCandidates] = useState<string[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [numberOfOpenings, setNumberOfOpenings] = useState(0);
+  const [useNewDashboard, setUseNewDashboard] = useState(false);
 
   const handleJobUpdate = (updatedJob: any) => {
     setCurrentJobTitle(updatedJob.title);
@@ -436,48 +438,116 @@ const JobSpecificDashboard: React.FC<JobSpecificDashboardProps> = ({ jobTitle, j
 
   return (
     <div className="h-full bg-gray-50 flex flex-col">
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <button
-            onClick={onBack}
-            className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 mb-2"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm font-medium">Back to Openings</span>
-          </button>
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-gray-900">{currentJobTitle}</h1>
-            <div className="flex items-center space-x-3">
-              <span className="text-sm text-gray-600">
-                {selectedCandidates.length}/{numberOfOpenings} positions filled
-              </span>
+      {/* Render New Dashboard if toggle is ON */}
+      {useNewDashboard ? (
+        <div className="h-full bg-gray-50 flex flex-col">
+          <div className="bg-white border-b border-gray-200 px-6 py-4">
+            <button
+              onClick={onBack}
+              className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 mb-2"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="text-sm font-medium">Back to Openings</span>
+            </button>
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold text-gray-900">{currentJobTitle}</h1>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">
+                  {selectedCandidates.length}/{numberOfOpenings} positions filled
+                </span>
+                {/* Dashboard Toggle */}
+                <div className="flex items-center space-x-3 bg-gray-100 rounded-lg p-1">
+                  <span className={`text-sm font-medium transition-colors ${!useNewDashboard ? 'text-blue-600' : 'text-gray-500'}`}>
+                    Current
+                  </span>
+                  <button
+                    onClick={() => setUseNewDashboard(!useNewDashboard)}
+                    className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 transition-colors"
+                    title={useNewDashboard ? "Switch to Current Dashboard" : "Switch to New Dashboard"}
+                  >
+                    {useNewDashboard ? (
+                      <ToggleRight className="w-6 h-6 text-blue-600" />
+                    ) : (
+                      <ToggleLeft className="w-6 h-6 text-gray-400" />
+                    )}
+                  </button>
+                  <span className={`text-sm font-medium transition-colors ${useNewDashboard ? 'text-blue-600' : 'text-gray-500'}`}>
+                    New
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="bg-white border-b border-gray-200">
-          <div className="flex space-x-1 px-6">
-            {menuItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveSection(item.id)}
-                className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors ${
-                  activeSection === item.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <item.icon className="w-4 h-4" />
-                <span className="text-sm font-medium">{item.label}</span>
-              </button>
-            ))}
+          
+          <div className="flex-1 overflow-y-auto p-6">
+            <NewJobSpecificDashboard jobId={jobId} jobTitle={currentJobTitle} />
           </div>
         </div>
+      ) : (
+        /* Current Dashboard */
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="bg-white border-b border-gray-200 px-6 py-4">
+            <button
+              onClick={onBack}
+              className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 mb-2"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="text-sm font-medium">Back to Openings</span>
+            </button>
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold text-gray-900">{currentJobTitle}</h1>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">
+                  {selectedCandidates.length}/{numberOfOpenings} positions filled
+                </span>
+                {/* Dashboard Toggle */}
+                <div className="flex items-center space-x-3 bg-gray-100 rounded-lg p-1">
+                  <span className={`text-sm font-medium transition-colors ${!useNewDashboard ? 'text-blue-600' : 'text-gray-500'}`}>
+                    Current
+                  </span>
+                  <button
+                    onClick={() => setUseNewDashboard(!useNewDashboard)}
+                    className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 transition-colors"
+                    title={useNewDashboard ? "Switch to Current Dashboard" : "Switch to New Dashboard"}
+                  >
+                    {useNewDashboard ? (
+                      <ToggleRight className="w-6 h-6 text-blue-600" />
+                    ) : (
+                      <ToggleLeft className="w-6 h-6 text-gray-400" />
+                    )}
+                  </button>
+                  <span className={`text-sm font-medium transition-colors ${useNewDashboard ? 'text-blue-600' : 'text-gray-500'}`}>
+                    New
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {renderContent()}
+          <div className="bg-white border-b border-gray-200">
+            <div className="flex space-x-1 px-6">
+              {menuItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveSection(item.id)}
+                  className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors ${
+                    activeSection === item.id
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <item.icon className="w-4 h-4" />
+                  <span className="text-sm font-medium">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {renderContent()}
+          </div>
         </div>
-      </div>
+      )}
 
       <SuccessModal
         isOpen={showSuccessModal}

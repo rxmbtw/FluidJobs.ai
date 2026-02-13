@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Users, FileText, UserCheck, Settings, LogOut, Search, X, Check, Plus, ChevronLeft, ChevronRight, ArrowUpDown, Briefcase, Filter, Upload, Mail, User, Camera, Download, Trash2 } from 'lucide-react';
+import { Users, FileText, UserCheck, Settings, LogOut, Search, X, Check, Plus, ChevronLeft, ChevronRight, ArrowUpDown, Briefcase, Filter, Upload, Mail, User, Camera, Download, Trash2, Sparkles } from 'lucide-react';
 import ManageCandidatesWrapper from './ManageCandidatesWrapper';
 import JobOpeningsViewNew from './JobOpeningsView_new';
 import SuccessModal from './SuccessModal';
@@ -14,6 +14,7 @@ import AdminUserManagement from './AdminUserManagement';
 import JobCreationForm from './JobCreationForm';
 import Loader from './Loader';
 import { DateFilterDropdown } from './DateFilterDropdown';
+import NewDashboardContainer from './new-dashboard/NewDashboardContainer';
 
 import { safeClosest } from '../utils/domHelpers';
 
@@ -467,34 +468,30 @@ const CompanyDashboard: React.FC = () => {
         </div>
       ) : (
         <>
-      {/* Fixed Top Header */}
-      <header className="flex-shrink-0 bg-white shadow-md border-b border-gray-200" style={{ height: '73px' }}>
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center">
-            <img 
-              src="/images/FLuid Live Icon light theme.png" 
-              alt="FluidJobs.ai Logo" 
-              className="object-contain" 
-              style={{ width: '3rem', height: '3rem' }}
-            />
-            <h1 className="text-xl md:text-3xl font-medium text-blue-600">FluidJobs.ai</h1>
-          </div>
-        </div>
-      </header>
-
       {/* Main Container */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden h-screen">
         {/* Sidebar */}
         <div 
-          className="fixed left-0 bottom-0 bg-white border-r-0 border-t-0 flex flex-col transition-all duration-300 z-40"
+          className="fixed left-0 top-0 bottom-0 bg-white border-r-0 flex flex-col transition-all duration-300 z-40"
           style={{ 
-            top: '73px',
             width: isSidebarExpanded ? '256px' : '80px',
-            boxShadow: '1px 0 3px 0 rgba(0, 0, 0, 0.1), 1px 0 2px -1px rgba(0, 0, 0, 0.1), 0 -1px 3px 0 rgba(0, 0, 0, 0.1)'
+            boxShadow: '1px 0 3px 0 rgba(0, 0, 0, 0.1), 1px 0 2px -1px rgba(0, 0, 0, 0.1)'
           }}
           onMouseEnter={() => setIsSidebarExpanded(true)}
           onMouseLeave={() => setIsSidebarExpanded(false)}
         >
+          {/* Logo Header */}
+          <div className="flex items-center px-4 py-4 border-b border-gray-200">
+            <img 
+              src="/images/FLuid Live Icon light theme.png" 
+              alt="FluidJobs.ai Logo" 
+              className="object-contain flex-shrink-0" 
+              style={{ width: '2.5rem', height: '2.5rem' }}
+            />
+            {isSidebarExpanded && (
+              <h1 className="ml-3 text-lg font-medium text-blue-600 whitespace-nowrap">FluidJobs.ai</h1>
+            )}
+          </div>
 
         <nav className="flex-1 px-4 overflow-hidden mt-4">
           {/* New Button with Dropdown */}
@@ -634,12 +631,28 @@ const CompanyDashboard: React.FC = () => {
           <div className="px-4 mb-4" style={{ borderTop: '1px solid rgba(229, 231, 235, 0.8)', paddingTop: '16px', boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.05)' }}>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg text-left transition-all ${
+              className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg mb-2 text-left transition-all ${
                 activeTab === 'settings' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
               }`}
             >
               <Settings size={20} className="flex-shrink-0" />
               {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Settings</span>}
+            </button>
+            
+            {/* New Dashboard Button */}
+            <button
+              onClick={() => setActiveTab('new-dashboard')}
+              className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg text-left transition-all ${
+                activeTab === 'new-dashboard' ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-600 border border-blue-200' : 'text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-blue-600'
+              }`}
+            >
+              <Sparkles size={20} className="flex-shrink-0" />
+              {isSidebarExpanded && (
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium whitespace-nowrap">New Dashboard</span>
+                  <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">BETA</span>
+                </div>
+              )}
             </button>
           </div>
         )}
@@ -700,7 +713,7 @@ const CompanyDashboard: React.FC = () => {
         {/* Main Content */}
         <div className={`flex-1 transition-all duration-300 ${
           isSidebarExpanded ? 'ml-64' : 'ml-20'
-        } flex flex-col overflow-hidden`}>
+        } flex flex-col overflow-hidden h-screen`}>
           {activeTab === 'dashboard' && (
             <div className="flex flex-col h-full overflow-hidden">
               <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
@@ -853,78 +866,86 @@ const CompanyDashboard: React.FC = () => {
                           </div>
                           
                           {/* Job Permissions */}
-                          <div className="border border-gray-200 rounded-lg p-4">
-                            <h5 className="font-medium text-gray-900 mb-3">Job Management</h5>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-700">View Jobs</span>
-                                <span className={canViewJobs ? 'text-green-600' : 'text-red-600'}>
-                                  {canViewJobs ? '✓' : '✗'}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-700">Create Jobs</span>
-                                <span className={canCreateJobs ? 'text-green-600' : 'text-red-600'}>
-                                  {canCreateJobs ? '✓' : '✗'}
-                                </span>
+                          {(canViewJobs || canCreateJobs) && (
+                            <div className="border border-gray-200 rounded-lg p-4">
+                              <h5 className="font-medium text-gray-900 mb-3">Job Management</h5>
+                              <div className="space-y-2">
+                                {canViewJobs && (
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-700">View Jobs</span>
+                                    <span className="text-green-600">✓</span>
+                                  </div>
+                                )}
+                                {canCreateJobs && (
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-700">Create Jobs</span>
+                                    <span className="text-green-600">✓</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          </div>
+                          )}
                           
                           {/* Account Permissions */}
-                          <div className="border border-gray-200 rounded-lg p-4">
-                            <h5 className="font-medium text-gray-900 mb-3">Account Management</h5>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-700">View Accounts</span>
-                                <span className={canViewAccounts ? 'text-green-600' : 'text-red-600'}>
-                                  {canViewAccounts ? '✓' : '✗'}
-                                </span>
+                          {canViewAccounts && (
+                            <div className="border border-gray-200 rounded-lg p-4">
+                              <h5 className="font-medium text-gray-900 mb-3">Account Management</h5>
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm text-gray-700">View Accounts</span>
+                                  <span className="text-green-600">✓</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
+                          )}
                           
                           {/* Candidate Permissions */}
-                          <div className="border border-gray-200 rounded-lg p-4">
-                            <h5 className="font-medium text-gray-900 mb-3">Candidate Management</h5>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-700">Manage Candidates</span>
-                                <span className={canManageCandidates ? 'text-green-600' : 'text-red-600'}>
-                                  {canManageCandidates ? '✓' : '✗'}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-700">Send Invites</span>
-                                <span className={canSendInvites ? 'text-green-600' : 'text-red-600'}>
-                                  {canSendInvites ? '✓' : '✗'}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-700">Bulk Import</span>
-                                <span className={canBulkImport ? 'text-green-600' : 'text-red-600'}>
-                                  {canBulkImport ? '✓' : '✗'}
-                                </span>
+                          {(canManageCandidates || canSendInvites || canBulkImport) && (
+                            <div className="border border-gray-200 rounded-lg p-4">
+                              <h5 className="font-medium text-gray-900 mb-3">Candidate Management</h5>
+                              <div className="space-y-2">
+                                {canManageCandidates && (
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-700">Manage Candidates</span>
+                                    <span className="text-green-600">✓</span>
+                                  </div>
+                                )}
+                                {canSendInvites && (
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-700">Send Invites</span>
+                                    <span className="text-green-600">✓</span>
+                                  </div>
+                                )}
+                                {canBulkImport && (
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-700">Bulk Import</span>
+                                    <span className="text-green-600">✓</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          </div>
+                          )}
                           
                           {/* System Permissions */}
-                          <div className="border border-gray-200 rounded-lg p-4 md:col-span-2">
-                            <h5 className="font-medium text-gray-900 mb-3">System Access</h5>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-700">User Management</span>
-                                <span className={canManageUsers ? 'text-green-600' : 'text-red-600'}>
-                                  {canManageUsers ? '✓' : '✗'}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-700">View Permissions</span>
-                                <span className="text-green-600">✓</span>
+                          {(canManageUsers || canViewPermissions) && (
+                            <div className="border border-gray-200 rounded-lg p-4 md:col-span-2">
+                              <h5 className="font-medium text-gray-900 mb-3">System Access</h5>
+                              <div className="grid grid-cols-2 gap-4">
+                                {canManageUsers && (
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-700">User Management</span>
+                                    <span className="text-green-600">✓</span>
+                                  </div>
+                                )}
+                                {canViewPermissions && (
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-700">View Permissions</span>
+                                    <span className="text-green-600">✓</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                         
                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
@@ -1470,6 +1491,14 @@ const CompanyDashboard: React.FC = () => {
               </div>
               </div>
             </div>
+          )}
+
+          {/* New Dashboard */}
+          {activeTab === 'new-dashboard' && (
+            <NewDashboardContainer 
+              onBack={() => setActiveTab('dashboard')} 
+              isSidebarExpanded={isSidebarExpanded}
+            />
           )}
         </div>
       </div>
