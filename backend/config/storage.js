@@ -59,9 +59,9 @@ async function uploadToGCS(file, folder = 'uploads') {
   try {
     const fileName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
     const objectName = `${folder}/${fileName}`;
-    
+
     const fileBuffer = file.buffer || fs.readFileSync(file.path);
-    
+
     await minioClient.putObject(
       MINIO_BUCKET,
       objectName,
@@ -69,11 +69,11 @@ async function uploadToGCS(file, folder = 'uploads') {
       fileBuffer.length,
       { 'Content-Type': file.mimetype }
     );
-    
+
     const publicUrl = `https://72.60.103.151:9100/${MINIO_BUCKET}/${objectName}`;
     console.log('✅ File uploaded to MinIO:', publicUrl);
     return publicUrl;
-    
+
   } catch (error) {
     console.error('❌ MinIO Upload Error:', error);
     throw error;
@@ -85,9 +85,9 @@ async function uploadJobPDF(file, jobId, jobTitle) {
   try {
     const fileName = `JD_${jobTitle.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
     const objectName = `job-descriptions/${fileName}`;
-    
+
     const fileBuffer = file.buffer || fs.readFileSync(file.path);
-    
+
     await minioClient.putObject(
       MINIO_BUCKET,
       objectName,
@@ -95,11 +95,11 @@ async function uploadJobPDF(file, jobId, jobTitle) {
       fileBuffer.length,
       { 'Content-Type': 'application/pdf' }
     );
-    
+
     const publicUrl = `https://72.60.103.151:9100/${MINIO_BUCKET}/${objectName}`;
     console.log('✅ Job PDF uploaded to MinIO:', publicUrl);
     return { publicUrl, fileName };
-    
+
   } catch (error) {
     console.error('❌ Job PDF Upload Error:', error);
     throw error;
@@ -111,9 +111,9 @@ async function uploadToLocal(file, folder = 'uploads') {
   try {
     const fileName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
     const objectName = `${folder}/${fileName}`;
-    
+
     const fileBuffer = file.buffer || fs.readFileSync(file.path);
-    
+
     await minioClient.putObject(
       MINIO_BUCKET,
       objectName,
@@ -121,7 +121,7 @@ async function uploadToLocal(file, folder = 'uploads') {
       fileBuffer.length,
       { 'Content-Type': file.mimetype }
     );
-    
+
     const publicUrl = `https://72.60.103.151:9100/${MINIO_BUCKET}/${objectName}`;
     console.log('✅ File uploaded to MinIO:', publicUrl);
     return publicUrl;
@@ -131,4 +131,4 @@ async function uploadToLocal(file, folder = 'uploads') {
   }
 }
 
-module.exports = { upload, uploadToGCS, uploadJobPDF, uploadToLocal };
+module.exports = { minioClient, MINIO_BUCKET, upload, uploadToGCS, uploadJobPDF, uploadToLocal };

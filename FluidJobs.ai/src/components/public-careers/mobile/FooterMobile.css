@@ -1,0 +1,16 @@
+.footer-mobile {
+  background-color: white;
+  padding: 1.5rem 1rem;
+  margin-top: auto;
+}
+
+.footer-content-mobile {
+  text-align: center;
+}
+
+.footer-content-mobile p {
+  color: #666;
+  font-size: 0.75rem;
+  margin: 0;
+  line-height: 1.5;
+}

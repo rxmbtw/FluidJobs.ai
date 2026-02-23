@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Info, FileText, CheckSquare, DollarSign, Users, ClipboardList, Trash2, Calendar, MapPin, Briefcase, Upload, Sparkles, X, Plus, ChevronUp, ChevronDown, Edit3, GripVertical, Image } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useDashboardHeader } from './NewDashboardContainer';
+import { JobStage } from './types';
+import { Info, FileText, CheckSquare, DollarSign, Users, ClipboardList, Trash2, Calendar, MapPin, Briefcase, Upload, Sparkles, X, Plus, ChevronUp, ChevronDown, Edit3, GripVertical, Image, AlertCircle, Check } from 'lucide-react';
+import SuccessModal from '../SuccessModal';
 
-const JobSettings: React.FC = () => {
+const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({ onDirtyChange }) => {
+  const { setHeaderActions } = useDashboardHeader();
   const [jobDetails, setJobDetails] = useState({
     title: 'AI Lead',
     domain: 'Software Development',
@@ -31,15 +35,16 @@ const JobSettings: React.FC = () => {
     isPublished: true,
     hiringManager: 'Sarah Parker',
     recruiters: ['Alex Thompson', 'James Wilson'],
+    // Updated to use JobStage[]
     interviewStages: [
-      'Screening',
-      'Technical Assessment',
-      'L1 Technical',
-      'L2 Technical',
-      'L3 Technical',
-      'L4 Technical',
-      'HR Round',
-      'Management Round'
+      { id: 'screening', name: 'Screening', type: 'standard', isMandatory: true, remarksRequired: false, order: 1 },
+      { id: 'tech_assess', name: 'Technical Assessment', type: 'standard', isMandatory: false, remarksRequired: true, order: 2 },
+      { id: 'l1_tech', name: 'L1 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 3 },
+      { id: 'l2_tech', name: 'L2 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 4 },
+      { id: 'l3_tech', name: 'L3 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 5 },
+      { id: 'l4_tech', name: 'L4 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 6 },
+      { id: 'hr_round', name: 'HR Round', type: 'standard', isMandatory: true, remarksRequired: true, order: 7 },
+      { id: 'management', name: 'Management Round', type: 'standard', isMandatory: false, remarksRequired: true, order: 8 }
     ]
   });
 
@@ -51,10 +56,146 @@ const JobSettings: React.FC = () => {
   const [showUnpublishModal, setShowUnpublishModal] = useState(false);
   const [unpublishReason, setUnpublishReason] = useState('');
   const [newStageInput, setNewStageInput] = useState('');
+  const [currentStageType, setCurrentStageType] = useState<'standard' | 'custom'>('standard');
+  const [showNewStageInput, setShowNewStageInput] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [teamAssignments, setTeamAssignments] = useState<{ [userId: string]: string[] }>({});
+
+  const IMG_PROXY = (url: string) => `http://localhost:8000/api/image-proxy?url=${encodeURIComponent(url)}`;
+
+  const fluidJobsImages = {
+    tech: [
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/ai-technology-microchip-background-digital-transformation-concept.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/annie-spratt-QckxruozjRg-unsplash.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/Custom%20Education%20&%20Training%20Systems%20with%20Python%20Development.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/Frontend%20vs%20Backend%20What%20Happens%20Behind%20a%20Website.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/nubelson-fernandes--Xqckh_XVU4-unsplash.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/patrick-tomasso-fMntI8HAAB8-unsplash.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/person-front-computer-working-html.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/representation-user-experience-interface-design.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/roman-synkevych-E-V6EMtGSUU-unsplash.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/software-development-6523979_1280.jpg')
+    ],
+    management: [
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/business-meeting-office.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/business-people-board-room-meeting.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/close-up-woman-working-laptop.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/closeup-job-applicant-giving-his-resume-job-interview-office.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/Data%20Science%20Meeting.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/hunters-race-MYbhN8KaaEc-unsplash.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/lukas-blazek-mcSDtbWXUZU-unsplash.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/portrait-smiling-woman-startup-office-coding.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/smiley-man-work-holding-laptop-posing.jpg'),
+      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/woman-retoucher-looking-camera-smiling-sitting-creative-design-media-agency.jpg')
+    ]
+  };
+
+  // --- Confirmation popup states ---
+  const [showDiscardModal, setShowDiscardModal] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showNavigationWarningModal, setShowNavigationWarningModal] = useState(false);
+  const [pendingSectionId, setPendingSectionId] = useState<string | null>(null);
+  // Snapshot of original data to detect dirty state
+  const originalJobDetails = useRef(JSON.stringify(jobDetails));
+  const originalLocations = useRef(JSON.stringify(selectedLocations));
+
+  const isDirty = () => {
+    return JSON.stringify(jobDetails) !== originalJobDetails.current ||
+      JSON.stringify(selectedLocations) !== originalLocations.current;
+  };
+
+  // Report dirty state to parent (NewDashboardContainer) for tab/route navigation protection
+  useEffect(() => {
+    if (onDirtyChange) {
+      onDirtyChange(isDirty());
+    }
+  }, [jobDetails, selectedLocations, onDirtyChange]);
+
+  // Browser close/refresh warning when dirty
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty()) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  });
+
+  const handleCancelClick = () => {
+    if (isDirty()) {
+      setShowDiscardModal(true);
+    }
+    // If not dirty, nothing to discard
+  };
+
+  const handleConfirmDiscard = () => {
+    // Reset to original snapshot
+    setJobDetails(JSON.parse(originalJobDetails.current));
+    setSelectedLocations(JSON.parse(originalLocations.current));
+    setShowDiscardModal(false);
+  };
+
+  // Guard internal section switching
+  const handleSectionClick = (sectionId: string) => {
+    if (isDirty()) {
+      setPendingSectionId(sectionId);
+      setShowNavigationWarningModal(true);
+    } else {
+      setActiveSection(sectionId);
+    }
+  };
+
+  const handleConfirmSectionNavigation = () => {
+    // Discard changes and navigate to pending section
+    setJobDetails(JSON.parse(originalJobDetails.current));
+    setSelectedLocations(JSON.parse(originalLocations.current));
+    setShowNavigationWarningModal(false);
+    if (pendingSectionId) {
+      setActiveSection(pendingSectionId);
+      setPendingSectionId(null);
+    }
+  };
+
+  const handleCancelSectionNavigation = () => {
+    setShowNavigationWarningModal(false);
+    setPendingSectionId(null);
+  };
+
+  const handleSaveClick = () => {
+    setShowSaveModal(true);
+  };
+
+  const handleConfirmSave = async () => {
+    try {
+      setIsSaving(true);
+      // TODO: Replace with actual API call to persist job settings
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Update the snapshot to the new saved state
+      originalJobDetails.current = JSON.stringify(jobDetails);
+      originalLocations.current = JSON.stringify(selectedLocations);
+
+      setIsSaving(false);
+      setShowSaveModal(false);
+      setShowSuccessModal(true);
+
+      // Auto-close success modal after 3 seconds
+      setTimeout(() => {
+        setShowSuccessModal(false);
+      }, 3000);
+    } catch (error) {
+      console.error('Error saving job settings:', error);
+      setIsSaving(false);
+      setShowSaveModal(false);
+      alert('Failed to save job settings. Please try again.');
+    }
+  };
 
   // Predefined stage options for quick selection
   const predefinedStages = [
@@ -176,17 +317,31 @@ const JobSettings: React.FC = () => {
     }
   };
 
-  const addHiringStage = (stageName: string) => {
-    if (stageName.trim() && !jobDetails.interviewStages.includes(stageName.trim())) {
+  const addHiringStage = (stageName?: string) => {
+    const nameToAdd = stageName || newStageInput;
+    if (nameToAdd.trim()) {
+      const newStage: JobStage = {
+        id: `stage_${Date.now()}`,
+        name: nameToAdd.trim(),
+        type: currentStageType,
+        isMandatory: false,
+        remarksRequired: true,
+        order: jobDetails.interviewStages.length + 1
+      };
+
       setJobDetails(prev => ({
         ...prev,
-        interviewStages: [...prev.interviewStages, stageName.trim()]
+        interviewStages: [...prev.interviewStages, newStage]
       }));
       setNewStageInput('');
+      setShowNewStageInput(false);
     }
   };
 
   const removeHiringStage = (index: number) => {
+    const stage = jobDetails.interviewStages[index];
+    if (stage.isMandatory) return; // Prevent removing mandatory stages
+
     setJobDetails(prev => ({
       ...prev,
       interviewStages: prev.interviewStages.filter((_, i) => i !== index)
@@ -197,6 +352,8 @@ const JobSettings: React.FC = () => {
     if (index > 0) {
       const newStages = [...jobDetails.interviewStages];
       [newStages[index - 1], newStages[index]] = [newStages[index], newStages[index - 1]];
+      // Update order
+      newStages.forEach((s, i) => s.order = i + 1);
       setJobDetails(prev => ({ ...prev, interviewStages: newStages }));
     }
   };
@@ -205,6 +362,8 @@ const JobSettings: React.FC = () => {
     if (index < jobDetails.interviewStages.length - 1) {
       const newStages = [...jobDetails.interviewStages];
       [newStages[index], newStages[index + 1]] = [newStages[index + 1], newStages[index]];
+      // Update order
+      newStages.forEach((s, i) => s.order = i + 1);
       setJobDetails(prev => ({ ...prev, interviewStages: newStages }));
     }
   };
@@ -212,7 +371,18 @@ const JobSettings: React.FC = () => {
   const updateStageName = (index: number, newName: string) => {
     setJobDetails(prev => ({
       ...prev,
-      interviewStages: prev.interviewStages.map((stage, i) => i === index ? newName : stage)
+      interviewStages: prev.interviewStages.map((stage, i) =>
+        i === index ? { ...stage, name: newName } : stage
+      )
+    }));
+  };
+
+  const toggleStageRemarks = (index: number) => {
+    setJobDetails(prev => ({
+      ...prev,
+      interviewStages: prev.interviewStages.map((stage, i) =>
+        i === index ? { ...stage, remarksRequired: !stage.remarksRequired } : stage
+      )
     }));
   };
 
@@ -249,6 +419,26 @@ const JobSettings: React.FC = () => {
     fetchUsers();
   }, []);
 
+  useEffect(() => {
+    setHeaderActions(
+      <div className="flex gap-2">
+        <button
+          onClick={handleCancelClick}
+          className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition-all"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSaveClick}
+          className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-all"
+        >
+          Save Changes
+        </button>
+      </div>
+    );
+    return () => setHeaderActions(null);
+  }, [setHeaderActions, jobDetails, selectedLocations]);
+
   const sections = [
     { id: 'basic', label: 'Basic Information', icon: Info },
     { id: 'image', label: 'Job Image', icon: Image },
@@ -264,20 +454,7 @@ const JobSettings: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold text-gray-900">Job Settings</h1>
-          <p className="text-sm text-gray-600">Configure job details, requirements, and hiring process settings.</p>
-        </div>
-        <div className="flex gap-2">
-          <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all">
-            Cancel
-          </button>
-          <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all">
-            Save Changes
-          </button>
-        </div>
-      </div>
+
 
       {/* Job Status Card */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6">
@@ -310,7 +487,7 @@ const JobSettings: React.FC = () => {
               {sections.map((section) => (
                 <button
                   key={section.id}
-                  onClick={() => setActiveSection(section.id)}
+                  onClick={() => handleSectionClick(section.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all ${activeSection === section.id
                     ? 'bg-blue-50 text-blue-600 border border-blue-200'
                     : 'text-gray-600 hover:bg-gray-50'
@@ -407,34 +584,104 @@ const JobSettings: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Number of Openings <span className="text-red-500">*</span>
                     </label>
-                    <select
+                    <input
+                      type="number"
                       value={jobDetails.numberOfOpenings}
                       onChange={(e) => handleInputChange('numberOfOpenings', e.target.value)}
+                      min="1"
+                      placeholder="Enter number of openings"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      {openingsOptions.map(num => (
-                        <option key={num} value={num}>{num}</option>
-                      ))}
-                    </select>
+                    />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                  <div className="flex gap-4">
-                    {['Active', 'Paused', 'Closed'].map((status) => (
-                      <label key={status} className="flex items-center">
-                        <input
-                          type="radio"
-                          name="status"
-                          value={status}
-                          checked={jobDetails.status === status}
-                          onChange={(e) => handleInputChange('status', e.target.value)}
-                          className="mr-2"
-                        />
-                        <span className="text-sm text-gray-700">{status}</span>
-                      </label>
-                    ))}
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Status</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {([
+                      {
+                        value: 'Active',
+                        label: 'Active',
+                        description: 'Accepting applications',
+                        icon: (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        ),
+                        activeColor: 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20',
+                        activeDot: 'bg-emerald-500',
+                        activeText: 'text-emerald-700',
+                        activeIcon: 'text-emerald-600',
+                        inactiveColor: 'border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/50'
+                      },
+                      {
+                        value: 'Paused',
+                        label: 'Paused',
+                        description: 'Temporarily on hold',
+                        icon: (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        ),
+                        activeColor: 'border-amber-500 bg-amber-50 ring-2 ring-amber-500/20',
+                        activeDot: 'bg-amber-500',
+                        activeText: 'text-amber-700',
+                        activeIcon: 'text-amber-600',
+                        inactiveColor: 'border-gray-200 bg-white hover:border-amber-300 hover:bg-amber-50/50'
+                      },
+                      {
+                        value: 'Closed',
+                        label: 'Closed',
+                        description: 'No longer accepting',
+                        icon: (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                          </svg>
+                        ),
+                        activeColor: 'border-red-500 bg-red-50 ring-2 ring-red-500/20',
+                        activeDot: 'bg-red-500',
+                        activeText: 'text-red-700',
+                        activeIcon: 'text-red-600',
+                        inactiveColor: 'border-gray-200 bg-white hover:border-red-300 hover:bg-red-50/50'
+                      }
+                    ] as const).map((option) => {
+                      const isSelected = jobDetails.status === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => handleInputChange('status', option.value)}
+                          className={`relative flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg border-2 cursor-pointer transition-all duration-200 ${isSelected ? option.activeColor : option.inactiveColor
+                            }`}
+                        >
+                          {/* Selection indicator dot */}
+                          <div className={`absolute top-2 right-2 w-2 h-2 rounded-full transition-all duration-200 ${isSelected ? `${option.activeDot} scale-100` : 'bg-gray-300 scale-75'
+                            }`}>
+                            {isSelected && (
+                              <div className={`absolute inset-0 rounded-full ${option.activeDot} animate-ping opacity-40`} />
+                            )}
+                          </div>
+
+                          {/* Icon */}
+                          <div className={`transition-colors duration-200 ${isSelected ? option.activeIcon : 'text-gray-400'
+                            }`}>
+                            {option.icon}
+                          </div>
+
+                          {/* Label */}
+                          <span className={`text-xs font-semibold transition-colors duration-200 ${isSelected ? option.activeText : 'text-gray-700'
+                            }`}>
+                            {option.label}
+                          </span>
+
+                          {/* Description */}
+                          <span className={`text-[10px] leading-tight text-center transition-colors duration-200 ${isSelected ? option.activeText + ' opacity-70' : 'text-gray-400'
+                            }`}>
+                            {option.description}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -1042,27 +1289,39 @@ const JobSettings: React.FC = () => {
                       </div>
 
                       {/* Stage Number */}
-                      <span className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0">
+                      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${stage.isMandatory ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-600'}`}>
                         {index + 1}
                       </span>
 
                       {/* Stage Name - Editable */}
-                      <input
-                        type="text"
-                        value={stage}
-                        onChange={(e) => updateStageName(index, e.target.value)}
-                        className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-gray-700 focus:bg-white focus:border focus:border-blue-300 focus:rounded px-2 py-1 transition-all"
-                        placeholder="Enter stage name..."
-                      />
+                      {/* Stage Name - Editable or Display */}
+                      <div className="flex-1">
+                        {stage.isMandatory ? (
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900">{stage.name}</span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 uppercase tracking-wide">
+                              Mandatory
+                            </span>
+                          </div>
+                        ) : (
+                          <input
+                            type="text"
+                            value={stage.name}
+                            onChange={(e) => updateStageName(index, e.target.value)}
+                            className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-700 focus:bg-white focus:border focus:border-blue-300 focus:rounded px-2 py-1 transition-all"
+                            placeholder="Enter stage name..."
+                          />
+                        )}
+                      </div>
 
                       {/* Action Buttons */}
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {/* Move Up */}
                         <button
                           onClick={() => moveStageUp(index)}
-                          disabled={index === 0}
-                          className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                          title="Move up"
+                          disabled={index === 0 || stage.isMandatory || jobDetails.interviewStages[index - 1].isMandatory}
+                          className={`p-1 transition-colors ${index === 0 || stage.isMandatory || jobDetails.interviewStages[index - 1].isMandatory ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-blue-600'}`}
+                          title={stage.isMandatory || jobDetails.interviewStages[index - 1]?.isMandatory ? "Cannot reorder mandatory stages" : "Move up"}
                         >
                           <ChevronUp className="w-4 h-4" />
                         </button>
@@ -1070,9 +1329,9 @@ const JobSettings: React.FC = () => {
                         {/* Move Down */}
                         <button
                           onClick={() => moveStageDown(index)}
-                          disabled={index === jobDetails.interviewStages.length - 1}
-                          className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                          title="Move down"
+                          disabled={index === jobDetails.interviewStages.length - 1 || stage.isMandatory || jobDetails.interviewStages[index + 1].isMandatory}
+                          className={`p-1 transition-colors ${index === jobDetails.interviewStages.length - 1 || stage.isMandatory || jobDetails.interviewStages[index + 1].isMandatory ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-blue-600'}`}
+                          title={stage.isMandatory || jobDetails.interviewStages[index + 1]?.isMandatory ? "Cannot reorder mandatory stages" : "Move down"}
                         >
                           <ChevronDown className="w-4 h-4" />
                         </button>
@@ -1080,8 +1339,9 @@ const JobSettings: React.FC = () => {
                         {/* Remove */}
                         <button
                           onClick={() => removeHiringStage(index)}
-                          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                          title="Remove stage"
+                          disabled={stage.isMandatory}
+                          className={`p-1 transition-colors ${stage.isMandatory ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-red-600'}`}
+                          title={stage.isMandatory ? "Cannot remove mandatory stage" : "Remove stage"}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1122,7 +1382,7 @@ const JobSettings: React.FC = () => {
                         <p className="text-xs text-gray-500 mb-2">Quick add common stages:</p>
                         <div className="flex flex-wrap gap-2">
                           {predefinedStages
-                            .filter(stage => !jobDetails.interviewStages.includes(stage))
+                            .filter(stage => !jobDetails.interviewStages.some(s => s.name === stage))
                             .slice(0, 6)
                             .map(stage => (
                               <button
@@ -1161,229 +1421,320 @@ const JobSettings: React.FC = () => {
       </div>
 
       {/* Unpublish Modal */}
-      {showUnpublishModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Unpublish Job</h3>
+      {
+        showUnpublishModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Unpublish Job</h3>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for Unpublishing <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={unpublishReason}
-                onChange={(e) => setUnpublishReason(e.target.value)}
-                placeholder="Enter reason for unpublishing this job..."
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
-              />
-            </div>
-
-            <p className="text-gray-600 mb-6">Are you sure you want to unpublish this job? It will no longer be visible to candidates.</p>
-
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => {
-                  setShowUnpublishModal(false);
-                  setUnpublishReason('');
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmUnpublish}
-                disabled={!unpublishReason.trim()}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Unpublish
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Image Selection Modal */}
-      {showImageModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">Select Job Opening Image</h2>
-              <button
-                onClick={() => setShowImageModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              {/* Image Categories */}
-              <div className="space-y-8">
-                {/* Technology Images */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <Briefcase className="w-5 h-5 text-blue-600" />
-                    Technology & Engineering
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {[
-                      'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?w=400&h=200&fit=crop'
-                    ].map((imagePath, index) => (
-                      <div
-                        key={index}
-                        onClick={() => {
-                          setSelectedImage(imagePath);
-                          setShowImageModal(false);
-                        }}
-                        className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:border-blue-500 hover:shadow-lg ${selectedImage === imagePath ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
-                          }`}
-                      >
-                        <img
-                          src={imagePath}
-                          alt={`Tech option ${index + 1}`}
-                          className="w-full h-32 object-cover"
-                          onError={(e) => {
-                            // Fallback to a placeholder if image doesn't load
-                            (e.target as HTMLImageElement).src = `https://picsum.photos/seed/tech${index}/400/200`;
-                          }}
-                        />
-                        {selectedImage === imagePath && (
-                          <div className="absolute inset-0 bg-blue-500 bg-opacity-20 flex items-center justify-center">
-                            <div className="bg-blue-500 text-white rounded-full p-1">
-                              <CheckSquare className="w-4 h-4" />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Management & Business Images */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-green-600" />
-                    Management & Business
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {[
-                      'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1556761175-b413da4baf72?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=400&h=200&fit=crop'
-                    ].map((imagePath, index) => (
-                      <div
-                        key={index}
-                        onClick={() => {
-                          setSelectedImage(imagePath);
-                          setShowImageModal(false);
-                        }}
-                        className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:border-green-500 hover:shadow-lg ${selectedImage === imagePath ? 'border-green-500 ring-2 ring-green-200' : 'border-gray-200'
-                          }`}
-                      >
-                        <img
-                          src={imagePath}
-                          alt={`Management option ${index + 1}`}
-                          className="w-full h-32 object-cover"
-                          onError={(e) => {
-                            // Fallback to a placeholder if image doesn't load
-                            (e.target as HTMLImageElement).src = `https://picsum.photos/seed/mgmt${index}/400/200`;
-                          }}
-                        />
-                        {selectedImage === imagePath && (
-                          <div className="absolute inset-0 bg-green-500 bg-opacity-20 flex items-center justify-center">
-                            <div className="bg-green-500 text-white rounded-full p-1">
-                              <CheckSquare className="w-4 h-4" />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Generic Professional Images */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-purple-600" />
-                    Professional & Generic
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {[
-                      'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1486312338219-ce68e2c6b696?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=400&h=200&fit=crop',
-                      'https://images.unsplash.com/photo-1515378791036-0648a814c963?w=400&h=200&fit=crop'
-                    ].map((imagePath, index) => (
-                      <div
-                        key={index}
-                        onClick={() => {
-                          setSelectedImage(imagePath);
-                          setShowImageModal(false);
-                        }}
-                        className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:border-purple-500 hover:shadow-lg ${selectedImage === imagePath ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
-                          }`}
-                      >
-                        <img
-                          src={imagePath}
-                          alt={`Professional option ${index + 1}`}
-                          className="w-full h-32 object-cover"
-                        />
-                        {selectedImage === imagePath && (
-                          <div className="absolute inset-0 bg-purple-500 bg-opacity-20 flex items-center justify-center">
-                            <div className="bg-purple-500 text-white rounded-full p-1">
-                              <CheckSquare className="w-4 h-4" />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reason for Unpublishing <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={unpublishReason}
+                  onChange={(e) => setUnpublishReason(e.target.value)}
+                  placeholder="Enter reason for unpublishing this job..."
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                />
               </div>
-            </div>
 
-            <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
-              <div className="text-sm text-gray-600">
-                {selectedImage ? 'Image selected! Click "Select Image" again to change.' : 'Click on any image to select it for your job opening.'}
-              </div>
-              <div className="flex gap-3">
+              <p className="text-gray-600 mb-6">Are you sure you want to unpublish this job? It will no longer be visible to candidates.</p>
+
+              <div className="flex gap-3 justify-end">
                 <button
-                  onClick={() => setShowImageModal(false)}
-                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  onClick={() => {
+                    setShowUnpublishModal(false);
+                    setUnpublishReason('');
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
                 >
                   Cancel
                 </button>
-                {selectedImage && (
+                <button
+                  onClick={confirmUnpublish}
+                  disabled={!unpublishReason.trim()}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Unpublish
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Image Selection Modal */}
+      {
+        showImageModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-900">Select Job Opening Image</h2>
+                <button
+                  onClick={() => setShowImageModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                {/* Image Categories */}
+                <div className="space-y-8">
+                  {/* Technology Images */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Briefcase className="w-5 h-5 text-blue-600" />
+                      Technology & Engineering
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {fluidJobsImages.tech.map((imagePath, index) => (
+                        <div
+                          key={index}
+                          onClick={() => {
+                            setSelectedImage(imagePath);
+                            setShowImageModal(false);
+                          }}
+                          className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:border-blue-500 hover:shadow-lg ${selectedImage === imagePath ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
+                            }`}
+                        >
+                          <img
+                            src={imagePath}
+                            alt={`Tech option ${index + 1}`}
+                            className="w-full h-32 object-cover"
+                            onError={(e) => {
+                              // Fallback to a placeholder if image doesn't load
+                              (e.target as HTMLImageElement).src = `https://picsum.photos/seed/tech${index}/400/200`;
+                            }}
+                          />
+                          {selectedImage === imagePath && (
+                            <div className="absolute inset-0 bg-blue-500 bg-opacity-20 flex items-center justify-center">
+                              <div className="bg-blue-500 text-white rounded-full p-1">
+                                <CheckSquare className="w-4 h-4" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Management & Business Images */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Users className="w-5 h-5 text-green-600" />
+                      Management & Business
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {fluidJobsImages.management.map((imagePath, index) => (
+                        <div
+                          key={index}
+                          onClick={() => {
+                            setSelectedImage(imagePath);
+                            setShowImageModal(false);
+                          }}
+                          className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:border-green-500 hover:shadow-lg ${selectedImage === imagePath ? 'border-green-500 ring-2 ring-green-200' : 'border-gray-200'
+                            }`}
+                        >
+                          <img
+                            src={imagePath}
+                            alt={`Management option ${index + 1}`}
+                            className="w-full h-32 object-cover"
+                            onError={(e) => {
+                              // Fallback to a placeholder if image doesn't load
+                              (e.target as HTMLImageElement).src = `https://picsum.photos/seed/mgmt${index}/400/200`;
+                            }}
+                          />
+                          {selectedImage === imagePath && (
+                            <div className="absolute inset-0 bg-green-500 bg-opacity-20 flex items-center justify-center">
+                              <div className="bg-green-500 text-white rounded-full p-1">
+                                <CheckSquare className="w-4 h-4" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Generic Professional Images */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-purple-600" />
+                      Professional & Generic
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {[
+                        'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=200&fit=crop',
+                        'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=400&h=200&fit=crop',
+                        'https://images.unsplash.com/photo-1486312338219-ce68e2c6b696?w=400&h=200&fit=crop',
+                        'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=400&h=200&fit=crop',
+                        'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=400&h=200&fit=crop',
+                        'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400&h=200&fit=crop',
+                        'https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=400&h=200&fit=crop',
+                        'https://images.unsplash.com/photo-1515378791036-0648a814c963?w=400&h=200&fit=crop'
+                      ].map((imagePath, index) => (
+                        <div
+                          key={index}
+                          onClick={() => {
+                            setSelectedImage(imagePath);
+                            setShowImageModal(false);
+                          }}
+                          className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:border-purple-500 hover:shadow-lg ${selectedImage === imagePath ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
+                            }`}
+                        >
+                          <img
+                            src={imagePath}
+                            alt={`Professional option ${index + 1}`}
+                            className="w-full h-32 object-cover"
+                          />
+                          {selectedImage === imagePath && (
+                            <div className="absolute inset-0 bg-purple-500 bg-opacity-20 flex items-center justify-center">
+                              <div className="bg-purple-500 text-white rounded-full p-1">
+                                <CheckSquare className="w-4 h-4" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
+                <div className="text-sm text-gray-600">
+                  {selectedImage ? 'Image selected! Click "Select Image" again to change.' : 'Click on any image to select it for your job opening.'}
+                </div>
+                <div className="flex gap-3">
                   <button
                     onClick={() => setShowImageModal(false)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    Use Selected Image
+                    Cancel
                   </button>
-                )}
+                  {selectedImage && (
+                    <button
+                      onClick={() => setShowImageModal(false)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Use Selected Image
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Discard Changes Modal */}
+      {showDiscardModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden animate-in slide-in-from-bottom duration-500">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-6 h-6 text-amber-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Discard Changes?</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to discard your changes? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDiscardModal(false)}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Keep Editing
+                </button>
+                <button
+                  onClick={handleConfirmDiscard}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
+                >
+                  Discard
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
-    </div>
+
+      {/* Save Changes Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden animate-in slide-in-from-bottom duration-500">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check className="w-6 h-6 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Save Changes?</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to save the changes to the job settings?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSaveModal(false)}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  disabled={isSaving}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmSave}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center justify-center"
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  ) : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Success"
+        message="Job settings updated successfully."
+      />
+
+      {/* Unsaved Changes Warning Modal (for internal section navigation) */}
+      {showNavigationWarningModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden animate-in slide-in-from-bottom duration-500">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Unsaved Changes</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                You have unsaved changes. Are you sure you want to leave this section? Your changes will be lost.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCancelSectionNavigation}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Stay on Page
+                </button>
+                <button
+                  onClick={handleConfirmSectionNavigation}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
+                >
+                  Discard & Leave
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div >
   );
 };
 
