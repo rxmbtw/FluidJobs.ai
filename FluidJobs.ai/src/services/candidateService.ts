@@ -24,6 +24,12 @@ export class CandidateService {
     return userStr ? JSON.parse(userStr) : null;
   }
 
+  // Safe role accessor — always returns a string even if role is undefined
+  private static safeGetRole(user: any): string {
+    return (user?.role ?? user?.userRole ?? 'superadmin').toString();
+  }
+
+
   // API call wrapper with error handling
   private static async apiCall<T>(
     endpoint: string,
@@ -317,7 +323,7 @@ export class CandidateService {
           `Move to ${request.newStage}`,
           user.id,
           user.name,
-          user.role.toString(),
+          this.safeGetRole(user),
           permissionCheck.reason || 'Permission denied'
         );
         return { success: false, error: permissionCheck.reason };
@@ -336,7 +342,7 @@ export class CandidateService {
           `Move to ${request.newStage}`,
           user.id,
           user.name,
-          user.role.toString(),
+          this.safeGetRole(user),
           [validationResult.reason || 'Validation failed']
         );
         return { success: false, error: validationResult.reason };
@@ -387,7 +393,7 @@ export class CandidateService {
         request.newStage,
         user.id,
         user.name,
-        user.role.toString(),
+        this.safeGetRole(user),
         request.reason
       );
 
@@ -410,7 +416,7 @@ export class CandidateService {
           `Move to ${request.newStage}`,
           user.id,
           user.name,
-          user.role.toString(),
+          this.safeGetRole(user),
           [`System error: ${error instanceof Error ? error.message : 'Unknown error'}`]
         );
       } catch (auditError) {
@@ -480,7 +486,7 @@ export class CandidateService {
         `Bulk move to ${newStage}`,
         user.id,
         user.name,
-        user.role.toString(),
+        this.safeGetRole(user),
         results
       );
     } catch (auditError) {
@@ -555,7 +561,7 @@ export class CandidateService {
           candidateData.id ? 'Update candidate' : 'Create candidate',
           user.id,
           user.name,
-          user.role.toString(),
+          this.safeGetRole(user),
           [validationResult.reason || 'Validation failed']
         );
       }
@@ -625,7 +631,7 @@ export class CandidateService {
           action: auditAction,
           userId: user.id,
           userName: user.name,
-          userRole: user.role.toString(),
+          userRole: this.safeGetRole(user),
           description: isNewCandidate ? 'New candidate created' : 'Candidate information updated',
           metadata: {
             candidateSource: candidate.source,

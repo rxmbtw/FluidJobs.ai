@@ -77,7 +77,9 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
                 if (superadminResponse.ok) {
                     const data = await superadminResponse.json();
                     localStorage.setItem('superadmin_token', data.token);
-                    localStorage.setItem('superadmin', JSON.stringify(data.admin));
+                    // Always include role so candidateService.ts never crashes on user.role.toString()
+                    const adminData = { ...data.admin, role: data.admin?.role || 'superadmin' };
+                    localStorage.setItem('superadmin', JSON.stringify(adminData));
                     navigate('/superadmin/dashboard');
                     return;
                 }
