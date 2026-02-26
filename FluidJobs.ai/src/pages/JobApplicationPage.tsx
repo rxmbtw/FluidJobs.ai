@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Clock, Building, Calendar, ExternalLink, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useJobs } from '../contexts/JobsProvider';
-import { jobService, Job } from '../services/jobService';
+import { jobService } from '../services/jobService';
+import { Job } from '../types';
 import { attachmentService, JobAttachment } from '../services/attachmentService';
 
 interface JobApplicationData {
@@ -110,7 +111,7 @@ const JobApplicationPage: React.FC = () => {
           // Fetch job details
           const job = await jobService.getJobById(jobId);
           setServiceJob(job);
-          
+
           // Fetch job attachments
           const jobAttachments = await attachmentService.getJobAttachments(jobId);
           setAttachments(jobAttachments);
@@ -126,7 +127,7 @@ const JobApplicationPage: React.FC = () => {
   // Find the job from context or service
   const contextJob = jobs.find(job => job.jobId === jobId);
   const foundJob = serviceJob || contextJob;
-  
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -134,7 +135,7 @@ const JobApplicationPage: React.FC = () => {
       </div>
     );
   }
-  
+
   if (!foundJob) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -150,19 +151,20 @@ const JobApplicationPage: React.FC = () => {
       </div>
     );
   }
-  
+
   // Use found job data, merging with static template
+  const jobAny = foundJob as any;
   const currentJobData = {
     ...jobApplicationData,
-    jobId: ('id' in foundJob ? foundJob.id : foundJob.jobId) || jobId || '',
+    jobId: ('id' in foundJob ? foundJob.id : (foundJob as any).jobId) || jobId || '',
     title: foundJob.title,
     company: ('company' in foundJob ? foundJob.company : jobApplicationData.company),
     location: foundJob.location || 'Pune',
-    employmentType: ('type' in foundJob ? foundJob.type : foundJob.employmentType) || 'Full Time',
-    costToCompany: ('salary' in foundJob ? foundJob.salary : foundJob.salaryRange) || jobApplicationData.costToCompany,
+    employmentType: jobAny.jobType || jobAny.employmentType || 'Full Time',
+    costToCompany: jobAny.ctc || jobAny.salaryRange || jobAny.salary || jobApplicationData.costToCompany,
     description: {
       ...jobApplicationData.description,
-      overview: `Employment Type: ${('type' in foundJob ? foundJob.type : foundJob.employmentType) || 'Full-time'}`,
+      overview: `Employment Type: ${jobAny.jobType || jobAny.employmentType || 'Full-time'}`,
       aboutRole: foundJob.description || jobApplicationData.description.aboutRole
     }
   };
@@ -181,9 +183,9 @@ const JobApplicationPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Cover Image */}
-      <div 
+      <div
         className="h-48 bg-cover bg-center relative"
-        style={{ 
+        style={{
           backgroundImage: 'url(https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&h=400&fit=crop)',
         }}
       >
@@ -265,10 +267,10 @@ const JobApplicationPage: React.FC = () => {
               <h2 className="text-lg font-bold text-gray-900 mb-4 text-left">Description</h2>
               <div className="text-left">
                 <p className="text-sm text-gray-700 mb-4 text-left">{currentJobData.description.overview}</p>
-                
+
                 <h3 className="font-semibold text-gray-900 mb-2 text-sm text-left">About the Role</h3>
                 <p className="text-sm text-gray-700 leading-relaxed mb-4 text-left">{currentJobData.description.aboutRole}</p>
-                
+
                 <p className="text-sm text-gray-700 mb-2 text-left">You'll work closely with our Engineering and Support teams to:</p>
                 <ul className="space-y-1 text-sm text-gray-700">
                   {currentJobData.description.responsibilities.map((item, index) => (
@@ -294,7 +296,7 @@ const JobApplicationPage: React.FC = () => {
                 </h2>
                 <div className="space-y-2">
                   {attachments.map((attachment) => (
-                    <div 
+                    <div
                       key={attachment.attachment_id}
                       className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
                       onClick={() => window.open(attachment.file_path, '_blank')}

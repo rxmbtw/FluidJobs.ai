@@ -1,4 +1,4 @@
-import { Candidate, InterviewStage, ValidationResult, UserRole } from '../components/new-dashboard/types';
+import { Candidate, ValidationResult, UserRole } from '../components/new-dashboard/types';
 
 export interface User {
   id: string;
@@ -17,7 +17,7 @@ export interface PermissionResult {
 export class ValidationService {
   static validateStageTransition(
     candidate: Candidate,
-    newStage: InterviewStage,
+    newStage: string,
     _user: User
   ): ValidationResult {
     if (candidate.currentStage === newStage) {
@@ -101,7 +101,7 @@ export class PermissionService {
     return { valid: false, reason: 'Insufficient permissions to edit this candidate' };
   }
 
-  static canMoveStage(user: User, candidate: Candidate, newStage: InterviewStage): PermissionResult {
+  static canMoveStage(user: User, candidate: Candidate, newStage: string): PermissionResult {
     const editCheck = this.canEditCandidate(user, candidate);
     if (!editCheck.valid) {
       return editCheck;

@@ -1,9 +1,20 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Candidate, InterviewStage, CandidateStatus } from './types';
 import { STATUS_COLORS } from './constants';
-import GlobalFilters from './GlobalFilters';
+import { useDashboardHeader } from './NewDashboardContainer';
 import { CandidateService } from '../../services/candidateService';
-import { Search, ArrowLeft, Download, Mail, Phone, FileText, Eye, Sparkles, Ban, Check, X, Briefcase, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, FileText, Eye, Sparkles, X, Briefcase, User, ChevronLeft, ChevronRight, Clock, UserCheck, Loader2, CheckSquare, Square, Users } from 'lucide-react';
+import axios from 'axios';
+
+const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+const getToken = () => sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token') || localStorage.getItem('token');
+
+interface CandidateAssignment {
+  candidate_id: number;
+  recruiter_id: number;
+  recruiter_name: string;
+  assigned_at: string;
+}
 
 interface TrackerProps {
   onAddCandidate: () => void;
@@ -20,14 +31,15 @@ interface PaginationInfo {
 }
 
 const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfile }) => {
+  const { setHeaderActions } = useDashboardHeader();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilters, setActiveFilters] = useState<any>({});
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
-  
+
   // Modal states
   const [showRestrictModal, setShowRestrictModal] = useState(false);
   const [showUnrestrictModal, setShowUnrestrictModal] = useState(false);
@@ -41,6 +53,24 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
     { job_id: 2, job_title: 'Product Manager', locations: 'San Francisco' },
     { job_id: 3, job_title: 'Backend Developer', locations: 'New York' }
   ]);
+
+  // ── Batch-select / Claim state (Recruiter role) ────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [assignments, setAssignments] = useState<CandidateAssignment[]>([]);
+  const [claimBusy, setClaimBusy] = useState(false);
+  const [claimToast, setClaimToast] = useState('');
+
+  // Current user session
+  const currentUser = JSON.parse(
+    sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('superadmin') || '{}'
+  );
+  const userRole: string = currentUser.role || '';
+  const isRecruiter = userRole === 'Recruiter';
+  const isAdminLike = ['Admin', 'SuperAdmin'].includes(userRole);
+  const currentUserId: number | null = currentUser.id || null;
+
+  // Active job ID from filters (if recruiter has a job in context)
+  const activeJobId = activeFilters.jobId && activeFilters.jobId !== 'all' ? Number(activeFilters.jobId) : null;
 
   // Helper functions
   const getInitials = (name: string) => {
@@ -56,7 +86,7 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
   // Helper function to calculate relative time
   const getRelativeTime = (dateString: string) => {
     if (!dateString) return 'N/A';
-    
+
     try {
       const date = new Date(dateString);
       const now = new Date();
@@ -64,7 +94,7 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
       const diffMinutes = Math.floor(diffMs / (1000 * 60));
-      
+
       if (diffDays > 30) {
         const months = Math.floor(diffDays / 30);
         return `${months} month${months > 1 ? 's' : ''} ago`;
@@ -98,16 +128,11 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
   const fetchCandidates = async () => {
     try {
       setLoading(true);
-      
-      console.log('CandidateTracker: Fetching candidates from database...');
       const result = await CandidateService.getCandidates(1, 1000);
-      
       if (result.candidates && result.candidates.length > 0) {
         setCandidates(result.candidates);
-        console.log(`CandidateTracker: Successfully loaded ${result.candidates.length} candidates from database`);
       } else {
         setCandidates([]);
-        console.log('CandidateTracker: No candidates found in database');
       }
     } catch (error) {
       console.error('CandidateTracker: Error fetching candidates:', error);
@@ -116,6 +141,67 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
       setLoading(false);
     }
   };
+
+  // Fetch existing assignments for the active job
+  const fetchAssignments = useCallback(async (jobId: number) => {
+    try {
+      const res = await axios.get<{ success: boolean; assignments: CandidateAssignment[] }>(
+        `${API_URL}/api/candidate-assignments/${jobId}`,
+        { headers: { Authorization: `Bearer ${getToken()}` } }
+      );
+      if (res.data?.assignments) setAssignments(res.data.assignments);
+    } catch (err) {
+      console.error('Failed to fetch candidate assignments:', err);
+    }
+  }, []);
+
+  // Claim selected candidates
+  const handleClaim = async () => {
+    if (!activeJobId || selectedIds.size === 0) return;
+    try {
+      setClaimBusy(true);
+      const res = await axios.post<{ success: boolean; claimed: number[]; alreadyClaimed: number[]; message: string }>(
+        `${API_URL}/api/candidate-assignments/claim`,
+        { jobId: activeJobId, candidateIds: Array.from(selectedIds).map(Number) },
+        { headers: { Authorization: `Bearer ${getToken()}` } }
+      );
+      setClaimToast(res.data.message || `${selectedIds.size} candidate(s) claimed.`);
+      setTimeout(() => setClaimToast(''), 3000);
+      setSelectedIds(new Set());
+      await fetchAssignments(activeJobId);
+    } catch (err) {
+      setClaimToast('Failed to claim candidates. Please try again.');
+      setTimeout(() => setClaimToast(''), 3000);
+    } finally {
+      setClaimBusy(false);
+    }
+  };
+
+  // Toggle single candidate checkbox
+  const toggleSelect = (id: string, blocked: boolean) => {
+    if (blocked) return;
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Toggle select-all on current page
+  const toggleSelectAll = (pageIds: string[]) => {
+    const allSelected = pageIds.every(id => selectedIds.has(id));
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allSelected) pageIds.forEach(id => next.delete(id));
+      else pageIds.forEach(id => next.add(id));
+      return next;
+    });
+  };
+
+  // Get assignment info for a candidate
+  const getAssignment = (candidateId: string | number): CandidateAssignment | undefined =>
+    assignments.find(a => String(a.candidate_id) === String(candidateId));
 
   // Sample data fallback
   const loadSampleData = () => {
@@ -181,6 +267,25 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
     fetchCandidates();
   }, []);
 
+  // Re-fetch assignments when job filter changes
+  useEffect(() => {
+    if (activeJobId) fetchAssignments(activeJobId);
+    else setAssignments([]);
+    setSelectedIds(new Set()); // clear selection on job change
+  }, [activeJobId, fetchAssignments]);
+
+  useEffect(() => {
+    setHeaderActions(
+      <button
+        onClick={onAddCandidate}
+        className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-all shadow-sm"
+      >
+        Add Candidate
+      </button>
+    );
+    return () => setHeaderActions(null);
+  }, [setHeaderActions, onAddCandidate]);
+
   const reviewResume = async (candidateId: string) => {
     console.log('AI Resume Review for candidate:', candidateId);
     // Implement AI review functionality
@@ -213,12 +318,45 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
   const filteredCandidates = useMemo(() => {
     return candidates.filter(c => {
       const q = activeFilters.query?.toLowerCase() || '';
-      const matchesQuery = c.name.toLowerCase().includes(q) || c.jobTitle.toLowerCase().includes(q);
-      const matchesStatus = !activeFilters.status || c.currentStage === activeFilters.status;
-      const matchesPosition = !activeFilters.position || c.jobTitle === activeFilters.position;
-      const matchesNotice = !activeFilters.notice || c.noticePeriod === activeFilters.notice;
-      const matchesLocation = !activeFilters.location || c.location === activeFilters.location;
-      return matchesQuery && matchesStatus && matchesPosition && matchesNotice && matchesLocation;
+      const matchesQuery = c.name.toLowerCase().includes(q) || c.jobTitle.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
+
+      const matchesSource = !activeFilters.source || c.source?.toLowerCase() === activeFilters.source.toLowerCase();
+      const matchesJob = !activeFilters.jobId || activeFilters.jobId === 'all' || c.jobId?.toString() === activeFilters.jobId.toString();
+
+      // Legacy Filters Logic
+      const matchesExperience = !activeFilters.experience || (() => {
+        const exp = c.experienceYears || 0;
+        const [min, max] = activeFilters.experience.split('-').map(Number);
+        if (activeFilters.experience === '8+') return exp >= 8;
+        return exp >= min && exp <= (max || 100);
+      })();
+
+      const matchesLocation = !activeFilters.location || (c.location || c.currentCompany || '').toLowerCase().includes(activeFilters.location.toLowerCase());
+
+      let matchesDate = true;
+      if (activeFilters.fromDate) {
+        matchesDate = matchesDate && new Date(c.applicationDate || c.appliedDate) >= new Date(activeFilters.fromDate);
+      }
+      if (activeFilters.toDate) {
+        // Add one day to toDate to make it inclusive/end of day
+        const toDate = new Date(activeFilters.toDate);
+        toDate.setHours(23, 59, 59, 999);
+        matchesDate = matchesDate && new Date(c.applicationDate || c.appliedDate) <= toDate;
+      }
+
+      return matchesQuery && matchesSource && matchesJob && matchesDate && matchesExperience && matchesLocation;
+    }).sort((a, b) => {
+      if (activeFilters.sort === 'oldest') {
+        return new Date(a.applicationDate || a.appliedDate).getTime() - new Date(b.applicationDate || b.appliedDate).getTime();
+      }
+      if (activeFilters.sort === 'experience_high') {
+        return (b.experienceYears || 0) - (a.experienceYears || 0);
+      }
+      if (activeFilters.sort === 'experience_low') {
+        return (a.experienceYears || 0) - (b.experienceYears || 0);
+      }
+      // Default Newest
+      return new Date(b.applicationDate || b.appliedDate).getTime() - new Date(a.applicationDate || a.appliedDate).getTime();
     });
   }, [candidates, activeFilters]);
 
@@ -271,22 +409,122 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold text-gray-900">Candidate Tracker</h1>
-          <p className="text-sm text-gray-600">Advanced global search capabilities and candidate management.</p>
+
+
+      {/* Unified Filter Bar */}
+      <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col lg:flex-row items-start lg:items-center gap-3">
+        {/* Search - Flex Grow */}
+        <div className="relative flex-1 min-w-[240px] w-full lg:w-auto">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search candidates by name, email, or skills..."
+            className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+            onChange={(e) => setActiveFilters((prev: any) => ({ ...prev, query: e.target.value }))}
+            value={activeFilters.query || ''}
+          />
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={onAddCandidate}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all"
-          >
-            Add Candidate
-          </button>
+
+        {/* Filters Group - Horizontal Scroll on mobile, Flex wrap on desktop */}
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+
+          {/* Job Filter */}
+          <div className="relative">
+            <Briefcase className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5 pointer-events-none" />
+            <select
+              className="pl-8 pr-8 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none cursor-pointer hover:border-gray-300 transition-colors"
+              value={activeFilters.jobId || 'all'}
+              onChange={(e) => setActiveFilters((prev: any) => ({ ...prev, jobId: e.target.value }))}
+            >
+              <option value="all">All Jobs</option>
+              {availableJobs.map((job) => (
+                <option key={job.job_id} value={job.job_id}>
+                  {job.job_title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Experience Filter */}
+          <div className="relative">
+            <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5 pointer-events-none" />
+            <select
+              className="pl-8 pr-8 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none cursor-pointer hover:border-gray-300 transition-colors"
+              value={activeFilters.experience || ''}
+              onChange={(e) => setActiveFilters((prev: any) => ({ ...prev, experience: e.target.value }))}
+            >
+              <option value="">Experience</option>
+              <option value="0-2">0-2 Years</option>
+              <option value="3-5">3-5 Years</option>
+              <option value="5-8">5-8 Years</option>
+              <option value="8+">8+ Years</option>
+            </select>
+          </div>
+
+          {/* Source Filter */}
+          <div className="relative">
+            <User className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5 pointer-events-none" />
+            <select
+              className="pl-8 pr-8 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none cursor-pointer hover:border-gray-300 transition-colors"
+              value={activeFilters.source || ''}
+              onChange={(e) => setActiveFilters((prev: any) => ({ ...prev, source: e.target.value }))}
+            >
+              <option value="">Source</option>
+              <option value="LinkedIn">LinkedIn</option>
+              <option value="Naukri">Naukri</option>
+              <option value="Indeed">Indeed</option>
+              <option value="Agency">Agency</option>
+              <option value="Referral">Referral</option>
+              <option value="Career Page">Career Page</option>
+              <option value="Database">Database</option>
+            </select>
+          </div>
+
+          {/* Location Filter - Input style */}
+          <div className="relative">
+            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+            </div>
+            <input
+              type="text"
+              placeholder="Location"
+              className="pl-8 pr-3 py-2 w-[140px] bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none hover:border-gray-300 transition-colors"
+              value={activeFilters.location || ''}
+              onChange={(e) => setActiveFilters((prev: any) => ({ ...prev, location: e.target.value }))}
+            />
+          </div>
+
+          <div className="h-6 w-px bg-gray-200 mx-1 hidden lg:block" />
+
+          {/* Sort Filter */}
+          <div className="relative">
+            <select
+              className="pl-3 pr-8 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none cursor-pointer hover:border-gray-300 transition-colors"
+              onChange={(e) => setActiveFilters((prev: any) => ({ ...prev, sort: e.target.value }))}
+              value={activeFilters.sort || 'newest'}
+            >
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+              <option value="experience_high">Exp: High-Low</option>
+              <option value="experience_low">Exp: Low-High</option>
+            </select>
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+            </div>
+          </div>
+
+          {/* Clear Button */}
+          {(activeFilters.query || activeFilters.jobId || activeFilters.experience || activeFilters.source || activeFilters.location) && (
+            <button
+              onClick={() => setActiveFilters({})}
+              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              title="Clear Filters"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
-
-      <GlobalFilters onFilterChange={setActiveFilters} activeFilters={activeFilters} />
 
       {/* Results Summary and Pagination Controls */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white rounded-xl border border-gray-200 px-6 py-4">
@@ -296,7 +534,7 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
             <span className="font-medium text-gray-900">{paginationInfo.endItem}</span> of{' '}
             <span className="font-medium text-gray-900">{paginationInfo.totalItems}</span> candidates
           </div>
-          
+
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600">Show:</label>
             <select
@@ -343,11 +581,10 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
                   <button
                     key={pageNum}
                     onClick={() => handlePageChange(pageNum)}
-                    className={`px-3 py-1 text-sm rounded transition-colors ${
-                      currentPage === pageNum
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                    className={`px-3 py-1 text-sm rounded transition-colors ${currentPage === pageNum
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                      }`}
                   >
                     {pageNum}
                   </button>
@@ -367,35 +604,99 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
         )}
       </div>
 
+      {/* Claim toast */}
+      {claimToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-sm font-medium px-5 py-2.5 rounded-lg shadow-lg">
+          {claimToast}
+        </div>
+      )}
+
+      {/* Floating Claim Action Bar */}
+      {isRecruiter && activeJobId && selectedIds.size > 0 && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-white border border-slate-200 rounded-2xl shadow-2xl px-5 py-3">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
+              <span className="text-white text-xs font-bold">{selectedIds.size}</span>
+            </div>
+            <span className="text-sm font-medium text-slate-700">
+              {selectedIds.size} candidate{selectedIds.size > 1 ? 's' : ''} selected
+            </span>
+          </div>
+          <div className="w-px h-5 bg-slate-200" />
+          <button
+            onClick={handleClaim}
+            disabled={claimBusy}
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-60"
+          >
+            {claimBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
+            Claim Batch
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Recruiter Assignment Info Banner */}
+      {(isRecruiter || isAdminLike) && activeJobId && assignments.length > 0 && (
+        <div className="bg-blue-50/60 border border-blue-100 rounded-xl px-4 py-3 flex items-center gap-3">
+          <Users className="w-4 h-4 text-blue-500 flex-shrink-0" />
+          <p className="text-[13px] text-blue-700">
+            <span className="font-semibold">{assignments.length}</span> candidates claimed by recruiters for this job.
+            {isRecruiter && <span className="ml-1 text-blue-600">Select unclaimed candidates to add them to your batch.</span>}
+          </p>
+        </div>
+      )}
+
       {/* Clean Enterprise List View */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/50 border-b border-gray-100">
-                <th className="px-8 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Candidate</th>
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Stage</th>
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Experience</th>
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Compensation</th>
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Availability</th>
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                {isRecruiter && activeJobId && (
+                  <th className="pl-4 pr-2 py-3 bg-gray-50 w-10">
+                    <button
+                      onClick={() => toggleSelectAll(paginatedCandidates.map(c => c.id))}
+                      className="text-gray-400 hover:text-blue-600 transition-colors"
+                      title="Select all on this page"
+                    >
+                      {paginatedCandidates.length > 0 && paginatedCandidates.every(c => selectedIds.has(c.id))
+                        ? <CheckSquare className="w-4 h-4 text-blue-600" />
+                        : <Square className="w-4 h-4" />}
+                    </button>
+                  </th>
+                )}
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">Name</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">Contact</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">Experience</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">CTC</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">Notice Period</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">Hiring Status</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">Source</th>
+                {(isRecruiter || isAdminLike) && activeJobId && (
+                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">Assigned To</th>
+                )}
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {paginatedCandidates.map((c, index) => {
                 // Determine company to display based on Working? status
                 let displayCompany = 'Not specified';
-                
+
                 if (c.currentlyEmployed?.toLowerCase() === 'yes') {
                   displayCompany = c.currentCompany || c.lastWorkingDay || 'Not specified';
                 } else {
                   displayCompany = c.lastWorkingDay || c.currentCompany || 'Not specified';
                 }
-                
+
                 // Calculate aging in days
                 const agingDays = Math.floor((new Date().getTime() - new Date(c.applicationDate || c.appliedDate).getTime()) / (1000 * 60 * 60 * 24));
-                
+
                 // Determine audit status color
                 const getAuditStatusColor = () => {
                   if (c.isRestricted) return 'bg-red-500';
@@ -404,7 +705,7 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
                   if (agingDays > 30) return 'bg-orange-500';
                   return 'bg-blue-500';
                 };
-                
+
                 const getAuditStatusText = () => {
                   if (c.isRestricted) return 'Restricted';
                   if (c.currentStage === InterviewStage.SELECTED) return 'Selected';
@@ -412,130 +713,126 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
                   if (agingDays > 30) return 'Aging - Needs attention';
                   return 'Active in pipeline';
                 };
-                
+
+                // Assignment info
+                const assignment = getAssignment(c.id);
+                const isClaimedByMe = assignment && currentUserId && assignment.recruiter_id === currentUserId;
+                const isClaimedByOther = assignment && (!currentUserId || assignment.recruiter_id !== currentUserId);
+                const isChecked = selectedIds.has(c.id);
+                const isBlocked = isRecruiter && !!isClaimedByOther;
+
                 return (
                   <tr
                     key={c.id}
-                    className={`group hover:bg-gray-50/50 transition-all duration-200 cursor-pointer ${
-                      index !== paginatedCandidates.length - 1 ? 'border-b border-gray-50' : ''
-                    }`}
-                    onClick={() => onViewProfile(c.id)}
+                    className={`group transition-all duration-200 cursor-pointer ${isBlocked ? 'opacity-60' : 'hover:bg-gray-50/50'
+                      } ${index !== paginatedCandidates.length - 1 ? 'border-b border-gray-50' : ''} ${isChecked ? 'bg-blue-50/40' : ''
+                      }`}
+                    onClick={() => !isRecruiter && onViewProfile(c.id)}
                   >
-                    {/* Candidate Column - Compact with small avatar */}
-                    <td className="px-8 py-6">
+                    {/* CHECKBOX (Recruiter only) */}
+                    {isRecruiter && activeJobId && (
+                      <td className="pl-4 pr-2 py-4" onClick={(e) => { e.stopPropagation(); toggleSelect(c.id, isBlocked); }}>
+                        {isClaimedByOther ? (
+                          <span title={`Claimed by ${assignment?.recruiter_name}`}><UserCheck className="w-4 h-4 text-slate-300" /></span>
+                        ) : (
+                          <button className={`transition-colors ${isChecked ? 'text-blue-600' : 'text-gray-300 hover:text-blue-400'}`}>
+                            {isChecked ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                          </button>
+                        )}
+                      </td>
+                    )}
+                    {/* NAME Column */}
+                    <td className="px-6 py-4" onClick={() => onViewProfile(c.id)}>
                       <div className="flex items-center gap-3">
-                        <img 
-                          src={`https://picsum.photos/seed/${c.id}/32/32`} 
-                          className="w-8 h-8 rounded-full ring-2 ring-gray-100" 
+                        <img
+                          src={`https://picsum.photos/seed/${c.id}/32/32`}
+                          className="w-10 h-10 rounded-full ring-2 ring-gray-100 object-cover"
                           alt={c.name}
                         />
-                        <div className="flex flex-col gap-1 min-w-0">
-                          <span className="text-sm font-semibold text-gray-900 truncate">{c.name}</span>
-                          <span className="text-xs text-gray-500 truncate">{c.position || c.jobTitle}</span>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-gray-400">{c.email}</span>
-                          </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-semibold text-gray-900 truncate" title={c.name}>{c.name}</span>
+                          <span className="text-xs text-gray-500 truncate" title={c.jobTitle}>{c.jobTitle}</span>
                         </div>
                       </div>
                     </td>
 
-                    {/* Stage Column - PRIMARY FOCAL POINT */}
-                    <td className="px-6 py-6">
-                      <div className="flex flex-col gap-2">
-                        <span className={`inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-semibold ${
-                          STATUS_COLORS[c.currentStage] || 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {c.currentStage.replace(/_/g, ' ')}
-                        </span>
-                        {/* Aging Badge - Soft and subtle */}
-                        <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-medium ${
-                          agingDays > 30 ? 'bg-orange-50 text-orange-600' :
-                          agingDays > 14 ? 'bg-yellow-50 text-yellow-600' :
-                          'bg-gray-50 text-gray-500'
-                        }`}>
-                          {agingDays}d ago
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Experience Column */}
-                    <td className="px-6 py-6">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900">{c.experienceYears} yrs</span>
-                          {c.currentlyEmployed && (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                              c.currentlyEmployed.toLowerCase() === 'yes' 
-                                ? 'bg-emerald-50 text-emerald-700' 
-                                : 'bg-gray-50 text-gray-600'
-                            }`}>
-                              {c.currentlyEmployed.toLowerCase() === 'yes' ? 'Employed' : 'Available'}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-gray-500 truncate max-w-[160px]" title={displayCompany}>
-                          {displayCompany}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Compensation Column */}
-                    <td className="px-6 py-6">
-                      <div className="flex flex-col gap-1">
-                        <div className="text-xs text-gray-500">
-                          Current: <span className="font-semibold text-gray-900">{c.currentSalary || `₹${c.ctc.current.toLocaleString('en-IN')}`}</span>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Expected: <span className="font-semibold text-gray-900">{c.expectedSalary || `₹${c.ctc.expected.toLocaleString('en-IN')}`}</span>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Availability Column */}
-                    <td className="px-6 py-6">
-                      <div className="flex flex-col gap-1.5">
-                        <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-medium ${
-                          c.noticePeriod?.toLowerCase() === 'immediate' 
-                            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' 
-                            : c.noticePeriod?.includes('60') || c.noticePeriod?.includes('90')
-                            ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'
-                            : 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
-                        }`}>
-                          {c.noticePeriod}
-                        </span>
-                        {c.joiningDate && c.noticePeriod?.toLowerCase() !== 'immediate' && (
-                          <span className="text-xs text-gray-500">
-                            Can join: <span className="font-medium text-gray-700">{c.joiningDate}</span>
-                          </span>
+                    {/* CONTACT Column */}
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm text-gray-900 truncate max-w-[200px]" title={c.email}>{c.email}</span>
+                        {c.phone && (
+                          <span className="text-xs text-gray-500">{c.phone}</span>
                         )}
                       </div>
                     </td>
 
-                    {/* Status Column - Audit indicator with tooltip */}
-                    <td className="px-6 py-6">
-                      <div className="flex items-center gap-2">
-                        <div className="relative group/status">
-                          <div className={`w-2.5 h-2.5 rounded-full ${getAuditStatusColor()} ring-2 ring-white shadow-sm`}></div>
-                          {/* Tooltip */}
-                          <div className="absolute left-0 bottom-full mb-2 hidden group-hover/status:block z-10">
-                            <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 whitespace-nowrap shadow-lg">
-                              {getAuditStatusText()}
-                              <div className="absolute top-full left-4 -mt-1 border-4 border-transparent border-t-gray-900"></div>
-                            </div>
-                          </div>
+                    {/* EXPERIENCE Column */}
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <div className="text-sm text-gray-900">{c.experienceYears} Years</div>
+                        <div className="text-xs text-gray-500 truncate max-w-[150px]" title={displayCompany}>
+                          {displayCompany}
                         </div>
-                        <span className="text-xs text-gray-500">{c.source}</span>
                       </div>
                     </td>
 
-                    {/* Actions Column - Icon only, minimal */}
+                    {/* CTC (Current, Expected) Column */}
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="text-sm text-gray-900">
+                          Current: {c.currentSalary || (c.ctc?.current ? `INR ${c.ctc.current.toLocaleString()}` : 'INR 0')}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Expected: {c.expectedSalary || (c.ctc?.expected ? `INR ${c.ctc.expected.toLocaleString()}` : 'INR 0')}
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* NOTICE PERIOD Column */}
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${c.noticePeriod?.toLowerCase() === 'immediate' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                        'bg-gray-50 text-gray-700 border border-gray-100'
+                        }`}>
+                        {c.noticePeriod || 'Not specified'}
+                      </span>
+                    </td>
+
+                    {/* HIRING STATUS Column */}
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLORS[c.currentStage] || 'bg-gray-100 text-gray-800 border-gray-200'}`}>
+                        {c.currentStage.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+
+                    {/* SOURCE Column */}
+                    <td className="px-6 py-4" onClick={() => onViewProfile(c.id)}>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                        {c.source || 'Database'}
+                      </span>
+                    </td>
+
+                    {/* ASSIGNED TO Column (when job is selected) */}
+                    {(isRecruiter || isAdminLike) && activeJobId && (
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                        {assignment ? (
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${isClaimedByMe
+                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                            : 'bg-slate-50 text-slate-600 border-slate-200'
+                            }`}>
+                            <UserCheck className="w-3 h-3" />
+                            {isClaimedByMe ? 'You' : assignment.recruiter_name}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">Unclaimed</span>
+                        )}
+                      </td>
+                    )}
+
+                    {/* ACTIONS Column */}
                     <td className="px-6 py-6">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onViewProfile(c.id);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); onViewProfile(c.id); }}
                           className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                           title="View Profile"
                         >
@@ -554,10 +851,7 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
                           </a>
                         )}
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            reviewResume(c.id);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); reviewResume(c.id); }}
                           className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
                           title="AI Resume Review"
                         >

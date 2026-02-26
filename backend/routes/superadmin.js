@@ -23,7 +23,7 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['application/pdf', 'text/plain'];
@@ -40,7 +40,7 @@ const upload = multer({
 router.put('/profile', async (req, res) => {
   try {
     const { id, name, email, currentPassword, newPassword, profilePicture } = req.body;
-    
+
     if (!id) {
       return res.status(400).json({ error: 'SuperAdmin ID is required' });
     }
@@ -50,7 +50,7 @@ router.put('/profile', async (req, res) => {
     if (adminResult.rows.length === 0) {
       return res.status(404).json({ error: 'SuperAdmin not found' });
     }
-    
+
     const admin = adminResult.rows[0];
 
     // Check if email is being changed and if it already exists
@@ -66,12 +66,12 @@ router.put('/profile', async (req, res) => {
       if (!currentPassword) {
         return res.status(400).json({ error: 'Current password is required to set new password' });
       }
-      
+
       const validPassword = await bcrypt.compare(currentPassword, admin.password_hash);
       if (!validPassword) {
         return res.status(400).json({ error: 'Current password is incorrect' });
       }
-      
+
       if (newPassword.length < 8) {
         return res.status(400).json({ error: 'New password must be at least 8 characters' });
       }
@@ -113,14 +113,14 @@ router.put('/profile', async (req, res) => {
 
     updateValues.push(id);
     const updateQuery = `UPDATE superadmins SET ${updateFields.join(', ')} WHERE id = $${paramCount} RETURNING id, name, email, profile_picture`;
-    
+
     const result = await pool.query(
       'UPDATE superadmins SET ${updateFields.join(', ')} WHERE id = $${paramCount} RETURNING id, name, email, profile_picture',
       updateValues
     );
-    
+
     await logAudit(id, result.rows[0].name, 'PROFILE_UPDATED', `Profile updated for: ${result.rows[0].name}`, 'superadmin', id, req);
-    
+
     res.json({
       success: true,
       message: 'Profile updated successfully',
@@ -136,27 +136,27 @@ router.put('/profile', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     const result = await pool.query('SELECT * FROM superadmins WHERE LOWER(email) = LOWER($1)', [email]);
     if (result.rows.length === 0) {
       await logAudit(null, email, 'LOGIN_FAILED', `Failed login attempt for ${email}`, null, null, req);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    
+
     const admin = result.rows[0];
     const validPassword = await bcrypt.compare(password, admin.password_hash);
-    
+
     if (!validPassword) {
       await logAudit(admin.id, admin.name, 'LOGIN_FAILED', `Failed login attempt for ${email}`, null, null, req);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    
+
     const token = jwt.sign(
       { id: admin.id, email: admin.email, role: 'superadmin' },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
-    
+
     await logAudit(admin.id, admin.name, 'LOGIN', `SuperAdmin logged in: ${admin.email}`, 'superadmin', admin.id, req);
     res.json({ token, admin: { id: admin.id, email: admin.email, name: admin.name } });
   } catch (error) {
@@ -168,15 +168,15 @@ router.post('/login', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    
+
     let dateFilter = '';
     let params = [];
-    
+
     if (startDate && endDate) {
       dateFilter = 'WHERE created_at >= $1 AND created_at <= $2';
       params = [startDate, endDate];
     }
-    
+
     const stats = await pool.query(`
       SELECT 
         (SELECT COUNT(*) FROM jobs_enhanced WHERE status = 'pending' ${dateFilter ? 'AND created_at >= $1 AND created_at <= $2' : ''}) as pending_approvals,
@@ -189,12 +189,12 @@ router.get('/stats', async (req, res) => {
         (SELECT COUNT(*) FROM candidates WHERE created_at >= NOW() - INTERVAL '7 days') as candidates_last_7_days,
         (SELECT COUNT(*) FROM candidates WHERE created_at >= NOW() - INTERVAL '14 days' AND created_at < NOW() - INTERVAL '7 days') as candidates_previous_7_days
     `, params);
-    
+
     const result = stats.rows[0];
     result.total_pending_approvals = parseInt(result.pending_approvals);
     result.jobs_change = parseInt(result.jobs_last_7_days) - parseInt(result.jobs_previous_7_days);
     result.candidates_change = parseInt(result.candidates_last_7_days) - parseInt(result.candidates_previous_7_days);
-    
+
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -205,15 +205,15 @@ router.get('/stats', async (req, res) => {
 router.get('/pending-approvals', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    
+
     let dateFilter = '';
     let params = ['pending'];
-    
+
     if (startDate && endDate) {
       dateFilter = 'AND j.created_at >= $2 AND j.created_at <= $3';
       params.push(startDate, endDate);
     }
-    
+
     // Get pending job approvals
     const jobsResult = await pool.query(
       `SELECT j.*, u.name as created_by_name, 'job' as approval_type
@@ -223,7 +223,7 @@ router.get('/pending-approvals', async (req, res) => {
        ORDER BY j.created_at DESC`,
       params
     );
-    
+
     // Reset params for candidate restrictions
     params = ['pending'];
     if (startDate && endDate) {
@@ -232,7 +232,7 @@ router.get('/pending-approvals', async (req, res) => {
     } else {
       dateFilter = '';
     }
-    
+
     // Get pending candidate restriction approvals
     const candidateResult = await pool.query(
       `SELECT *, 'candidate_restriction' as approval_type
@@ -241,12 +241,12 @@ router.get('/pending-approvals', async (req, res) => {
        ORDER BY created_at DESC`,
       params
     );
-    
+
     // Combine and sort by created_at
     const combined = [...jobsResult.rows, ...candidateResult.rows]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, 20); // Limit to 20 most recent
-    
+
     res.json(combined);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -257,15 +257,15 @@ router.get('/pending-approvals', async (req, res) => {
 router.get('/approved-jobs', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    
+
     let dateFilter = '';
     let params = [];
-    
+
     if (startDate && endDate) {
       dateFilter = 'AND j.created_at >= $1 AND j.created_at <= $2';
       params.push(startDate, endDate);
     }
-    
+
     // Get all active jobs as approved
     const jobsResult = await pool.query(
       `SELECT j.*, u.name as created_by_name, 'job' as approval_type,
@@ -276,7 +276,7 @@ router.get('/approved-jobs', async (req, res) => {
        ORDER BY COALESCE(j.approved_at, j.created_at) DESC`,
       params
     );
-    
+
     // Get approved candidate restrictions
     const candidateResult = await pool.query(
       `SELECT cra.*, 
@@ -291,10 +291,10 @@ router.get('/approved-jobs', async (req, res) => {
        WHERE cra.status IN ('approved', 'unrestricted')
        ORDER BY COALESCE(cra.approved_at, cra.created_at) DESC`
     );
-    
+
     const combined = [...jobsResult.rows, ...candidateResult.rows]
       .sort((a, b) => new Date(b.approved_at || b.created_at) - new Date(a.approved_at || a.created_at));
-    
+
     res.json(combined);
   } catch (error) {
     console.error('Error fetching approved jobs:', error);
@@ -306,15 +306,15 @@ router.get('/approved-jobs', async (req, res) => {
 router.get('/rejected-jobs', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    
+
     let dateFilter = '';
     let params = ['rejected'];
-    
+
     if (startDate && endDate) {
       dateFilter = 'AND j.approved_at >= $2 AND j.approved_at <= $3';
       params.push(startDate, endDate);
     }
-    
+
     // Get rejected jobs
     const jobsResult = await pool.query(
       `SELECT j.*, u.name as created_by_name, j.rejection_reason, 'job' as approval_type
@@ -324,7 +324,7 @@ router.get('/rejected-jobs', async (req, res) => {
        ORDER BY j.approved_at DESC`,
       params
     );
-    
+
     // Reset params for candidate restrictions
     params = ['rejected'];
     if (startDate && endDate) {
@@ -333,7 +333,7 @@ router.get('/rejected-jobs', async (req, res) => {
     } else {
       dateFilter = '';
     }
-    
+
     // Get rejected candidate restrictions
     const candidateResult = await pool.query(
       `SELECT *, 'candidate_restriction' as approval_type
@@ -342,11 +342,11 @@ router.get('/rejected-jobs', async (req, res) => {
        ORDER BY approved_at DESC`,
       params
     );
-    
+
     // Combine and sort by approved_at (rejection date)
     const combined = [...jobsResult.rows, ...candidateResult.rows]
       .sort((a, b) => new Date(b.approved_at || b.created_at) - new Date(a.approved_at || a.created_at));
-    
+
     res.json(combined);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -370,12 +370,12 @@ router.post('/reject-job/:id', async (req, res) => {
   try {
     const { reason } = req.body;
     const jobResult = await pool.query('SELECT title FROM jobs_enhanced WHERE id = $1', [req.params.id]);
-    
+
     await pool.query(
-      'UPDATE jobs_enhanced SET status = $1, approved_at = NOW(), rejection_reason = $2 WHERE id = $3', 
+      'UPDATE jobs_enhanced SET status = $1, approved_at = NOW(), rejection_reason = $2 WHERE id = $3',
       ['rejected', reason || null, req.params.id]
     );
-    
+
     await logAudit(null, 'SuperAdmin', 'JOB_REJECTED', `Rejected job: ${jobResult.rows[0]?.title}${reason ? ` - Reason: ${reason}` : ''}`, 'job', req.params.id, req);
     res.json({ message: 'Job rejected' });
   } catch (error) {
@@ -386,19 +386,19 @@ router.post('/reject-job/:id', async (req, res) => {
 // Create Candidate Restriction Request
 router.post('/candidate-restrictions', async (req, res) => {
   try {
-    const { 
-      candidate_id, 
-      candidate_name, 
-      requested_by_user_id, 
-      requested_by_name, 
-      requested_by_role, 
-      restriction_reason 
+    const {
+      candidate_id,
+      candidate_name,
+      requested_by_user_id,
+      requested_by_name,
+      requested_by_role,
+      restriction_reason
     } = req.body;
-    
+
     if (!candidate_id || !candidate_name || !requested_by_user_id || !restriction_reason) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    
+
     // If SuperAdmin is restricting, auto-approve and create approval record
     if (requested_by_role === 'SuperAdmin') {
       // Create approval record with same user as requester and approver
@@ -410,25 +410,25 @@ router.post('/candidate-restrictions', async (req, res) => {
         ) VALUES ($1, $2, $3, $4, $5, $6, 'approved', $3, $4, $5, NOW()) RETURNING id`,
         [candidate_id, candidate_name, requested_by_user_id, requested_by_name, requested_by_role, restriction_reason]
       );
-      
+
       // Directly restrict the candidate
       await pool.query(
         `INSERT INTO candidate_restrictions (candidate_id, user_id, reason, is_active, restricted_at)
          VALUES ($1, $2, $3, true, NOW())`,
         [candidate_id, requested_by_user_id, restriction_reason]
       );
-      
-      await logAudit(requested_by_user_id, requested_by_name, 'CANDIDATE_RESTRICTED', 
+
+      await logAudit(requested_by_user_id, requested_by_name, 'CANDIDATE_RESTRICTED',
         `Restricted candidate: ${candidate_name} - Reason: ${restriction_reason}`, 'candidate', candidate_id, req);
-      
-      return res.json({ 
-        success: true, 
+
+      return res.json({
+        success: true,
         message: 'Candidate restricted successfully',
         auto_approved: true,
         approval_id: approvalResult.rows[0].id
       });
     }
-    
+
     // For Admin users, create approval request
     const result = await pool.query(
       `INSERT INTO candidate_restriction_approvals (
@@ -437,14 +437,14 @@ router.post('/candidate-restrictions', async (req, res) => {
       ) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
       [candidate_id, candidate_name, requested_by_user_id, requested_by_name, requested_by_role, restriction_reason]
     );
-    
-    await logAudit(requested_by_user_id, requested_by_name, 'CANDIDATE_RESTRICTION_REQUESTED', 
+
+    await logAudit(requested_by_user_id, requested_by_name, 'CANDIDATE_RESTRICTION_REQUESTED',
       `Requested restriction for candidate: ${candidate_name}`, 'candidate', candidate_id, req);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Candidate restriction request submitted for approval',
-      approval_id: result.rows[0].id 
+      approval_id: result.rows[0].id
     });
   } catch (error) {
     console.error('Error creating candidate restriction request:', error);
@@ -470,23 +470,23 @@ router.get('/pending-candidate-restrictions', async (req, res) => {
 router.post('/approve-candidate-restriction/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Get the approval request
     const approvalResult = await pool.query(
       'SELECT * FROM candidate_restriction_approvals WHERE id = $1',
       [id]
     );
-    
+
     if (approvalResult.rows.length === 0) {
       return res.status(404).json({ error: 'Approval request not found' });
     }
-    
+
     const approval = approvalResult.rows[0];
-    
+
     // Get actual SuperAdmin info from session/token
     const superAdminResult = await pool.query('SELECT id, name FROM superadmins LIMIT 1');
     const superAdmin = superAdminResult.rows[0] || { id: 1, name: 'D Sodhi' };
-    
+
     // Update approval status with actual SuperAdmin info
     await pool.query(
       `UPDATE candidate_restriction_approvals 
@@ -494,17 +494,17 @@ router.post('/approve-candidate-restriction/:id', async (req, res) => {
        WHERE id = $4`,
       [superAdmin.id, superAdmin.name, 'SuperAdmin', id]
     );
-    
+
     // Actually restrict the candidate
     await pool.query(
       `INSERT INTO candidate_restrictions (candidate_id, user_id, reason, is_active, restricted_at)
        VALUES ($1, $2, $3, true, NOW())`,
       [approval.candidate_id, approval.requested_by_user_id, approval.restriction_reason]
     );
-    
-    await logAudit(superAdmin.id, superAdmin.name, 'CANDIDATE_RESTRICTION_APPROVED', 
+
+    await logAudit(superAdmin.id, superAdmin.name, 'CANDIDATE_RESTRICTION_APPROVED',
       `Approved restriction for candidate: ${approval.candidate_name}`, 'candidate', approval.candidate_id, req);
-    
+
     res.json({ message: 'Candidate restriction approved' });
   } catch (error) {
     console.error('Error approving candidate restriction:', error);
@@ -517,23 +517,23 @@ router.post('/reject-candidate-restriction/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
-    
+
     // Get the approval request
     const approvalResult = await pool.query(
       'SELECT * FROM candidate_restriction_approvals WHERE id = $1',
       [id]
     );
-    
+
     if (approvalResult.rows.length === 0) {
       return res.status(404).json({ error: 'Approval request not found' });
     }
-    
+
     const approval = approvalResult.rows[0];
-    
+
     // Get actual SuperAdmin info from session/token
     const superAdminResult = await pool.query('SELECT id, name FROM superadmins LIMIT 1');
     const superAdmin = superAdminResult.rows[0] || { id: 1, name: 'D Sodhi' };
-    
+
     // Update approval status with actual SuperAdmin info
     await pool.query(
       `UPDATE candidate_restriction_approvals 
@@ -542,10 +542,10 @@ router.post('/reject-candidate-restriction/:id', async (req, res) => {
        WHERE id = $5`,
       [superAdmin.id, superAdmin.name, 'SuperAdmin', reason || null, id]
     );
-    
-    await logAudit(superAdmin.id, superAdmin.name, 'CANDIDATE_RESTRICTION_REJECTED', 
+
+    await logAudit(superAdmin.id, superAdmin.name, 'CANDIDATE_RESTRICTION_REJECTED',
       `Rejected restriction for candidate: ${approval.candidate_name}${reason ? ` - Reason: ${reason}` : ''}`, 'candidate', approval.candidate_id, req);
-    
+
     res.json({ message: 'Candidate restriction rejected' });
   } catch (error) {
     console.error('Error rejecting candidate restriction:', error);
@@ -558,26 +558,26 @@ router.post('/unrestrict-candidate/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { reason, unrestricted_by_user_id, unrestricted_by_name, unrestricted_by_role } = req.body;
-    
+
     // Get the original restriction approval
     const approvalResult = await pool.query(
       'SELECT * FROM candidate_restriction_approvals WHERE candidate_id = $1 AND status = $2 ORDER BY approved_at DESC LIMIT 1',
       [id, 'approved']
     );
-    
+
     if (approvalResult.rows.length === 0) {
       return res.status(404).json({ error: 'No approved restriction found for this candidate' });
     }
-    
+
     const originalApproval = approvalResult.rows[0];
-    
+
     // Get actual user info
-    const userResult = unrestricted_by_role === 'SuperAdmin' 
+    const userResult = unrestricted_by_role === 'SuperAdmin'
       ? await pool.query('SELECT id, name FROM superadmins WHERE id = $1', [unrestricted_by_user_id])
       : await pool.query('SELECT id, name FROM users WHERE id = $1', [unrestricted_by_user_id]);
-    
+
     const user = userResult.rows[0] || { id: unrestricted_by_user_id, name: unrestricted_by_name };
-    
+
     // Update the approval record with unrestriction info
     await pool.query(
       `UPDATE candidate_restriction_approvals 
@@ -586,16 +586,16 @@ router.post('/unrestrict-candidate/:id', async (req, res) => {
        WHERE id = $5`,
       [user.id, user.name, unrestricted_by_role, reason, originalApproval.id]
     );
-    
+
     // Deactivate the restriction
     await pool.query(
       `UPDATE candidate_restrictions SET is_active = false WHERE candidate_id = $1 AND is_active = true`,
       [id]
     );
-    
-    await logAudit(user.id, user.name, 'CANDIDATE_UNRESTRICTED', 
+
+    await logAudit(user.id, user.name, 'CANDIDATE_UNRESTRICTED',
       `Unrestricted candidate: ${originalApproval.candidate_name} - Reason: ${reason}`, 'candidate', id, req);
-    
+
     res.json({ message: 'Candidate unrestricted successfully' });
   } catch (error) {
     console.error('Error unrestricting candidate:', error);
@@ -609,14 +609,14 @@ router.get('/users', async (req, res) => {
     const { search } = req.query;
     let query = 'SELECT id, name, email, role, created_at FROM users';
     let params = [];
-    
+
     if (search) {
       query += ' WHERE name ILIKE $1 OR email ILIKE $1';
       params = [`%${search}%`];
     }
-    
+
     query += ' ORDER BY created_at DESC LIMIT 50';
-    
+
     const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (error) {
@@ -629,12 +629,12 @@ router.put('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, email, role } = req.body;
-    
+
     await pool.query(
       'UPDATE users SET name = $1, email = $2, role = $3 WHERE id = $4',
       [name, email, role, id]
     );
-    
+
     await logAudit(null, 'SuperAdmin', 'USER_UPDATED', `Updated user: ${name} (${email})`, 'user', id, req);
     res.json({ message: 'User updated successfully' });
   } catch (error) {
@@ -665,19 +665,19 @@ router.post('/upload-policy', upload.single('policy'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    
+
     const { type } = req.body;
     const filePath = req.file.path;
     const fileName = req.file.originalname;
-    
+
     await pool.query(
       'INSERT INTO ai_policies (type, file_name, file_path, uploaded_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (type) DO UPDATE SET file_name = $2, file_path = $3, uploaded_at = NOW()',
       [type, fileName, filePath]
     );
-    
+
     await logAudit(null, 'SuperAdmin', 'POLICY_UPLOADED', `Uploaded ${type} policy: ${fileName}`, 'policy', type, req);
-    
-    res.json({ 
+
+    res.json({
       message: 'Policy uploaded successfully',
       fileName: fileName,
       uploadedAt: new Date().toISOString()
@@ -709,7 +709,7 @@ router.get('/accounts', async (req, res) => {
       GROUP BY a.account_id, a.account_name, a.status, a.locations, a.created_at
       ORDER BY a.created_at DESC
     `);
-    
+
     const accounts = result.rows.map(row => ({
       id: row.account_id,
       name: row.account_name,
@@ -719,7 +719,7 @@ router.get('/accounts', async (req, res) => {
       dateCreated: new Date(row.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-'),
       assignedUsers: row.assigned_users
     }));
-    
+
     res.json(accounts);
   } catch (error) {
     console.error('Error fetching accounts:', error);
@@ -733,16 +733,16 @@ router.put('/accounts/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, status, locations, assignedUsers } = req.body;
-    
+
     await client.query('BEGIN');
-    
+
     await client.query(
       'UPDATE accounts SET account_name = $1, status = $2, locations = $3 WHERE account_id = $4',
       [name, status, locations || null, id]
     );
-    
+
     await client.query('DELETE FROM account_users WHERE account_id = $1', [id]);
-    
+
     if (assignedUsers && assignedUsers.length > 0) {
       for (const userId of assignedUsers) {
         await client.query(
@@ -751,7 +751,7 @@ router.put('/accounts/:id', async (req, res) => {
         );
       }
     }
-    
+
     await client.query('COMMIT');
     await logAudit(null, 'SuperAdmin', 'ACCOUNT_UPDATED', `Updated account: ${name}`, 'account', id, req);
     res.json({ message: 'Account updated successfully' });
@@ -767,17 +767,17 @@ router.put('/accounts/:id', async (req, res) => {
 router.get('/users/:id/accounts', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const result = await pool.query(`
       SELECT a.account_id, a.account_name
       FROM account_users au
       JOIN accounts a ON au.account_id = a.account_id
       WHERE au.user_id = $1
     `, [id]);
-    
-    res.json({ 
+
+    res.json({
       hasAccounts: result.rows.length > 0,
-      accounts: result.rows 
+      accounts: result.rows
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -788,7 +788,7 @@ router.get('/users/:id/accounts', async (req, res) => {
 router.get('/users/:id/assigned-accounts', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const result = await pool.query(`
       SELECT 
         a.account_id,
@@ -802,8 +802,38 @@ router.get('/users/:id/assigned-accounts', async (req, res) => {
       GROUP BY a.account_id, a.account_name, a.status
       ORDER BY a.account_name
     `, [id]);
-    
+
     res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get Single Job (for SuperAdmin Dashboard)
+router.get('/jobs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(`
+      SELECT 
+        j.*,
+        a.account_name,
+        u.name as created_by_name,
+        j.job_title as title,
+        j.department as job_domain,
+        j.location_type as work_type,
+        j.employment_type as schedule
+      FROM jobs_enhanced j
+      LEFT JOIN accounts a ON j.account_id = a.account_id
+      LEFT JOIN users u ON j.created_by_user_id = u.id
+      WHERE j.id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    res.json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -814,25 +844,25 @@ router.post('/users/:id/transfer-accounts', async (req, res) => {
   try {
     const { id } = req.params;
     const { targetUserId } = req.body;
-    
+
     if (!targetUserId) {
       return res.status(400).json({ error: 'Target user ID is required' });
     }
-    
+
     const accountsResult = await pool.query(
       'SELECT a.account_name FROM account_users au JOIN accounts a ON au.account_id = a.account_id WHERE au.user_id = $1',
       [id]
     );
-    
+
     await pool.query(`
       UPDATE account_users 
       SET user_id = $1 
       WHERE user_id = $2
     `, [targetUserId, id]);
-    
+
     const accountNames = accountsResult.rows.map(r => r.account_name).join(', ');
     await logAudit(null, 'SuperAdmin', 'ACCOUNTS_TRANSFERRED', `Transferred accounts (${accountNames}) from user ${id} to user ${targetUserId}`, 'user', id, req);
-    
+
     res.json({ message: 'Accounts transferred successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -843,17 +873,17 @@ router.post('/users/:id/transfer-accounts', async (req, res) => {
 router.get('/accounts/:id/users', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const result = await pool.query(`
       SELECT u.id, u.name, u.email, u.role
       FROM account_users au
       JOIN users u ON au.user_id = u.id
       WHERE au.account_id = $1
     `, [id]);
-    
-    res.json({ 
+
+    res.json({
       hasUsers: result.rows.length > 0,
-      users: result.rows 
+      users: result.rows
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -865,17 +895,17 @@ router.post('/accounts/:id/transfer-users', async (req, res) => {
   try {
     const { id } = req.params;
     const { targetAccountId } = req.body;
-    
+
     if (!targetAccountId) {
       return res.status(400).json({ error: 'Target account ID is required' });
     }
-    
+
     await pool.query(`
       UPDATE account_users 
       SET account_id = $1 
       WHERE account_id = $2
     `, [targetAccountId, id]);
-    
+
     res.json({ message: 'Users transferred successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -886,14 +916,14 @@ router.post('/accounts/:id/transfer-users', async (req, res) => {
 router.delete('/accounts/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     await pool.query(
       'UPDATE accounts SET status = $1 WHERE account_id = $2',
       ['Inactive', id]
     );
-    
+
     await logAudit(null, 'SuperAdmin', 'ACCOUNT_DELETED', `Account set to inactive: ${id}`, 'account', id, req);
-    
+
     res.json({ message: 'Account set to inactive successfully' });
   } catch (error) {
     console.error('Error updating account status:', error);
@@ -906,7 +936,7 @@ router.delete('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const userResult = await pool.query('SELECT name, email FROM users WHERE id = $1', [id]);
-    
+
     await pool.query('DELETE FROM users WHERE id = $1', [id]);
     await logAudit(null, 'SuperAdmin', 'USER_DELETED', `Deleted user: ${userResult.rows[0]?.name} (${userResult.rows[0]?.email})`, 'user', id, req);
     res.json({ message: 'User deleted successfully' });
@@ -924,20 +954,20 @@ router.post('/accounts', async (req, res) => {
   const client = await pool.connect();
   try {
     const { name, status, locations, assignedUsers } = req.body;
-    
+
     if (!name) {
       return res.status(400).json({ error: 'Account name is required' });
     }
-    
+
     await client.query('BEGIN');
-    
+
     const result = await client.query(
       'INSERT INTO accounts (account_name, status, locations, created_at) VALUES ($1, $2, $3, NOW()) RETURNING account_id',
       [name, status || 'Active', locations || null]
     );
-    
+
     const accountId = result.rows[0].account_id;
-    
+
     if (assignedUsers && assignedUsers.length > 0) {
       for (const userId of assignedUsers) {
         await client.query(
@@ -946,7 +976,7 @@ router.post('/accounts', async (req, res) => {
         );
       }
     }
-    
+
     await client.query('COMMIT');
     await logAudit(null, 'SuperAdmin', 'ACCOUNT_CREATED', `Created account: ${name}`, 'account', accountId, req);
     res.json({ message: 'Account created successfully', accountId });
@@ -962,7 +992,7 @@ router.post('/accounts', async (req, res) => {
 router.get('/roles/:role/permissions', async (req, res) => {
   try {
     const { role } = req.params;
-    
+
     // Define role-based permissions
     const rolePermissions = {
       'SuperAdmin': [
@@ -1022,9 +1052,9 @@ router.get('/roles/:role/permissions', async (req, res) => {
         { name: 'conduct_interviews', description: 'Conduct Interviews', category: 'interview_management', has_permission: true, source: 'role' }
       ]
     };
-    
+
     const permissions = rolePermissions[role] || [];
-    
+
     res.json({
       role: role,
       permissions: permissions
@@ -1039,22 +1069,22 @@ router.get('/roles/:role/permissions', async (req, res) => {
 router.post('/create-user', async (req, res) => {
   try {
     const { name, email, role, phone, customPermissions } = req.body;
-    
+
     if (!name || !email || !role) {
       return res.status(400).json({ error: 'Name, email, and role are required' });
     }
-    
+
     // Use standard password for all admin users
     const tempPassword = 'Fluid@123';
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
-    
+
     const result = await pool.query(
       'INSERT INTO users (name, email, role, password_hash, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING id',
       [name, email, role, hashedPassword]
     );
-    
+
     const userId = result.rows[0].id;
-    
+
     // Apply custom permissions if provided
     if (customPermissions && Array.isArray(customPermissions)) {
       for (const perm of customPermissions) {
@@ -1066,9 +1096,9 @@ router.post('/create-user', async (req, res) => {
         }
       }
     }
-    
+
     await logAudit(null, 'SuperAdmin', 'USER_CREATED', `Created user: ${name} (${email}) with role ${role}`, 'user', result.rows[0].id, req);
-    res.json({ 
+    res.json({
       message: 'User created successfully',
       tempPassword: tempPassword
     });
@@ -1166,48 +1196,48 @@ router.get('/audit-logs', async (req, res) => {
   try {
     const { search, actionType, startDate, endDate, page = 1, limit = 50 } = req.query;
     const offset = (page - 1) * limit;
-    
+
     let query = 'SELECT * FROM audit_logs WHERE 1=1';
     let countQuery = 'SELECT COUNT(*) FROM audit_logs WHERE 1=1';
     let params = [];
     let paramCount = 1;
-    
+
     if (search) {
       query += ` AND (user_name ILIKE $${paramCount} OR action_description ILIKE $${paramCount})`;
       countQuery += ` AND (user_name ILIKE $${paramCount} OR action_description ILIKE $${paramCount})`;
       params.push(`%${search}%`);
       paramCount++;
     }
-    
+
     if (actionType) {
       query += ` AND action_type = $${paramCount}`;
       countQuery += ` AND action_type = $${paramCount}`;
       params.push(actionType);
       paramCount++;
     }
-    
+
     if (startDate) {
       query += ` AND created_at >= $${paramCount}`;
       countQuery += ` AND created_at >= $${paramCount}`;
       params.push(startDate);
       paramCount++;
     }
-    
+
     if (endDate) {
       query += ` AND created_at <= $${paramCount}`;
       countQuery += ` AND created_at <= $${paramCount}`;
       params.push(endDate);
       paramCount++;
     }
-    
+
     query += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
     params.push(limit, offset);
-    
+
     const [logs, count] = await Promise.all([
       pool.query(query, params),
       pool.query(countQuery, params.slice(0, -2))
     ]);
-    
+
     res.json({
       logs: logs.rows,
       total: parseInt(count.rows[0].count),
@@ -1223,31 +1253,31 @@ router.get('/audit-logs', async (req, res) => {
 router.get('/audit-logs/export', async (req, res) => {
   try {
     const { startDate, endDate, actionType } = req.query;
-    
+
     let query = 'SELECT * FROM audit_logs WHERE 1=1';
     let params = [];
     let paramCount = 1;
-    
+
     if (actionType) {
       query += ` AND action_type = $${paramCount}`;
       params.push(actionType);
       paramCount++;
     }
-    
+
     if (startDate) {
       query += ` AND created_at >= $${paramCount}`;
       params.push(startDate);
       paramCount++;
     }
-    
+
     if (endDate) {
       query += ` AND created_at <= $${paramCount}`;
       params.push(endDate);
       paramCount++;
     }
-    
+
     query += ' ORDER BY created_at DESC';
-    
+
     const result = await pool.query(query, params);
     res.json({ logs: result.rows });
   } catch (error) {
@@ -1269,14 +1299,14 @@ router.get('/audit-settings', async (req, res) => {
 router.put('/audit-settings', async (req, res) => {
   try {
     const { retention_days, auto_purge_enabled } = req.body;
-    
+
     await pool.query(
       'UPDATE audit_settings SET retention_days = $1, auto_purge_enabled = $2, updated_at = NOW()',
       [retention_days, auto_purge_enabled]
     );
-    
+
     await logAudit(null, 'SuperAdmin', 'AUDIT_SETTINGS_UPDATED', `Updated audit settings: retention=${retention_days} days, auto_purge=${auto_purge_enabled}`, 'settings', null, req);
-    
+
     res.json({ message: 'Settings updated successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1288,18 +1318,149 @@ router.delete('/audit-logs/purge', async (req, res) => {
   try {
     const { days } = req.query;
     const retentionDays = parseInt(days) || 90;
-    
+
     const result = await pool.query(
       `DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '${retentionDays} days' RETURNING id`
     );
-    
-    res.json({ 
+
+    res.json({
       message: 'Logs purged successfully',
-      deleted: result.rowCount 
+      deleted: result.rowCount
     });
   } catch (error) {
     console.error('Error purging logs:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Get job edit requests
+router.get('/edit-requests', async (req, res) => {
+  try {
+    const { status } = req.query;
+    let queryArgs = [];
+    let statusFilter = '';
+
+    if (status) {
+      statusFilter = 'WHERE er.status = $1';
+      queryArgs.push(status);
+    } else {
+      statusFilter = "WHERE er.status = 'pending'"; // Default to pending
+    }
+
+    const result = await pool.query(`
+      SELECT er.id, er.job_id, er.requested_by, er.changes_json, er.status, er.created_at, er.resolved_at,
+             j.title as job_title, j.account_id,
+             u.name as requested_by_name, u.email as requested_by_email,
+             row_to_json(j) as original_job
+      FROM job_edit_requests er
+      JOIN jobs_enhanced j ON er.job_id = j.id
+      JOIN users u ON er.requested_by = u.id
+      ${statusFilter}
+      ORDER BY er.created_at DESC
+    `, queryArgs);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching edit requests:', error);
+    res.status(500).json({ error: 'Failed to fetch edit requests' });
+  }
+});
+
+// Approve job edit request
+router.put('/edit-requests/:id/approve', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { id } = req.params;
+
+    // Get the request
+    const reqResult = await client.query('SELECT * FROM job_edit_requests WHERE id = $1 AND status = $2', [id, 'pending']);
+    if (reqResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Edit request not found or not pending' });
+    }
+
+    const editReq = reqResult.rows[0];
+    const changes = typeof editReq.changes_json === 'string' ? JSON.parse(editReq.changes_json) : editReq.changes_json;
+
+    const skillsArray = Array.isArray(changes.skills) ? changes.skills :
+      (typeof changes.skills === 'string' ? changes.skills.split(',').map(s => s.trim()) : []);
+
+    const locationsArray = Array.isArray(changes.locations) ? changes.locations :
+      (typeof changes.locations === 'string' ? changes.locations.split(',').map(s => s.trim()) : []);
+
+    const minSalary = changes.salary ? changes.salary.min : (changes.min_salary || null);
+    const maxSalary = changes.salary ? changes.salary.max : (changes.max_salary || null);
+
+    await client.query(`
+      UPDATE jobs_enhanced SET
+        title = COALESCE($1, title),
+        job_type = COALESCE($2, job_type),
+        job_domain = COALESCE($3, job_domain),
+        locations = COALESCE($4, locations),
+        min_salary = COALESCE($5, min_salary),
+        max_salary = COALESCE($6, max_salary),
+        skills = COALESCE($7, skills),
+        description = COALESCE($8, description),
+        mode_of_job = COALESCE($9, mode_of_job),
+        min_experience = COALESCE($10, min_experience),
+        max_experience = COALESCE($11, max_experience),
+        show_salary_to_candidate = COALESCE($12, show_salary_to_candidate),
+        registration_opening_date = COALESCE($13, registration_opening_date),
+        registration_closing_date = COALESCE($14, registration_closing_date),
+        no_of_openings = COALESCE($15, no_of_openings),
+        primary_recruiter_id = COALESCE($16, primary_recruiter_id),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $17
+    `, [
+      changes.title || changes.job_title,
+      changes.type || changes.job_type,
+      changes.domain || changes.job_domain,
+      locationsArray.length > 0 ? locationsArray : null,
+      minSalary,
+      maxSalary,
+      skillsArray.length > 0 ? skillsArray : null,
+      changes.description || changes.job_description,
+      changes.modeOfJob || changes.mode_of_job,
+      changes.minExperience || changes.min_experience,
+      changes.maxExperience || changes.max_experience,
+      changes.salary?.showToCandidate ?? changes.show_salary_to_candidate,
+      changes.registrationOpeningDate || changes.registration_opening_date,
+      changes.registrationClosingDate || changes.registration_closing_date,
+      changes.numberOfOpenings || changes.no_of_openings,
+      changes.primaryRecruiterId || changes.primary_recruiter_id,
+      editReq.job_id
+    ]);
+
+    await client.query('UPDATE job_edit_requests SET status = $1, resolved_at = NOW() WHERE id = $2', ['approved', id]);
+
+    await client.query('COMMIT');
+    res.json({ success: true, message: 'Edit request approved successfully' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error approving edit request:', error);
+    res.status(500).json({ error: 'Failed to approve edit request' });
+  } finally {
+    client.release();
+  }
+});
+
+// Reject job edit request
+router.put('/edit-requests/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'UPDATE job_edit_requests SET status = $1, resolved_at = NOW() WHERE id = $2 AND status = $3 RETURNING id',
+      ['rejected', id, 'pending']
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Edit request not found or not pending' });
+    }
+
+    res.json({ success: true, message: 'Edit request rejected successfully' });
+  } catch (error) {
+    console.error('Error rejecting edit request:', error);
+    res.status(500).json({ error: 'Failed to reject edit request' });
   }
 });
 

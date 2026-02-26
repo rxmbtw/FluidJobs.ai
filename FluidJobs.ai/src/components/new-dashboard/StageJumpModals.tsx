@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, AlertCircle, MessageSquare, User as LucideUser, ChevronDown, Check } from 'lucide-react';
-import { PipelineCandidate, InterviewStage } from './types';
+import { X, AlertCircle, MessageSquare, User as LucideUser, ChevronDown, Check, Clock } from 'lucide-react';
+import { PipelineCandidate, InterviewStage, StageTransition } from './types';
 
 // Custom Dropdown Component
 interface CustomStageDropdownProps {
-    value: InterviewStage | null;
-    options: InterviewStage[];
-    onChange: (stage: InterviewStage) => void;
+    value: string | null;
+    options: string[];
+    onChange: (stage: string) => void;
     placeholder: string;
     direction: 'forward' | 'backward';
 }
@@ -102,11 +102,11 @@ interface StageJumpModalProps {
     show: boolean;
     candidate: PipelineCandidate | null;
     direction: 'forward' | 'backward';
-    targetStage: InterviewStage | null;
+    targetStage: string | null;
     feedback: string;
-    availableStages: InterviewStage[];
+    availableStages: string[];
     onClose: () => void;
-    onTargetStageChange: (stage: InterviewStage) => void;
+    onTargetStageChange: (stage: string) => void;
     onFeedbackChange: (feedback: string) => void;
     onExecute: () => void;
 }
@@ -244,10 +244,11 @@ export const StageJumpModal: React.FC<StageJumpModalProps> = ({
 // Feedback type categories
 export type FeedbackType = 'hm_review' | 'skip' | 'stage_move' | 'assignment' | 'interview' | 'general';
 
+
 interface FeedbackReviewModalProps {
     show: boolean;
     candidate: PipelineCandidate | null;
-    stage: InterviewStage | null;
+    stage: string | null;
     feedbackData: {
         exists: boolean;
         feedback: string;
@@ -255,12 +256,13 @@ interface FeedbackReviewModalProps {
         timestamp?: string;
         providedBy?: string;
     };
-    feedbackType?: FeedbackType; // NEW: Categorize feedback
+    feedbackType?: FeedbackType;
+    stageHistory?: StageTransition[]; // New prop for history
     onClose: () => void;
 }
 
 // Helper function to get feedback type display info
-const getFeedbackTypeInfo = (type: FeedbackType, stage: InterviewStage | null) => {
+const getFeedbackTypeInfo = (type: FeedbackType, stage: string | null) => {
     switch (type) {
         case 'hm_review':
             return {
@@ -324,7 +326,8 @@ export const FeedbackReviewModal: React.FC<FeedbackReviewModalProps> = ({
     candidate,
     stage,
     feedbackData,
-    feedbackType = 'general', // Default to general
+    feedbackType = 'general',
+    stageHistory = [], // Default to empty array
     onClose
 }) => {
     const typeInfo = getFeedbackTypeInfo(feedbackType, stage);
@@ -396,9 +399,9 @@ export const FeedbackReviewModal: React.FC<FeedbackReviewModalProps> = ({
                         </div>
                     </div>
 
-                    {/* Feedback Content */}
+                    {/* Current Feedback Content */}
                     <div>
-                        <div className="text-sm font-medium text-gray-700 mb-2">Feedback</div>
+                        <div className="text-sm font-medium text-gray-700 mb-2">Current Feedback</div>
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 min-h-[100px]">
                             {feedbackData.exists && !feedbackData.isEmpty ? (
                                 <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
@@ -412,8 +415,50 @@ export const FeedbackReviewModal: React.FC<FeedbackReviewModalProps> = ({
                         </div>
                     </div>
 
+                    {/* Stage History / Audit Trail */}
+                    {stageHistory && stageHistory.length > 0 && (
+                        <div className="mt-6 pt-6 border-t border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-gray-500" />
+                                Stage History & Feedback
+                            </h4>
+                            <div className="space-y-4 relative">
+                                {/* Vertical line */}
+                                <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-200"></div>
+
+                                {stageHistory.map((history, index) => (
+                                    <div key={index} className="relative pl-6 pb-2">
+                                        {/* Dot */}
+                                        <div className="absolute left-0 top-1.5 w-4 h-4 rounded-full bg-white border-2 border-blue-500 z-10"></div>
+
+                                        <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                                                    {history.toStage}
+                                                </span>
+                                                <span className="text-xs text-gray-500">
+                                                    {new Date(history.timestamp).toLocaleDateString()}
+                                                </span>
+                                            </div>
+
+                                            <div className="text-xs text-gray-600 mb-2">
+                                                Moved by <span className="font-medium text-gray-800">{history.userName}</span>
+                                            </div>
+
+                                            {history.reason && (
+                                                <div className="text-sm text-gray-800 bg-white p-2 rounded border border-gray-100">
+                                                    {history.reason}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Status Badge */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mt-4">
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${feedbackData.exists && !feedbackData.isEmpty
                             ? 'bg-green-50 text-green-700 border border-green-200'
                             : feedbackData.exists && feedbackData.isEmpty

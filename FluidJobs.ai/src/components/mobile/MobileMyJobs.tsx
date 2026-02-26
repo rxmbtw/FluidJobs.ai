@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Info, CheckCircle } from 'lucide-react';
 import { Bookmark, AddUser } from 'react-iconly';
-import { jobsService } from '../../services/jobsService';
+import { jobService } from '../../services/jobService';
 import { Job } from '../../types';
 import MobileJobDetail from './MobileJobDetail';
 import MobileLoader from './MobileLoader';
@@ -33,7 +33,7 @@ const MobileMyJobs: React.FC = () => {
     try {
       setLoading(true);
       let fetchedJobs: any[] = [];
-      
+
       switch (activeTab) {
         case 'all':
           const response = await fetch('http://localhost:8000/api/jobs-enhanced/published');
@@ -74,15 +74,15 @@ const MobileMyJobs: React.FC = () => {
           }
           break;
       }
-      
+
       setJobs(fetchedJobs);
-      
+
       // Fetch saved and applied status
-      const savedJobsList = await jobsService.getSavedJobs();
-      setBookmarkedJobs(new Set(savedJobsList.map(j => j.id)));
-      
-      const appliedJobsList = await jobsService.getAppliedJobs();
-      setAppliedJobIds(new Set(appliedJobsList.map(j => j.id)));
+      const savedJobsList = await jobService.getSavedJobs();
+      setBookmarkedJobs(new Set(savedJobsList.map((j: any) => j.id)));
+
+      const appliedJobsList = await jobService.getAppliedJobs();
+      setAppliedJobIds(new Set(appliedJobsList.map((j: any) => j.id)));
     } catch (error) {
       console.error('Error fetching jobs:', error);
     } finally {
@@ -95,7 +95,7 @@ const MobileMyJobs: React.FC = () => {
     try {
       const isBookmarked = bookmarkedJobs.has(jobId);
       if (isBookmarked) {
-        await jobsService.unsaveJob(jobId);
+        await jobService.unsaveJob(jobId);
         setBookmarkedJobs(prev => {
           const newSet = new Set(prev);
           newSet.delete(jobId);
@@ -106,7 +106,7 @@ const MobileMyJobs: React.FC = () => {
           setJobs(prev => prev.filter(job => job.id !== jobId));
         }
       } else {
-        await jobsService.saveJob(jobId);
+        await jobService.saveJob(jobId);
         setBookmarkedJobs(prev => {
           const newSet = new Set(prev);
           newSet.add(jobId);
@@ -114,7 +114,7 @@ const MobileMyJobs: React.FC = () => {
         });
         // Add to displayed jobs if on saved tab
         if (activeTab === 'saved') {
-          const allJobs = await jobsService.getPublishedJobs();
+          const allJobs: any[] = (await jobService.getPublishedJobs()) as any[];
           const jobToAdd = allJobs.find(job => job.id === jobId);
           if (jobToAdd) {
             setJobs(prev => [...prev, jobToAdd]);
@@ -129,14 +129,14 @@ const MobileMyJobs: React.FC = () => {
   const handleApply = async (jobId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await jobsService.applyForJob(jobId);
+      await jobService.applyForJob(jobId);
       setAppliedJobIds(prev => {
         const newSet = new Set(prev);
         newSet.add(jobId);
         return newSet;
       });
       alert('Application submitted successfully!');
-      
+
       if (activeTab === 'applied') {
         fetchJobs();
       }
@@ -185,7 +185,7 @@ const MobileMyJobs: React.FC = () => {
         borderRadius: '25px',
         opacity: 1
       }}>
-        <div 
+        <div
           style={{
             width: '85px',
             height: '85px',
@@ -199,9 +199,9 @@ const MobileMyJobs: React.FC = () => {
             boxShadow: '0 0 0 12px rgba(66, 133, 244, 0.1)'
           }}
         >
-          <img 
-            src="/images/FLuid Live Icon light theme.png" 
-            alt="Company Logo" 
+          <img
+            src="/images/FLuid Live Icon light theme.png"
+            alt="Company Logo"
             style={{
               width: '50px',
               height: '50px',
@@ -213,11 +213,11 @@ const MobileMyJobs: React.FC = () => {
             }}
           />
         </div>
-        <div style={{ 
-          position: 'absolute', 
-          top: '190px', 
-          right: '15px', 
-          display: 'flex', 
+        <div style={{
+          position: 'absolute',
+          top: '190px',
+          right: '15px',
+          display: 'flex',
           gap: '7px',
           zIndex: 10
         }}>
@@ -269,17 +269,17 @@ const MobileMyJobs: React.FC = () => {
                 boxShadow: '0 2px 8px rgba(255, 107, 107, 0.3)',
                 transition: 'all 0.3s ease'
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 107, 107, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0px)';
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(255, 107, 107, 0.3)';
-              }}>
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 107, 107, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0px)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(255, 107, 107, 0.3)';
+                }}>
                 <span style={{ fontFamily: 'Poppins', fontSize: '10px', fontWeight: 600, color: '#FFFFFF' }}>Not Interested</span>
               </button>
-              <button 
+              <button
                 onClick={(e) => toggleBookmark(job.id, e)}
                 onMouseEnter={() => setHoveredJobId(job.id)}
                 onMouseLeave={() => setHoveredJobId(null)}
@@ -297,7 +297,7 @@ const MobileMyJobs: React.FC = () => {
                   overflow: 'hidden'
                 }}
               >
-                <span 
+                <span
                   style={{
                     width: hoveredJobId === job.id ? '65px' : '20px',
                     height: '20px',
@@ -315,7 +315,7 @@ const MobileMyJobs: React.FC = () => {
                     <path fill="white" d="M0 48V487.7C0 501.1 10.9 512 24.3 512c5 0 9.9-1.5 14-4.4L192 400 345.7 507.6c4.1 2.9 9 4.4 14 4.4c13.4 0 24.3-10.9 24.3-24.3V48c0-26.5-21.5-48-48-48H48C21.5 0 0 21.5 0 48z" />
                   </svg>
                 </span>
-                <span 
+                <span
                   style={{
                     height: '100%',
                     width: hoveredJobId === job.id ? '0' : '45px',
@@ -341,30 +341,30 @@ const MobileMyJobs: React.FC = () => {
       </div>
       <div style={{ padding: '250px 20px 20px', maxHeight: isApplied ? 'none' : 'calc(100vh - 400px)', overflowY: isApplied ? 'visible' : 'hidden' }}>
         <div style={{ marginBottom: '16px' }}>
-          <h3 style={{ 
+          <h3 style={{
             width: '250px',
             height: '30px',
             position: 'absolute',
             top: '264px',
             left: '28px',
-            fontFamily: 'Poppins', 
-            fontWeight: 700, 
-            fontSize: '18px', 
-            color: '#000000', 
+            fontFamily: 'Poppins',
+            fontWeight: 700,
+            fontSize: '18px',
+            color: '#000000',
             marginBottom: '4px',
             opacity: 1
           }}>
             {job.title}
           </h3>
-          <p style={{ 
+          <p style={{
             width: '112px',
             height: '15px',
             position: 'absolute',
             top: '294px',
             left: '28px',
-            fontFamily: 'Poppins', 
-            fontSize: '10px', 
-            fontWeight: 600, 
+            fontFamily: 'Poppins',
+            fontSize: '10px',
+            fontWeight: 600,
             color: 'rgba(110, 110, 110, 1)',
             lineHeight: '100%',
             letterSpacing: '0%',
@@ -376,16 +376,16 @@ const MobileMyJobs: React.FC = () => {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
           <div>
-            <p style={{ 
+            <p style={{
               width: '56px',
               height: '18px',
               position: 'absolute',
               top: '326px',
               left: '28px',
-              fontFamily: 'Poppins', 
-              fontSize: '12px', 
-              color: 'rgba(110, 110, 110, 1)', 
-              fontWeight: 600, 
+              fontFamily: 'Poppins',
+              fontSize: '12px',
+              color: 'rgba(110, 110, 110, 1)',
+              fontWeight: 600,
               lineHeight: '100%',
               letterSpacing: '0%',
               opacity: 1,
@@ -393,15 +393,15 @@ const MobileMyJobs: React.FC = () => {
             }}>
               JOB TYPE
             </p>
-            <p style={{ 
+            <p style={{
               width: '59px',
               height: '18px',
               position: 'absolute',
               top: '326px',
               left: '95px',
-              fontFamily: 'Poppins', 
-              fontSize: '12px', 
-              fontWeight: 600, 
+              fontFamily: 'Poppins',
+              fontSize: '12px',
+              fontWeight: 600,
               color: 'rgba(0, 0, 0, 1)',
               lineHeight: '100%',
               letterSpacing: '0%',
@@ -413,16 +413,16 @@ const MobileMyJobs: React.FC = () => {
             </p>
           </div>
           <div>
-            <p style={{ 
+            <p style={{
               width: '59px',
               height: '18px',
               position: 'absolute',
               top: '326px',
               left: '170px',
-              fontFamily: 'Poppins', 
-              fontSize: '12px', 
-              color: 'rgba(110, 110, 110, 1)', 
-              fontWeight: 600, 
+              fontFamily: 'Poppins',
+              fontSize: '12px',
+              color: 'rgba(110, 110, 110, 1)',
+              fontWeight: 600,
               marginBottom: '2px',
               lineHeight: '100%',
               letterSpacing: '0%',
@@ -431,15 +431,15 @@ const MobileMyJobs: React.FC = () => {
             }}>
               INDUSTRY
             </p>
-            <p style={{ 
+            <p style={{
               width: '120px',
               height: '18px',
               position: 'absolute',
               top: '326px',
               left: '240px',
-              fontFamily: 'Poppins', 
-              fontSize: '12px', 
-              fontWeight: 600, 
+              fontFamily: 'Poppins',
+              fontSize: '12px',
+              fontWeight: 600,
               color: 'rgba(0, 0, 0, 1)',
               lineHeight: '100%',
               letterSpacing: '0%',
@@ -454,16 +454,16 @@ const MobileMyJobs: React.FC = () => {
             </p>
           </div>
           <div>
-            <p style={{ 
+            <p style={{
               width: '26px',
               height: '18px',
               position: 'absolute',
               top: '347px',
               left: '28px',
-              fontFamily: 'Poppins', 
-              fontSize: '12px', 
-              color: 'rgba(110, 110, 110, 1)', 
-              fontWeight: 600, 
+              fontFamily: 'Poppins',
+              fontSize: '12px',
+              color: 'rgba(110, 110, 110, 1)',
+              fontWeight: 600,
               lineHeight: '100%',
               letterSpacing: '0%',
               textAlign: 'left',
@@ -472,15 +472,15 @@ const MobileMyJobs: React.FC = () => {
             }}>
               CTC
             </p>
-            <p style={{ 
+            <p style={{
               width: '100px',
               height: '18px',
               position: 'absolute',
               top: '347px',
               left: '65px',
-              fontFamily: 'Poppins', 
-              fontSize: '12px', 
-              fontWeight: 600, 
+              fontFamily: 'Poppins',
+              fontSize: '12px',
+              fontWeight: 600,
               color: 'rgba(0, 0, 0, 1)',
               lineHeight: '100%',
               letterSpacing: '0%',
@@ -495,16 +495,16 @@ const MobileMyJobs: React.FC = () => {
             </p>
           </div>
           <div>
-            <p style={{ 
+            <p style={{
               width: '62px',
               height: '18px',
               position: 'absolute',
               top: '347px',
               left: '170px',
-              fontFamily: 'Poppins', 
-              fontSize: '12px', 
-              color: 'rgba(110, 110, 110, 1)', 
-              fontWeight: 600, 
+              fontFamily: 'Poppins',
+              fontSize: '12px',
+              color: 'rgba(110, 110, 110, 1)',
+              fontWeight: 600,
               marginBottom: '2px',
               lineHeight: '100%',
               letterSpacing: '0%',
@@ -512,15 +512,15 @@ const MobileMyJobs: React.FC = () => {
             }}>
               LOCATION
             </p>
-            <p style={{ 
+            <p style={{
               width: '120px',
               height: 'auto',
               position: 'absolute',
               top: '347px',
               left: '240px',
-              fontFamily: 'Poppins', 
-              fontSize: '12px', 
-              fontWeight: 600, 
+              fontFamily: 'Poppins',
+              fontSize: '12px',
+              fontWeight: 600,
               color: 'rgba(0, 0, 0, 1)',
               lineHeight: '100%',
               letterSpacing: '0%',
@@ -533,16 +533,16 @@ const MobileMyJobs: React.FC = () => {
           </div>
         </div>
         <div style={{ marginBottom: '20px' }}>
-          <p style={{ 
+          <p style={{
             width: '79px',
             height: '18px',
             position: 'absolute',
             top: '390px',
             left: '28px',
-            fontFamily: 'Poppins', 
-            fontSize: '12px', 
-            fontWeight: 600, 
-            color: 'rgba(8, 8, 8, 1)', 
+            fontFamily: 'Poppins',
+            fontSize: '12px',
+            fontWeight: 600,
+            color: 'rgba(8, 8, 8, 1)',
             marginBottom: '8px',
             lineHeight: '100%',
             letterSpacing: '0%',
@@ -550,7 +550,7 @@ const MobileMyJobs: React.FC = () => {
           }}>
             DESCRIPTION
           </p>
-          <div style={{ 
+          <div style={{
             width: '340px',
             height: 'auto',
             position: 'absolute',
@@ -565,20 +565,20 @@ const MobileMyJobs: React.FC = () => {
             boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
             transition: 'all 0.3s ease'
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.08)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
-          }}>
-            <p style={{ 
-              fontFamily: 'Poppins', 
-              fontSize: '12px', 
-              fontWeight: 600, 
-              color: '#6E6E6E', 
-              lineHeight: '140%', 
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.08)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+            }}>
+            <p style={{
+              fontFamily: 'Poppins',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: '#6E6E6E',
+              lineHeight: '140%',
               letterSpacing: '0%',
               margin: 0,
               background: 'linear-gradient(135deg, #6E6E6E 0%, #8E8E8E 100%)',
@@ -587,8 +587,8 @@ const MobileMyJobs: React.FC = () => {
               backgroundClip: 'text'
             }}>
               {`${job.description.split(' ').slice(0, 25).join(' ')}...`}
-              <span style={{ 
-                color: '#4285F4', 
+              <span style={{
+                color: '#4285F4',
                 fontWeight: 600,
                 fontFamily: 'Poppins',
                 fontSize: '12px',
@@ -606,16 +606,16 @@ const MobileMyJobs: React.FC = () => {
           </div>
         </div>
         <div style={{ marginTop: '100px' }}>
-          <p style={{ 
+          <p style={{
             width: '88px',
             height: '18px',
             position: 'absolute',
             top: '550px',
             left: '28px',
-            fontFamily: 'Poppins', 
-            fontSize: '12px', 
-            fontWeight: 600, 
-            color: '#000000', 
+            fontFamily: 'Poppins',
+            fontSize: '12px',
+            fontWeight: 600,
+            color: '#000000',
             marginBottom: '10px',
             lineHeight: '100%',
             letterSpacing: '0%',
@@ -623,12 +623,12 @@ const MobileMyJobs: React.FC = () => {
           }}>
             ELIGIBLE SKILLS
           </p>
-          <div style={{ 
+          <div style={{
             position: 'absolute',
             top: '578px',
             left: '28px',
-            display: 'flex', 
-            flexWrap: 'wrap', 
+            display: 'flex',
+            flexWrap: 'wrap',
             gap: '10px',
             maxHeight: isApplied ? 'none' : '80px',
             overflowY: isApplied ? 'visible' : 'hidden'
@@ -673,7 +673,7 @@ const MobileMyJobs: React.FC = () => {
             ))}
           </div>
         </div>
-        
+
         {/* Swipe to Apply Button - Bottom Center */}
         {!appliedJobIds.has(job.id) && (
           <div style={{
@@ -694,15 +694,15 @@ const MobileMyJobs: React.FC = () => {
             overflow: 'hidden',
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
-          onClick={(e) => handleApply(job.id, e)}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateX(-50%) translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 12px 32px rgba(66, 133, 244, 0.4)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateX(-50%) translateY(0px)';
-            e.currentTarget.style.boxShadow = '0 8px 24px rgba(66, 133, 244, 0.3)';
-          }}>
+            onClick={(e) => handleApply(job.id, e)}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateX(-50%) translateY(-4px)';
+              e.currentTarget.style.boxShadow = '0 12px 32px rgba(66, 133, 244, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateX(-50%) translateY(0px)';
+              e.currentTarget.style.boxShadow = '0 8px 24px rgba(66, 133, 244, 0.3)';
+            }}>
             {/* Swipe Animation Background */}
             <div style={{
               position: 'absolute',
@@ -714,7 +714,7 @@ const MobileMyJobs: React.FC = () => {
               animation: 'swipeGlow 2s infinite',
               pointerEvents: 'none'
             }} />
-            
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{
                 fontFamily: 'Poppins',
@@ -758,9 +758,9 @@ const MobileMyJobs: React.FC = () => {
     <div style={{ background: 'transparent', minHeight: '100vh', paddingBottom: '100px' }}>
       {/* Tabs - Enhanced styling */}
       <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', padding: '20px 16px 16px', position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
-        <div style={{ 
-          display: 'flex', 
-          gap: '12px', 
+        <div style={{
+          display: 'flex',
+          gap: '12px',
           overflowX: 'auto',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -804,7 +804,7 @@ const MobileMyJobs: React.FC = () => {
       </div>
 
       {/* Job Cards */}
-      <div style={{ 
+      <div style={{
         marginTop: '70px',
         display: 'flex',
         flexDirection: 'column',

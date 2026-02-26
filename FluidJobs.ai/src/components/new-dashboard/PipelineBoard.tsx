@@ -17,9 +17,13 @@ import {
   Briefcase,
   Check,
   X,
+  CheckSquare,
   User as LucideUser,
-  CheckSquare
+  LayoutGrid,
+  List
 } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { useDashboardHeader } from './NewDashboardContainer';
 import {
   TimeCircle,
   Danger,
@@ -40,7 +44,7 @@ import {
   CloseSquare,
   TwoUsers as IconlyUsers
 } from 'react-iconly';
-import { PipelineCandidate, InterviewStage, CandidateStatus } from './types';
+import { PipelineCandidate, InterviewStage, CandidateStatus, JobStage } from './types';
 import { STATUS_COLORS } from './constants';
 import { CandidateService } from '../../services/candidateService';
 import { ValidationService } from '../../services';
@@ -49,6 +53,7 @@ import { useDebounce } from './useDebounce';
 import { usePipelineOptimizations } from './usePipelineOptimizations';
 import OptimizedCandidateRow from './OptimizedCandidateRow';
 import { StageJumpModal, FeedbackReviewModal } from './StageJumpModals';
+import { HMReviewModal } from './HMReviewModal';
 import { CandidateCardSkipBadge, CandidateCardActions } from './CandidateCardComponents';
 
 // Production pipeline stages - unified with InterviewStage enum
@@ -74,7 +79,7 @@ const BOARD_STAGES = [
 ];
 
 // Terminal outcomes (now included in board for visibility)
-const TERMINAL_OUTCOMES = [
+const TERMINAL_OUTCOMES: string[] = [
   InterviewStage.REJECTED,
   InterviewStage.DROPPED,
   InterviewStage.NO_SHOW
@@ -112,14 +117,45 @@ interface PipelineBoardProps {
   onViewProfile: (id: string) => void;
   candidates: PipelineCandidate[];
   users?: any[];
+  stages?: JobStage[]; // JobStage[]
 }
 
-const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates: propCandidates, users = [] }) => {
+const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates: propCandidates, users = [], stages: jobStages }) => {
+  const { setHeaderActions } = useDashboardHeader();
+  // Use candidates from props instead of hardcoded ones
+  const [candidates, setCandidates] = useState<PipelineCandidate[]>(propCandidates || []);
+  const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
+  // Fallback: Try to get user from authService if hook returns null
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [activeStages, setActiveStages] = useState<string[]>(BOARD_STAGES);
+
   // Get authenticated user
   const { user: authUser } = useAuth();
 
-  // Fallback: Try to get user from authService if hook returns null
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  useEffect(() => {
+    if (jobStages && jobStages.length > 0) {
+      // Construct full pipeline: Applied -> Job Stages -> Terminal
+      // Ensure we don't duplicate if jobStages includes Applied/Selected etc (though it shouldn't based on my update)
+      const middleStages = jobStages.map(s => s.name);
+
+      const fullStages = [
+        InterviewStage.APPLIED,
+        ...middleStages,
+        InterviewStage.SELECTED,
+        InterviewStage.JOINED,
+        InterviewStage.REJECTED,
+        InterviewStage.DROPPED,
+        InterviewStage.NO_SHOW,
+        InterviewStage.ON_HOLD
+      ];
+
+      // Filter out potential duplicates just in case
+      const uniqueStages = Array.from(new Set(fullStages));
+      setActiveStages(uniqueStages);
+    } else {
+      setActiveStages(BOARD_STAGES);
+    }
+  }, [jobStages]);
 
   useEffect(() => {
     console.log('PipelineBoard - useEffect triggered, authUser:', authUser);
@@ -149,7 +185,21 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
             console.log('PipelineBoard - Parsed user from sessionStorage:', parsedUser);
             setCurrentUser(parsedUser);
           } else {
-            console.error('PipelineBoard - No user found in any source!');
+            // Check localStorage too (superadmin might be stored there)
+            const localUser = localStorage.getItem('superadmin') || localStorage.getItem('currentUser');
+            if (localUser) {
+              try {
+                const parsedLocalUser = JSON.parse(localUser);
+                console.log('PipelineBoard - Parsed user from localStorage:', parsedLocalUser);
+                setCurrentUser(parsedLocalUser);
+              } catch (e) {
+                console.error('PipelineBoard - Error parsing localStorage user:', e);
+              }
+            } else {
+              // Create a basic user object so the board can still render
+              console.warn('PipelineBoard - No user found, using guest mode');
+              setCurrentUser({ id: 'guest', name: 'User', email: '', role: 'Admin' } as any);
+            }
           }
         }
       } catch (error) {
@@ -158,17 +208,44 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
     }
   }, [authUser]);
 
-  // Use candidates from props instead of hardcoded ones
-  const [candidates, setCandidates] = useState<PipelineCandidate[]>(propCandidates || []);
+  useEffect(() => {
+    setHeaderActions(
+      <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+        <button
+          onClick={() => setViewMode('board')}
+          className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'board'
+            ? 'bg-white text-blue-600 shadow-sm'
+            : 'text-gray-600 hover:text-gray-900'
+            }`}
+        >
+          <LayoutGrid className="w-4 h-4 mr-2" />
+          Board
+        </button>
+        <button
+          onClick={() => setViewMode('list')}
+          className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'list'
+            ? 'bg-white text-blue-600 shadow-sm'
+            : 'text-gray-600 hover:text-gray-900'
+            }`}
+        >
+          <List className="w-4 h-4 mr-2" />
+          List
+        </button>
+      </div>
+    );
+    return () => setHeaderActions(null);
+  }, [setHeaderActions, viewMode]);
+
+
 
   // Selection state
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
   const [stageSelections, setStageSelections] = useState<{ [key: string]: boolean }>({});
 
   // Modal states
-  const [showStatusModal, setShowStatusModal] = useState(false);
+
   const [showBulkMoveModal, setShowBulkMoveModal] = useState(false);
-  const [selectedCandidateForStatus, setSelectedCandidateForStatus] = useState<PipelineCandidate | null>(null);
+
   const [showHMReviewModal, setShowHMReviewModal] = useState(false);
   const [showHMFeedbackModal, setShowHMFeedbackModal] = useState(false);
   const [selectedCandidateForHMReview, setSelectedCandidateForHMReview] = useState<PipelineCandidate | null>(null);
@@ -180,27 +257,34 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   const [showStageJumpModal, setShowStageJumpModal] = useState(false);
   const [selectedCandidateForJump, setSelectedCandidateForJump] = useState<PipelineCandidate | null>(null);
   const [jumpDirection, setJumpDirection] = useState<'forward' | 'backward'>('forward');
-  const [targetJumpStage, setTargetJumpStage] = useState<InterviewStage | null>(null);
+  const [targetJumpStage, setTargetJumpStage] = useState<string | null>(null);
   const [jumpFeedback, setJumpFeedback] = useState('');
 
   // Feedback review modal states
+  // Feedback review modal states
   const [showFeedbackReviewModal, setShowFeedbackReviewModal] = useState(false);
-  const [selectedFeedbackStage, setSelectedFeedbackStage] = useState<InterviewStage | null>(null);
+  const [selectedFeedbackStage, setSelectedFeedbackStage] = useState<string | null>(null);
   const [selectedFeedbackCandidate, setSelectedFeedbackCandidate] = useState<PipelineCandidate | null>(null);
 
-  // Configuration: Define which stages allow skipping (HR Round is now unskippable)
-  const SKIPPABLE_STAGES: InterviewStage[] = [
+  // Rejection Cooldown State
+  const [showCooldownModal, setShowCooldownModal] = useState(false);
+  const [cooldownCandidate, setCooldownCandidate] = useState<PipelineCandidate | null>(null);
+  const [daysSinceRejection, setDaysSinceRejection] = useState<number>(0);
+
+  // Configuration: Define which stages allow skipping
+  // REMOVED: Applied, Screening, CV Shortlist, HM Review, HR Round, Management Round to enforce sequential progression
+  const SKIPPABLE_STAGES: string[] = [
     InterviewStage.ASSIGNMENT,
     InterviewStage.ASSIGNMENT_RESULT,
-    InterviewStage.L1,
-    InterviewStage.L2,
-    InterviewStage.L3,
-    InterviewStage.L4,
-    InterviewStage.MANAGEMENT_ROUND
+    InterviewStage.L1_TECHNICAL,
+    InterviewStage.L2_TECHNICAL,
+    InterviewStage.L3_TECHNICAL,
+    InterviewStage.L4_TECHNICAL,
+    // InterviewStage.MANAGEMENT_ROUND // Made mandatory
   ];
 
   // Helper function to check if a stage is skippable
-  const isStageSkippable = (stage: InterviewStage): boolean => {
+  const isStageSkippable = (stage: string): boolean => {
     return SKIPPABLE_STAGES.includes(stage);
   };
 
@@ -236,7 +320,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
     return filteredUsers[Math.floor(Math.random() * filteredUsers.length)]?.full_name || 'Not Assigned';
   };
 
-  const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
+
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [stageFilter, setStageFilter] = useState('');
@@ -259,7 +343,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   // Feedback Intelligence System
 
   // Check if a specific stage has feedback
-  const getStageFeedback = (candidate: PipelineCandidate, stage: InterviewStage): {
+  const getStageFeedback = (candidate: PipelineCandidate, stage: string): {
     exists: boolean;
     feedback: string;
     isEmpty: boolean;
@@ -305,7 +389,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
   // Get feedback status for current stage
   const getFeedbackStatus = (candidate: PipelineCandidate): 'submitted' | 'incomplete' | 'pending' | 'missing' => {
-    const currentStageIndex = BOARD_STAGES.indexOf(candidate.stage);
+    const currentStageIndex = activeStages.indexOf(candidate.stage);
 
     // First stage (Applied) doesn't require feedback
     if (currentStageIndex === 0) {
@@ -341,14 +425,14 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   // Check for audit violations - feedback missing on completed stages
   const checkFeedbackViolations = useCallback((candidate: PipelineCandidate): {
     hasViolations: boolean;
-    violations: Array<{ stage: InterviewStage; reason: string }>;
+    violations: Array<{ stage: string; reason: string }>;
   } => {
-    const violations: Array<{ stage: InterviewStage; reason: string }> = [];
-    const currentStageIndex = BOARD_STAGES.indexOf(candidate.stage);
+    const violations: Array<{ stage: string; reason: string }> = [];
+    const currentStageIndex = activeStages.indexOf(candidate.stage);
 
     // Check all completed stages (before current stage)
     for (let i = 1; i < currentStageIndex; i++) {
-      const stage = BOARD_STAGES[i];
+      const stage = activeStages[i];
 
       // Skip stages that don't require feedback
       if (stage === InterviewStage.APPLIED ||
@@ -413,11 +497,11 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
   // Audit Flag 2: Advanced despite score < threshold
   const checkLowScoreAdvanced = (candidate: PipelineCandidate): boolean => {
-    const currentStageIndex = BOARD_STAGES.indexOf(candidate.stage);
+    const currentStageIndex = activeStages.indexOf(candidate.stage);
 
     // Check assignment score
     if (candidate.assignmentScore && candidate.assignmentScore < SCORE_THRESHOLD) {
-      const assignmentResultIndex = BOARD_STAGES.indexOf(InterviewStage.ASSIGNMENT_RESULT);
+      const assignmentResultIndex = activeStages.indexOf(InterviewStage.ASSIGNMENT_RESULT);
       if (currentStageIndex > assignmentResultIndex) {
         return true;
       }
@@ -434,7 +518,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
       for (const { stage, score } of interviewStages) {
         if (score && score < SCORE_THRESHOLD) {
-          const stageIndex = BOARD_STAGES.indexOf(stage);
+          const stageIndex = activeStages.indexOf(stage);
           if (currentStageIndex > stageIndex) {
             return true;
           }
@@ -461,9 +545,9 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   };
 
   // Audit Flag 5: Skipped stage detected
-  const checkSkippedStages = (candidate: PipelineCandidate): { hasSkipped: boolean; skippedStages: InterviewStage[] } => {
-    const currentStageIndex = BOARD_STAGES.indexOf(candidate.stage);
-    const skippedStages: InterviewStage[] = [];
+  const checkSkippedStages = (candidate: PipelineCandidate): { hasSkipped: boolean; skippedStages: string[] } => {
+    const currentStageIndex = activeStages.indexOf(candidate.stage);
+    const skippedStages: string[] = [];
 
     // Check if candidate has stage history
     if (candidate.stageHistory && candidate.stageHistory.length > 0) {
@@ -471,7 +555,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
       // Check all stages before current
       for (let i = 0; i < currentStageIndex; i++) {
-        const stage = BOARD_STAGES[i];
+        const stage = activeStages[i];
 
         // Skip optional stages
         if (stage === InterviewStage.SCREENING ||
@@ -494,9 +578,9 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
   // Audit Flag 6: Assignment completed but no result stage entered
   const checkAssignmentWithoutResult = (candidate: PipelineCandidate): boolean => {
-    const currentStageIndex = BOARD_STAGES.indexOf(candidate.stage);
-    const assignmentIndex = BOARD_STAGES.indexOf(InterviewStage.ASSIGNMENT);
-    const assignmentResultIndex = BOARD_STAGES.indexOf(InterviewStage.ASSIGNMENT_RESULT);
+    const currentStageIndex = activeStages.indexOf(candidate.stage);
+    const assignmentIndex = activeStages.indexOf(InterviewStage.ASSIGNMENT);
+    const assignmentResultIndex = activeStages.indexOf(InterviewStage.ASSIGNMENT_RESULT);
 
     // If past assignment but never entered assignment result
     if (currentStageIndex > assignmentIndex && currentStageIndex !== assignmentResultIndex) {
@@ -628,12 +712,48 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
     };
   };
 
+  // Rejection Cooldown Logic
+  const checkRejectionCooldown = (candidate: PipelineCandidate): boolean => {
+    // Check if moving to Applied (Re-application)
+
+    if (candidate.stage === InterviewStage.REJECTED) {
+      let rejectionDate = new Date();
+
+      // Try to find actual rejection date from history
+      if (candidate.stageHistory && candidate.stageHistory.length > 0) {
+        const rejectionEntry = [...candidate.stageHistory]
+          .reverse()
+          .find(h => h.toStage === InterviewStage.REJECTED);
+
+        if (rejectionEntry) {
+          rejectionDate = new Date(rejectionEntry.timestamp);
+        } else {
+          // Fallback: use lastUpdateDate
+          rejectionDate = new Date(candidate.lastUpdateDate || Date.now());
+        }
+      } else {
+        // Fallback for demo: 30 days ago
+        rejectionDate.setDate(rejectionDate.getDate() - 30);
+      }
+
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - rejectionDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 180) { // 6 months
+        setDaysSinceRejection(diffDays);
+        return true; // Cooldown active
+      }
+    }
+    return false;
+  };
+
   const generateMockStageHistory = (candidate: PipelineCandidate) => {
-    const currentStageIndex = BOARD_STAGES.indexOf(candidate.stage);
+    const currentStageIndex = activeStages.indexOf(candidate.stage);
     const history = [];
 
     for (let i = 0; i <= currentStageIndex; i++) {
-      const stage = BOARD_STAGES[i];
+      const stage = activeStages[i];
       const daysAgo = (currentStageIndex - i) * 3 + Math.floor(Math.random() * 3);
       const date = new Date();
       date.setDate(date.getDate() - daysAgo);
@@ -657,10 +777,10 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   };
 
   // Get stage status for timeline
-  const getStageStatus = (stage: InterviewStage, candidate: PipelineCandidate):
+  const getStageStatus = (stage: string, candidate: PipelineCandidate):
     'completed' | 'current' | 'pending' | 'skipped' | 'terminal' => {
-    const currentStageIndex = BOARD_STAGES.indexOf(candidate.stage);
-    const stageIndex = BOARD_STAGES.indexOf(stage);
+    const currentStageIndex = activeStages.indexOf(candidate.stage);
+    const stageIndex = activeStages.indexOf(stage);
 
     if (TERMINAL_OUTCOMES.includes(stage)) {
       return stage === candidate.stage ? 'terminal' : 'pending';
@@ -735,10 +855,10 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   };
 
   // Get next stage for selected candidates
-  const getNextStage = (currentStage: InterviewStage): InterviewStage => {
-    const currentIndex = BOARD_STAGES.indexOf(currentStage);
-    if (currentIndex < BOARD_STAGES.length - 1) {
-      return BOARD_STAGES[currentIndex + 1];
+  const getNextStage = (currentStage: string): string => {
+    const currentIndex = activeStages.indexOf(currentStage);
+    if (currentIndex < activeStages.length - 1) {
+      return activeStages[currentIndex + 1];
     }
     return currentStage;
   };
@@ -746,13 +866,13 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   // ==================== STAGE JUMPING SYSTEM ====================
 
   // Get available forward stages (can skip multiple at once)
-  const getAvailableForwardStages = (candidate: PipelineCandidate): InterviewStage[] => {
-    const currentIndex = BOARD_STAGES.indexOf(candidate.stage);
-    const availableStages: InterviewStage[] = [];
+  const getAvailableForwardStages = (candidate: PipelineCandidate): string[] => {
+    const currentIndex = activeStages.indexOf(candidate.stage);
+    const availableStages: string[] = [];
 
     // Can skip to any stage ahead (excluding terminal outcomes initially)
-    for (let i = currentIndex + 1; i < BOARD_STAGES.length; i++) {
-      const stage = BOARD_STAGES[i];
+    for (let i = currentIndex + 1; i < activeStages.length; i++) {
+      const stage = activeStages[i];
       // Exclude current stage
       if (stage !== candidate.stage) {
         availableStages.push(stage);
@@ -763,20 +883,20 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   };
 
   // Get available backward stages (any previously visited stage)
-  const getAvailableBackwardStages = (candidate: PipelineCandidate): InterviewStage[] => {
-    const availableStages: InterviewStage[] = [];
+  const getAvailableBackwardStages = (candidate: PipelineCandidate): string[] => {
+    const availableStages: string[] = [];
 
     // Get all stages before current
-    const currentIndex = BOARD_STAGES.indexOf(candidate.stage);
+    const currentIndex = activeStages.indexOf(candidate.stage);
     for (let i = 0; i < currentIndex; i++) {
-      availableStages.push(BOARD_STAGES[i]);
+      availableStages.push(activeStages[i]);
     }
 
     return availableStages;
   };
 
   // Get skip status for a stage - determines if it's "Skipped" or "Skipped (Later Completed)"
-  const getStageSkipStatus = (candidate: PipelineCandidate, stage: InterviewStage):
+  const getStageSkipStatus = (candidate: PipelineCandidate, stage: string):
     'not_skipped' | 'skipped' | 'skipped_later_completed' => {
 
     if (!candidate.stageHistory || candidate.stageHistory.length === 0) {
@@ -784,8 +904,8 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
     }
 
     const stageHistory = candidate.stageHistory;
-    const stageIndex = BOARD_STAGES.indexOf(stage);
-    const currentIndex = BOARD_STAGES.indexOf(candidate.stage);
+    const stageIndex = activeStages.indexOf(stage);
+    const currentIndex = activeStages.indexOf(candidate.stage);
 
     // Only check stages before current
     if (stageIndex >= currentIndex) {
@@ -803,7 +923,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
       for (let i = 0; i < stageHistory.length; i++) {
         const entry = stageHistory[i];
-        const entryStageIndex = BOARD_STAGES.indexOf(entry.toStage);
+        const entryStageIndex = activeStages.indexOf(entry.toStage);
 
         // If we jumped past this stage, it was skipped
         if (entryStageIndex > stageIndex && !wasVisited) {
@@ -838,25 +958,25 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
   // Execute stage jump with validation
   const executeStageJump = async () => {
-    if (!selectedCandidateForJump || !targetJumpStage || !jumpFeedback.trim()) {
-      alert('Please select a target stage and provide feedback.');
+    if (!selectedCandidateForJump || !targetJumpStage) {
+      alert('Please select a target stage.');
       return;
     }
 
-    try {
-      if (!currentUser) {
-        console.error('PipelineBoard - No user found for stage jump');
-        alert('You must be logged in to perform this action.');
-        return;
-      }
+    // Auto-fill feedback if empty (demo mode)
+    const feedbackToUse = jumpFeedback.trim() || `Moved to ${targetJumpStage} by admin`;
 
-      console.log('PipelineBoard - Executing stage jump with user:', currentUser);
+    try {
+      // Use guest user for demo if not logged in
+      const effectiveUser = currentUser || { id: 'admin', name: 'Admin', role: 'superadmin', email: 'admin@fluidjobs.ai' };
+
+      console.log('PipelineBoard - Executing stage jump with user:', effectiveUser);
 
       // Validate the transition
       const validationResult = ValidationService.validateStageTransition(
         selectedCandidateForJump,
         targetJumpStage,
-        toValidationUser(currentUser)
+        toValidationUser(effectiveUser)
       );
 
       if (!validationResult.valid) {
@@ -864,15 +984,22 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
         return;
       }
 
+      // Rejection Cooldown Check
+      if (targetJumpStage === InterviewStage.APPLIED && checkRejectionCooldown(selectedCandidateForJump)) {
+        setCooldownCandidate(selectedCandidateForJump);
+        setShowCooldownModal(true);
+        return;
+      }
+
       // Determine which stages are being skipped
-      const currentIndex = BOARD_STAGES.indexOf(selectedCandidateForJump.stage);
-      const targetIndex = BOARD_STAGES.indexOf(targetJumpStage);
-      const skippedStages: InterviewStage[] = [];
+      const currentIndex = activeStages.indexOf(selectedCandidateForJump.stage);
+      const targetIndex = activeStages.indexOf(targetJumpStage);
+      const skippedStages: string[] = [];
 
       if (jumpDirection === 'forward' && targetIndex > currentIndex + 1) {
         // Skipping stages forward
         for (let i = currentIndex + 1; i < targetIndex; i++) {
-          skippedStages.push(BOARD_STAGES[i]);
+          skippedStages.push(activeStages[i]);
         }
       }
 
@@ -884,8 +1011,8 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
       const result = await CandidateService.updateCandidateStage({
         candidateId: selectedCandidateForJump.id,
         newStage: targetJumpStage,
-        userId: currentUser.id,
-        reason: `${jumpDirection === 'forward' ? 'Skipped forward' : 'Moved backward'}: ${jumpFeedback}${skipInfo}`
+        userId: effectiveUser.id,
+        reason: `${jumpDirection === 'forward' ? 'Skipped forward' : 'Moved backward'}: ${feedbackToUse}${skipInfo}`
       });
 
       if (result.success && result.candidate) {
@@ -920,65 +1047,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   // ==================== END STAGE JUMPING SYSTEM ====================
 
   // Modal handlers
-  const handleCheckStatus = (candidate: PipelineCandidate) => {
-    setSelectedCandidateForStatus(candidate);
-    setShowStatusModal(true);
-  };
 
-  const handleSingleMove = async () => {
-    if (selectedCandidateForStatus) {
-      try {
-        if (!currentUser) {
-          console.error('PipelineBoard - No user found for single move');
-          alert('You must be logged in to perform this action.');
-          return;
-        }
-
-        const targetStage = getNextStage(selectedCandidateForStatus.stage);
-        const validationResult = ValidationService.validateStageTransition(
-          selectedCandidateForStatus,
-          targetStage,
-          toValidationUser(currentUser)
-        );
-
-        if (!validationResult.valid) {
-          alert(`Cannot move to ${targetStage}: ${validationResult.reason || 'Validation failed'}`);
-          return;
-        }
-
-        const result = await CandidateService.updateCandidateStage({
-          candidateId: selectedCandidateForStatus.id,
-          newStage: targetStage,
-          userId: currentUser.id,
-          reason: 'Manual stage progression via pipeline board'
-        });
-
-        if (result.success && result.candidate) {
-          setCandidates(prev => prev.map(c =>
-            c.id === selectedCandidateForStatus.id ? {
-              ...result.candidate!,
-              stage: result.candidate!.currentStage,
-              aging: c.aging,
-              interviewer: c.interviewer,
-              interviewNote: c.interviewNote
-            } : c
-          ));
-          setShowStatusModal(false);
-          setSelectedCandidateForStatus(null);
-
-          // Show success message with audit info
-          if (result.auditLog) {
-            console.log('Stage updated successfully. Audit log created:', result.auditLog.id);
-          }
-        } else {
-          alert(`Failed to update stage: ${result.error || 'Unknown error'}`);
-        }
-      } catch (error) {
-        console.error('Stage update failed:', error);
-        alert('Failed to update candidate stage. Please try again.');
-      }
-    }
-  };
 
   const handleBulkMove = async () => {
     const selectedCandidatesList = candidates.filter(c => selectedCandidates.has(c.id));
@@ -986,6 +1055,16 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
     try {
       const candidateIds = selectedCandidatesList.map(c => c.id);
       const targetStage = getNextStage(selectedCandidatesList[0].stage);
+
+      // Check if moving to Applied (unlikely for bulk, but safe to add)
+      if (targetStage === InterviewStage.APPLIED) {
+        const triggeredCooldown = selectedCandidatesList.find(c => checkRejectionCooldown(c));
+        if (triggeredCooldown) {
+          setCooldownCandidate(triggeredCooldown);
+          setShowCooldownModal(true);
+          return;
+        }
+      }
 
       const result = await CandidateService.bulkUpdateCandidateStages(
         candidateIds,
@@ -1073,7 +1152,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
     stageFilter,
     auditFilters,
     agingFilter,
-    BOARD_STAGES,
+    activeStages,
     getStageFeedback,
     checkFeedbackViolations
   );
@@ -1108,7 +1187,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
     setShowHMFeedbackModal(true);
   };
 
-  const handleHMReviewSubmit = () => {
+  const handleHMReviewSubmit = (decision: 'Approve' | 'Reject' | 'On Hold', feedback: string) => {
     if (selectedCandidateForHMReview) {
       const reviewedBy = getRandomUser(['admin', 'superadmin', 'hr']);
       setCandidates(prev => prev.map(c =>
@@ -1116,15 +1195,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
           ...c,
           hmReview: {
             reviewStatus: 'Reviewed',
-            hmDecision: hmDecision,
-            hmFeedback: hmFeedback,
+            hmDecision: decision,
+            hmFeedback: feedback,
             reviewedBy: reviewedBy,
             reviewedOn: new Date().toLocaleString()
           },
           // If rejected, move to terminal state
-          stage: hmDecision === 'Reject' ? InterviewStage.REJECTED : c.stage,
+          stage: decision === 'Reject' ? InterviewStage.REJECTED : c.stage,
           // If on hold, set status flag
-          status: hmDecision === 'On Hold' ? CandidateStatus.ON_HOLD : c.status,
+          status: decision === 'On Hold' ? CandidateStatus.ON_HOLD : c.status,
           lastUpdateDate: new Date().toISOString().split('T')[0]
         } : c
       ));
@@ -1229,30 +1308,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col gap-6 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-semibold text-gray-900">Hiring Pipeline</h1>
-          <p className="text-sm text-gray-600">Select candidates and move them through the hiring stages with explicit confirmation.</p>
-        </div>
-        <div className="flex gap-2">
-          <div className="flex bg-white rounded-lg border border-gray-200 p-1">
-            <button
-              onClick={() => setViewMode('board')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'board' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
-                }`}
-            >
-              Board View
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
-                }`}
-            >
-              List View
-            </button>
-          </div>
-        </div>
-      </div>
+
 
       {/* Bulk Action Bar */}
       {selectedCandidates.size > 0 && (
@@ -1293,7 +1349,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
           <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white/80 to-transparent pointer-events-none z-10"></div>
 
           <div className="flex gap-6 pb-4 select-none h-full min-h-[600px]">
-            {BOARD_STAGES.map(stage => {
+            {activeStages.map(stage => {
               const columnCandidates = activeCandidates.filter(c => c.stage === stage);
               const stageSelectedCount = columnCandidates.filter(c => selectedCandidates.has(c.id)).length;
               const isStageFullySelected = columnCandidates.length > 0 && stageSelectedCount === columnCandidates.length;
@@ -1368,6 +1424,44 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                       </div>
                     )}
                   </div>
+
+                  {/* Rejection Cooldown Modal */}
+                  {showCooldownModal && cooldownCandidate && (
+                    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 border-l-4 border-red-500">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                              <AlertCircle className="w-6 h-6 text-red-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900">Re-application Policy</h3>
+                          </div>
+
+                          <div className="bg-red-50 border border-red-100 rounded-lg p-4 mb-4">
+                            <p className="text-sm text-red-800 font-medium">Cooldown Period Active</p>
+                            <p className="text-sm text-red-700 mt-1">
+                              Candidate <strong>{cooldownCandidate.name}</strong> was rejected {daysSinceRejection} days ago.
+                            </p>
+                          </div>
+
+                          <p className="text-gray-600 text-sm mb-6 leading-relaxed">
+                            Policy requires a minimum <strong>6-month (180 days)</strong> cooldown period before a rejected candidate can re-apply.
+                            <br /><br />
+                            Please advise the candidate to apply again after the cooldown period expires.
+                          </p>
+
+                          <div className="flex justify-end">
+                            <button
+                              onClick={() => setShowCooldownModal(false)}
+                              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-medium transition-colors"
+                            >
+                              Close & Dismiss
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Cards Container - Clean */}
                   <div className="flex-1 overflow-y-auto space-y-3 px-4 pt-4 pb-2">
@@ -1495,13 +1589,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                               </div>
 
                               {/* Subtle divider + Check status action */}
-                              <button
-                                onClick={() => handleCheckStatus(candidate)}
-                                className="w-full mt-3 pt-3 border-t border-gray-100 flex items-center justify-center gap-1 text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                              >
-                                Check status
-                                <ExternalLink className="w-3 h-3" />
-                              </button>
+
                             </div>
                           );
                         }
@@ -1595,13 +1683,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                               )}
 
                               {/* Increased spacing + Check status action */}
-                              <button
-                                onClick={() => handleCheckStatus(candidate)}
-                                className="w-full mt-4 pt-3 border-t border-gray-100 flex items-center justify-center gap-1 text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                              >
-                                Check status
-                                <ExternalLink className="w-3 h-3" />
-                              </button>
+
                             </div>
                           );
                         }
@@ -1867,15 +1949,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                               )}
 
                               {/* Action area */}
-                              <div className="mt-4 pt-3 border-t border-gray-100">
-                                <button
-                                  onClick={() => handleCheckStatus(candidate)}
-                                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Check status
-                                </button>
-                              </div>
+
 
                               {/* Subtle gray divider at bottom for visual consistency */}
                               <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-100"></div>
@@ -2006,15 +2080,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                               )}
 
                               {/* Action area */}
-                              <div className="mt-4 pt-3 border-t border-gray-100">
-                                <button
-                                  onClick={() => handleCheckStatus(candidate)}
-                                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Check status
-                                </button>
-                              </div>
+
 
                               {/* Subtle gray divider at bottom for visual consistency */}
                               <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-100"></div>
@@ -2147,15 +2213,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                               )}
 
                               {/* Action area */}
-                              <div className="mt-4 pt-3 border-t border-gray-100">
-                                <button
-                                  onClick={() => handleCheckStatus(candidate)}
-                                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Check status
-                                </button>
-                              </div>
+
 
                               {/* Subtle gray divider at bottom for visual consistency */}
                               <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-100"></div>
@@ -2288,15 +2346,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                               )}
 
                               {/* Action area */}
-                              <div className="mt-4 pt-3 border-t border-gray-100">
-                                <button
-                                  onClick={() => handleCheckStatus(candidate)}
-                                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Check status
-                                </button>
-                              </div>
+
 
                               {/* Subtle gray divider at bottom for visual consistency */}
                               <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-100"></div>
@@ -2434,15 +2484,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                               )}
 
                               {/* Action area */}
-                              <div className="mt-4 pt-3 border-t border-gray-100">
-                                <button
-                                  onClick={() => handleCheckStatus(candidate)}
-                                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Check status
-                                </button>
-                              </div>
+
 
                               {/* Subtle gray divider at bottom for visual consistency */}
                               <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-100"></div>
@@ -2569,15 +2611,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                               )}
 
                               {/* Action area */}
-                              <div className="mt-4 pt-3 border-t border-gray-100">
-                                <button
-                                  onClick={() => handleCheckStatus(candidate)}
-                                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Check status
-                                </button>
-                              </div>
+
 
                               {/* Subtle gray divider at bottom for visual consistency */}
                               <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-100"></div>
@@ -2704,15 +2738,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                               )}
 
                               {/* Action area */}
-                              <div className="mt-4 pt-3 border-t border-gray-100">
-                                <button
-                                  onClick={() => handleCheckStatus(candidate)}
-                                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Check status
-                                </button>
-                              </div>
+
 
                               {/* Subtle gray divider at bottom for visual consistency */}
                               <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-100"></div>
@@ -2835,15 +2861,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                               )}
 
                               {/* Action area */}
-                              <div className="mt-4 pt-3 border-t border-gray-100">
-                                <button
-                                  onClick={() => handleCheckStatus(candidate)}
-                                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Check status
-                                </button>
-                              </div>
+
 
                               {/* Subtle gray divider at bottom for visual consistency */}
                               <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-100"></div>
@@ -2942,15 +2960,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                               )}
 
                               {/* Action area */}
-                              <div className="mt-4 pt-3 border-t border-gray-100">
-                                <button
-                                  onClick={() => handleCheckStatus(candidate)}
-                                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Check status
-                                </button>
-                              </div>
+
 
                               {/* Subtle gray divider at bottom for visual consistency */}
                               <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-100"></div>
@@ -3119,17 +3129,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                             )}
 
                             {/* Check Status Button or HM Review Action */}
-                            {candidate.stage === 'HM Review' ? (
-                              getHMReviewActionButton(candidate)
-                            ) : (
-                              <button
-                                onClick={() => handleCheckStatus(candidate)}
-                                className="w-full mt-3 pt-3 border-t border-gray-100 flex items-center justify-center gap-1 text-blue-600 hover:text-blue-700 text-xs font-medium transition-colors"
-                              >
-                                Check status
-                                <ExternalLink className="w-3 h-3" />
-                              </button>
-                            )}
+                            {getHMReviewActionButton(candidate)}
                           </div>
                         );
                       })
@@ -3473,7 +3473,6 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                         auditStatus={auditStatus}
                         feedbackStatus={feedbackStatus}
                         onViewProfile={onViewProfile}
-                        onCheckStatus={handleCheckStatus}
                         onRowClick={(candidate) => {
                           setSelectedCandidateTimeline(candidate);
                           setShowTimelineDrawer(true);
@@ -3498,68 +3497,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
       {/* Modals */}
       {/* Single Candidate Status Modal */}
-      {showStatusModal && selectedCandidateForStatus && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden animate-in slide-in-from-bottom duration-500">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900">Candidate Status Review</h3>
-            </div>
 
-            <div className="p-6 space-y-4">
-              {/* Candidate Details */}
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Candidate Name</label>
-                  <p className="text-sm font-semibold text-gray-900 mt-1">{selectedCandidateForStatus.name}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Job Opening</label>
-                  <p className="text-sm font-semibold text-gray-900 mt-1">{selectedCandidateForStatus.jobTitle || 'AI Lead'}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Current Stage</label>
-                  <p className="text-sm font-semibold text-gray-900 mt-1">{selectedCandidateForStatus.stage}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Applied Date</label>
-                  <p className="text-sm font-semibold text-gray-900 mt-1">{selectedCandidateForStatus.appliedDate}</p>
-                </div>
-              </div>
-
-              {/* Confirmation Message */}
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-gray-700">
-                  Please verify all details before moving this candidate to the next stage.
-                </p>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-              <button
-                onClick={() => {
-                  setShowStatusModal(false);
-                  setSelectedCandidateForStatus(null);
-                }}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSingleMove}
-                disabled={!canMoveToNextStage(selectedCandidateForStatus)}
-                className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all ${!canMoveToNextStage(selectedCandidateForStatus)
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'text-white bg-blue-600 hover:bg-blue-700'
-                  }`}
-                title={!canMoveToNextStage(selectedCandidateForStatus) ? 'HM approval required' : ''}
-              >
-                Move to {getNextStage(selectedCandidateForStatus.stage)}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Bulk Move Confirmation Modal */}
       {showBulkMoveModal && (
@@ -3613,119 +3551,16 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
         </div>
       )}
 
-      {/* HM Review Modal - ONLY for Pending Reviews */}
-      {showHMReviewModal && selectedCandidateForHMReview && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden animate-in slide-in-from-bottom duration-500">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900">Hiring Manager Review</h3>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Candidate Snapshot */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={`https://i.pravatar.cc/150?u=${selectedCandidateForHMReview.id}`}
-                    className="w-12 h-12 rounded-full border border-gray-200"
-                  />
-                  <div>
-                    <h4 className="font-semibold text-gray-900">{selectedCandidateForHMReview.name}</h4>
-                    <p className="text-sm text-gray-600">{selectedCandidateForHMReview.jobTitle || 'AI Lead'}</p>
-                    <p className="text-xs text-gray-500">Applied: {selectedCandidateForHMReview.appliedDate}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Decision Buttons */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">Your Decision</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {(['Approve', 'Reject', 'On Hold'] as const).map((decision) => (
-                    <button
-                      key={decision}
-                      onClick={() => setHmDecision(decision)}
-                      className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${hmDecision === decision
-                        ? decision === 'Approve'
-                          ? 'border-green-500 bg-green-50 text-green-700'
-                          : decision === 'Reject'
-                            ? 'border-red-500 bg-red-50 text-red-700'
-                            : 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                        }`}
-                    >
-                      {decision}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Feedback Textarea */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Feedback & Comments
-                  <span className="text-red-500 ml-1">*</span>
-                </label>
-                <textarea
-                  value={hmFeedback}
-                  onChange={(e) => setHmFeedback(e.target.value)}
-                  placeholder={
-                    hmDecision === 'Approve'
-                      ? "What makes this candidate a good fit? Highlight their strengths..."
-                      : hmDecision === 'Reject'
-                        ? "What are your concerns? Why is this candidate not suitable?"
-                        : "Why should this candidate be put on hold? What needs clarification?"
-                  }
-                  className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm"
-                  required
-                />
-              </div>
-
-              {/* Review Summary Section */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-blue-900 mb-2">What happens next?</h4>
-                <p className="text-sm text-blue-700">
-                  {hmDecision === 'Approve' && `${selectedCandidateForHMReview.name} will proceed to the Assignment stage and be notified of next steps.`}
-                  {hmDecision === 'Reject' && `${selectedCandidateForHMReview.name} will be removed from the active pipeline and marked as rejected.`}
-                  {hmDecision === 'On Hold' && `${selectedCandidateForHMReview.name}'s application will be paused pending further review.`}
-                </p>
-                <p className="text-xs text-blue-600 mt-2">
-                  Your decision and feedback will be recorded and visible to the HR team.
-                </p>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-              <button
-                onClick={() => {
-                  setShowHMReviewModal(false);
-                  setSelectedCandidateForHMReview(null);
-                  setHmDecision('Approve');
-                  setHmFeedback('');
-                }}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleHMReviewSubmit}
-                disabled={!hmFeedback.trim()}
-                className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all ${!hmFeedback.trim()
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : hmDecision === 'Approve'
-                    ? 'bg-green-600 text-white hover:bg-green-700'
-                    : hmDecision === 'Reject'
-                      ? 'bg-red-600 text-white hover:bg-red-700'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
-              >
-                Submit Decision
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* HM Review Modal - REPLACED WITH NEW COMPONENT */}
+      <HMReviewModal
+        show={showHMReviewModal}
+        candidate={selectedCandidateForHMReview}
+        onClose={() => {
+          setShowHMReviewModal(false);
+          setSelectedCandidateForHMReview(null);
+        }}
+        onSubmit={handleHMReviewSubmit}
+      />
 
       {/* HM Feedback View Modal - READ-ONLY */}
       {showHMFeedbackModal && selectedCandidateForFeedback && (
@@ -4112,6 +3947,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
             ? getStageFeedback(selectedFeedbackCandidate, selectedFeedbackStage)
             : { exists: false, feedback: '', isEmpty: true }
         }
+        stageHistory={selectedFeedbackCandidate?.stageHistory}
         onClose={() => {
           setShowFeedbackReviewModal(false);
           setSelectedFeedbackCandidate(null);

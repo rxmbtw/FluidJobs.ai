@@ -42,7 +42,8 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     locations: '',
     mode_of_job: '',
     skills: '',
-    job_description: ''
+    job_description: '',
+    primary_recruiter_id: ''
   });
   const [skillsInput, setSkillsInput] = useState('');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -66,6 +67,11 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
   const [isUserEditing, setIsUserEditing] = useState(false);
   const [showPdfSuccessModal, setShowPdfSuccessModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [minioImages, setMinioImages] = useState<{ tech: any[], management: any[] }>({ tech: [], management: [] });
+  const [showAllTech, setShowAllTech] = useState(false);
+  const [showAllManagement, setShowAllManagement] = useState(false);
+  const [loadingImages, setLoadingImages] = useState(false);
+  const [imageError, setImageError] = useState('');
   const [users, setUsers] = useState<any[]>([]);
   const [selectedHiringManager, setSelectedHiringManager] = useState('');
   const [selectedRecruiters, setSelectedRecruiters] = useState<string[]>([]);
@@ -296,7 +302,42 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     if (selectedAccount) {
       fetchUsers();
     }
-  }, [isSuperAdmin, selectedAccount]);
+  }, [selectedAccount, isSuperAdmin]);
+
+  // Fetch MinIO images when modal opens
+  useEffect(() => {
+    const fetchMinioImages = async () => {
+      if (!showImageModal) return;
+
+      setLoadingImages(true);
+      setImageError('');
+
+      try {
+        const response = await fetch('http://localhost:8000/api/job-images/list');
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch images from server');
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.images) {
+          setMinioImages(data.images);
+          console.log(`✅ Loaded ${data.totalCount} images from MinIO`);
+        } else {
+          throw new Error('Invalid response format');
+        }
+      } catch (error) {
+        console.error('Error fetching MinIO images:', error);
+        setImageError('Failed to load images. Using fallback images.');
+        // Keep the hardcoded fallback images
+      } finally {
+        setLoadingImages(false);
+      }
+    };
+
+    fetchMinioImages();
+  }, [showImageModal]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -534,6 +575,7 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
           no_of_openings: parseInt(formData.no_of_openings),
           account_id: parseInt(selectedAccount),
           created_by_user_id: currentAdmin?.id || null,
+          primary_recruiter_id: formData.primary_recruiter_id,
           interview_stages: hiringStages // Add interview stages to payload
         };
 
@@ -1369,6 +1411,27 @@ What We Offer:
                         <p className="text-sm text-gray-500 mt-1">Select responsibilities for each team member for this specific job opening.</p>
                       </div>
 
+                      {/* Primary Sourcing Recruiter Selection */}
+                      <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm mb-6">
+                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                          Primary Sourcing Recruiter
+                        </label>
+                        <p className="text-xs text-gray-500 mb-3">
+                          Select the main recruiter responsible for sourcing and candidate pipelines for this role.
+                        </p>
+                        <select
+                          value={formData.primary_recruiter_id}
+                          onChange={handleInputChange}
+                          name="primary_recruiter_id"
+                          className="w-full md:w-1/2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        >
+                          <option value="">-- Select Primary Recruiter --</option>
+                          {users?.filter(u => u.role === 'Recruiter' || u.role === 'Admin' || u.role === 'SuperAdmin').map(user => (
+                            <option key={user.id} value={user.id}>{user.name} ({user.role})</option>
+                          ))}
+                        </select>
+                      </div>
+
                       {users.length === 0 ? (
                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
                           <svg className="w-12 h-12 text-yellow-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1859,118 +1922,212 @@ What We Offer:
               </button>
             </div>
 
-            <div className="mb-8">
-              <h3 className="text-lg font-medium text-gray-800 mb-4">Technology & Development</h3>
-              <div className="grid grid-cols-4 gap-4">
-                {fluidJobsImages.tech.map((image, index) => (
-                  <div
-                    key={`tech-${index}`}
-                    onClick={() => {
-                      setSelectedImage(image);
-                      setErrors(prev => ({ ...prev, selectedImage: '' }));
-                      setShowImageModal(false);
-                    }}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${selectedImage === image
-                      ? 'border-indigo-600 ring-2 ring-indigo-200'
-                      : 'border-gray-200 hover:border-indigo-300'
-                      }`}
-                  >
-                    <img
-                      src={image}
-                      alt={`Tech image ${index + 1}`}
-                      className="w-full h-32 object-cover"
-                      onError={(e) => {
-                        console.log('Image failed to load:', image);
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                    {selectedImage === image && (
-                      <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+            {loadingImages && (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                <span className="ml-3 text-gray-600">Loading images...</span>
               </div>
-            </div>
+            )}
 
-            <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-800 mb-4">Management & Business</h3>
-              <div className="grid grid-cols-4 gap-4">
-                {fluidJobsImages.management.map((image, index) => (
-                  <div
-                    key={`mgmt-${index}`}
-                    onClick={() => {
-                      setSelectedImage(image);
-                      setErrors(prev => ({ ...prev, selectedImage: '' }));
-                      setShowImageModal(false);
-                    }}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${selectedImage === image
-                      ? 'border-indigo-600 ring-2 ring-indigo-200'
-                      : 'border-gray-200 hover:border-indigo-300'
-                      }`}
-                  >
-                    <img
-                      src={image}
-                      alt={`Management image ${index + 1}`}
-                      className="w-full h-32 object-cover"
-                      onError={(e) => {
-                        console.log('Image failed to load:', image);
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                    {selectedImage === image && (
-                      <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+            {imageError && (
+              <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-800 text-sm">{imageError}</p>
               </div>
-            </div>
+            )}
 
-            <div>
-              <h3 className="text-lg font-medium text-gray-800 mb-4">General Professional</h3>
-              <div className="grid grid-cols-4 gap-4">
-                {jobImages.map((image, index) => (
-                  <div
-                    key={`original-${index}`}
-                    onClick={() => {
-                      setSelectedImage(image);
-                      setErrors(prev => ({ ...prev, selectedImage: '' }));
-                      setShowImageModal(false);
-                    }}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${selectedImage === image
-                      ? 'border-indigo-600 ring-2 ring-indigo-200'
-                      : 'border-gray-200 hover:border-indigo-300'
-                      }`}
-                  >
-                    <img
-                      src={image}
-                      alt={`Professional image ${index + 1}`}
-                      className="w-full h-32 object-cover"
-                    />
-                    {selectedImage === image && (
-                      <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      </div>
+            {!loadingImages && (
+              <>
+                {/* Technology & Development Section */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-medium text-gray-800 mb-4">
+                    Technology & Development
+                    {minioImages.tech.length > 8 && (
+                      <span className="ml-2 text-sm text-gray-500">({minioImages.tech.length} images)</span>
                     )}
+                  </h3>
+                  {minioImages.tech.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-4 gap-4">
+                        {(showAllTech ? minioImages.tech : minioImages.tech.slice(0, 8)).map((image, index) => (
+                          <div
+                            key={`tech-${index}`}
+                            onClick={() => {
+                              setSelectedImage(image.url);
+                              setErrors(prev => ({ ...prev, selectedImage: '' }));
+                              setShowImageModal(false);
+                            }}
+                            className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${selectedImage === image.url
+                              ? 'border-indigo-600 ring-2 ring-indigo-200'
+                              : 'border-gray-200 hover:border-indigo-300'
+                              }`}
+                          >
+                            <img
+                              src={image.url}
+                              alt={image.name}
+                              loading="lazy"
+                              className="w-full h-32 object-cover bg-gray-100"
+                              style={{ contentVisibility: 'auto' }}
+                              onError={(e) => {
+                                console.log('Image failed to load:', image.name);
+                                e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12"%3EImage unavailable%3C/text%3E%3C/svg%3E';
+                              }}
+                            />
+                            {selectedImage === image.url && (
+                              <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                                <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {!showAllTech && minioImages.tech.length > 8 && (
+                        <button
+                          onClick={() => setShowAllTech(true)}
+                          className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          <span>Show {minioImages.tech.length - 8} more images</span>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      )}
+                      {showAllTech && minioImages.tech.length > 8 && (
+                        <button
+                          onClick={() => setShowAllTech(false)}
+                          className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          <span>Show less</span>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                          </svg>
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No technology images available</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Management & Business Section */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium text-gray-800 mb-4">
+                    Management & Business
+                    {minioImages.management.length > 8 && (
+                      <span className="ml-2 text-sm text-gray-500">({minioImages.management.length} images)</span>
+                    )}
+                  </h3>
+                  {minioImages.management.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-4 gap-4">
+                        {(showAllManagement ? minioImages.management : minioImages.management.slice(0, 8)).map((image, index) => (
+                          <div
+                            key={`mgmt-${index}`}
+                            onClick={() => {
+                              setSelectedImage(image.url);
+                              setErrors(prev => ({ ...prev, selectedImage: '' }));
+                              setShowImageModal(false);
+                            }}
+                            className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${selectedImage === image.url
+                              ? 'border-indigo-600 ring-2 ring-indigo-200'
+                              : 'border-gray-200 hover:border-indigo-300'
+                              }`}
+                          >
+                            <img
+                              src={image.url}
+                              alt={image.name}
+                              loading="lazy"
+                              className="w-full h-32 object-cover bg-gray-100"
+                              style={{ contentVisibility: 'auto' }}
+                              onError={(e) => {
+                                console.log('Image failed to load:', image.name);
+                                e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12"%3EImage unavailable%3C/text%3E%3C/svg%3E';
+                              }}
+                            />
+                            {selectedImage === image.url && (
+                              <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                                <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {!showAllManagement && minioImages.management.length > 8 && (
+                        <button
+                          onClick={() => setShowAllManagement(true)}
+                          className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          <span>Show {minioImages.management.length - 8} more images</span>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      )}
+                      {showAllManagement && minioImages.management.length > 8 && (
+                        <button
+                          onClick={() => setShowAllManagement(false)}
+                          className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          <span>Show less</span>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                          </svg>
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No management images available</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* General Professional Section (Unsplash fallback) */}
+                <div>
+                  <h3 className="text-lg font-medium text-gray-800 mb-4">General Professional</h3>
+                  <div className="grid grid-cols-4 gap-4">
+                    {jobImages.map((image, index) => (
+                      <div
+                        key={`original-${index}`}
+                        onClick={() => {
+                          setSelectedImage(image);
+                          setErrors(prev => ({ ...prev, selectedImage: '' }));
+                          setShowImageModal(false);
+                        }}
+                        className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${selectedImage === image
+                          ? 'border-indigo-600 ring-2 ring-indigo-200'
+                          : 'border-gray-200 hover:border-indigo-300'
+                          }`}
+                      >
+                        <img
+                          src={image}
+                          alt={`Professional image ${index + 1}`}
+                          className="w-full h-32 object-cover"
+                        />
+                        {selectedImage === image && (
+                          <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                            <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

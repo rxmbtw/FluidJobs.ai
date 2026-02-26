@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createBrowserRouter, createRoutesFromElements, Route, Navigate, RouterProvider, useNavigate } from 'react-router-dom';
 import LoginPage from './pages/auth/LoginPage';
 import CandidateRegistrationPage from './pages/auth/CandidateRegistrationPage';
+import AcceptInvite from './pages/auth/AcceptInvite';
 import ComingSoon from './components/ComingSoonPage';
 import AuthCallback from './pages/AuthCallback';
 import SuperAdminDashboard from './pages/super-admin/SuperAdminDashboard';
@@ -20,6 +21,7 @@ import AdminAccounts from './pages/admin/views/AdminAccounts';
 import AdminSettings from './pages/admin/views/AdminSettings';
 import AdminProfileSettings from './pages/admin/views/AdminProfileSettings';
 import AdminCreateUser from './pages/admin/views/AdminCreateUser';
+import RecruitersDashboard from './pages/admin/RecruitersDashboard';
 import PrivateRoute from './components/PrivateRoute';
 import RoleRoute from './components/RoleRoute';
 // Public Careers Pages
@@ -112,6 +114,7 @@ const router = createBrowserRouter(
       {/* OAuth Callback Route */}
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/candidate-registration" element={<CandidateRegistrationPage />} />
+      <Route path="/accept-invite" element={<AcceptInvite />} />
 
       {/* Public Dashboard Routes (temporarily) */}
       <Route path="/candidate-dashboard" element={<CandidateDashboard />} />
@@ -148,6 +151,9 @@ const router = createBrowserRouter(
         <Route path="create-user" element={<SuperAdminDefaultView />} />
         <Route path="create-account" element={<SuperAdminDefaultView />} />
 
+        {/* Recruiters Analytics Dashboard */}
+        <Route path="recruiters" element={<RecruitersDashboard />} />
+
         {/* Legacy routes mappings (can be removed or kept for safety if external links exist) */}
         <Route path="send-invitation" element={<Navigate to="create-candidate/invite" replace />} />
         <Route path="bulk-import" element={<Navigate to="create-candidate/import" replace />} />
@@ -183,6 +189,7 @@ const router = createBrowserRouter(
         </Route>
 
         <Route path="accounts" element={<AdminAccounts />} />
+        <Route path="recruiters" element={<RecruitersDashboard />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="profile-settings" element={<AdminProfileSettings />} />
         <Route path="create-user" element={<AdminCreateUser />} />

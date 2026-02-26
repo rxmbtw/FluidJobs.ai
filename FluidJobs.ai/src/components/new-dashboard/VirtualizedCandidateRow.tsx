@@ -17,7 +17,6 @@ interface VirtualizedCandidateRowProps {
   feedbackStatus: 'submitted' | 'incomplete' | 'pending' | 'missing';
   latestFeedback: string;
   onViewProfile: (id: string) => void;
-  onCheckStatus: (candidate: PipelineCandidate) => void;
   style?: React.CSSProperties;
 }
 
@@ -29,7 +28,6 @@ const VirtualizedCandidateRow: React.FC<VirtualizedCandidateRowProps> = memo(({
   feedbackStatus,
   latestFeedback,
   onViewProfile,
-  onCheckStatus,
   style
 }) => {
   const currentStageIndex = boardStages.indexOf(candidate.stage as InterviewStage);
@@ -51,11 +49,10 @@ const VirtualizedCandidateRow: React.FC<VirtualizedCandidateRowProps> = memo(({
   const feedbackIconData = getFeedbackIcon(feedbackStatus);
 
   return (
-    <tr 
+    <tr
       style={style}
-      className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors ${
-        index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-      }`}
+      className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
+        }`}
     >
       {/* Candidate Column */}
       <td className="px-8 py-6 sticky left-0 bg-inherit z-10">
@@ -84,12 +81,11 @@ const VirtualizedCandidateRow: React.FC<VirtualizedCandidateRowProps> = memo(({
           <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200 w-fit">
             {candidate.stage}
           </span>
-          <div className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold w-fit ${
-            candidate.aging <= 3 ? 'bg-gray-100 text-gray-600' :
-            candidate.aging <= 7 ? 'bg-yellow-100 text-yellow-700' :
-            candidate.aging <= 14 ? 'bg-orange-100 text-orange-700' :
-            'bg-red-100 text-red-700'
-          }`}>
+          <div className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold w-fit ${candidate.aging <= 3 ? 'bg-gray-100 text-gray-600' :
+              candidate.aging <= 7 ? 'bg-yellow-100 text-yellow-700' :
+                candidate.aging <= 14 ? 'bg-orange-100 text-orange-700' :
+                  'bg-red-100 text-red-700'
+            }`}>
             {candidate.aging}d in stage
           </div>
         </div>
@@ -99,7 +95,7 @@ const VirtualizedCandidateRow: React.FC<VirtualizedCandidateRowProps> = memo(({
       <td className="px-6 py-6">
         <div className="flex items-center gap-3">
           <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
-            <div 
+            <div
               className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-500 rounded-full"
               style={{ width: `${progressPercentage}%` }}
             />
@@ -129,16 +125,14 @@ const VirtualizedCandidateRow: React.FC<VirtualizedCandidateRowProps> = memo(({
       <td className="px-6 py-6">
         {candidate.assignmentScore ? (
           <div className="flex items-center gap-2">
-            <TrendingUp className={`w-4 h-4 ${
-              candidate.assignmentScore >= 80 ? 'text-green-600' :
-              candidate.assignmentScore >= 60 ? 'text-yellow-600' :
-              'text-red-600'
-            }`} />
-            <span className={`text-sm font-semibold ${
-              candidate.assignmentScore >= 80 ? 'text-green-700' :
-              candidate.assignmentScore >= 60 ? 'text-yellow-700' :
-              'text-red-700'
-            }`}>
+            <TrendingUp className={`w-4 h-4 ${candidate.assignmentScore >= 80 ? 'text-green-600' :
+                candidate.assignmentScore >= 60 ? 'text-yellow-600' :
+                  'text-red-600'
+              }`} />
+            <span className={`text-sm font-semibold ${candidate.assignmentScore >= 80 ? 'text-green-700' :
+                candidate.assignmentScore >= 60 ? 'text-yellow-700' :
+                  'text-red-700'
+              }`}>
               {candidate.assignmentScore}%
             </span>
           </div>
@@ -150,16 +144,15 @@ const VirtualizedCandidateRow: React.FC<VirtualizedCandidateRowProps> = memo(({
       {/* Audit Status Column */}
       <td className="px-6 py-6">
         <div className="flex items-center gap-2">
-          <div 
-            className={`w-2 h-2 rounded-full ${
-              auditStatus.status === 'healthy' ? 'bg-green-500' :
-              auditStatus.status === 'warning' ? 'bg-yellow-500' :
-              'bg-red-500'
-            }`}
+          <div
+            className={`w-2 h-2 rounded-full ${auditStatus.status === 'healthy' ? 'bg-green-500' :
+                auditStatus.status === 'warning' ? 'bg-yellow-500' :
+                  'bg-red-500'
+              }`}
             title={auditStatus.reasons.join(', ') || 'No issues'}
           />
           {auditStatus.criticalCount > 0 && (
-            <span 
+            <span
               className="inline-flex items-center px-1.5 py-0.5 bg-red-50 text-red-700 text-[9px] font-bold rounded"
               title={`${auditStatus.feedbackViolations} stage(s) missing feedback`}
             >
@@ -184,13 +177,7 @@ const VirtualizedCandidateRow: React.FC<VirtualizedCandidateRowProps> = memo(({
           >
             <Eye className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => onCheckStatus(candidate)}
-            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-all"
-            title="More actions"
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
+
         </div>
       </td>
     </tr>

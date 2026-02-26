@@ -23,7 +23,6 @@ interface OptimizedCandidateRowProps {
   feedbackStatus: 'submitted' | 'incomplete' | 'pending' | 'missing';
   skippedStages?: InterviewStage[];
   onViewProfile: (id: string) => void;
-  onCheckStatus: (candidate: PipelineCandidate) => void;
   onRowClick: (candidate: PipelineCandidate) => void;
   onStageJump?: (candidate: PipelineCandidate, direction: 'forward' | 'backward') => void;
   onViewFeedback?: (candidate: PipelineCandidate, stage: InterviewStage) => void;
@@ -37,7 +36,6 @@ const OptimizedCandidateRow: React.FC<OptimizedCandidateRowProps> = memo(({
   feedbackStatus,
   skippedStages = [],
   onViewProfile,
-  onCheckStatus,
   onRowClick,
   onStageJump,
   onViewFeedback
@@ -272,16 +270,7 @@ const OptimizedCandidateRow: React.FC<OptimizedCandidateRowProps> = memo(({
             >
               <Eye className="w-4 h-4" />
             </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onCheckStatus(candidate);
-              }}
-              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-[120ms] flex items-center justify-center"
-              title="View History"
-            >
-              <FileText className="w-4 h-4" />
-            </button>
+
           </div>
 
         </div>

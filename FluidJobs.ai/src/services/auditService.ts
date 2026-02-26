@@ -35,23 +35,23 @@ export interface AuditLogEntry {
   userName: string;
   userRole: string;
   timestamp: Date;
-  
+
   // Change tracking
-  fromStage?: InterviewStage;
-  toStage?: InterviewStage;
+  fromStage?: string;
+  toStage?: string;
   fromStatus?: string;
   toStatus?: string;
-  
+
   // Context
   reason?: string;
   description?: string;
   metadata?: Record<string, any>;
-  
+
   // System info
   ipAddress?: string;
   userAgent?: string;
   sessionId?: string;
-  
+
   // Impact tracking
   affectedFields?: string[];
   oldValues?: Record<string, any>;
@@ -71,7 +71,7 @@ export interface AuditQuery {
 
 export class AuditService {
   private static baseUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
-  
+
   // Create comprehensive audit log entry
   static async createAuditLog(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>): Promise<AuditLogEntry> {
     const auditEntry: AuditLogEntry = {
@@ -85,12 +85,12 @@ export class AuditService {
 
     try {
       await this.persistAuditLog(auditEntry);
-      
+
       // Also log to console in development
       if (process.env.NODE_ENV === 'development') {
         console.log('🔍 Audit Log:', auditEntry);
       }
-      
+
       return auditEntry;
     } catch (error) {
       console.error('Failed to create audit log:', error);
@@ -101,8 +101,8 @@ export class AuditService {
   // Log stage transition with detailed context
   static async logStageTransition(
     candidate: Candidate,
-    fromStage: InterviewStage,
-    toStage: InterviewStage,
+    fromStage: string,
+    toStage: string,
     userId: string,
     userName: string,
     userRole: string,
@@ -319,20 +319,21 @@ export class AuditService {
   }> {
     try {
       const queryParams = new URLSearchParams();
-      
+
       if (query.candidateId) queryParams.set('candidateId', query.candidateId);
       if (query.jobId) queryParams.set('jobId', query.jobId);
       if (query.userId) queryParams.set('userId', query.userId);
       if (query.action) queryParams.set('action', query.action);
       if (query.fromDate) queryParams.set('fromDate', query.fromDate.toISOString());
       if (query.toDate) queryParams.set('toDate', query.toDate.toISOString());
-      
+
       queryParams.set('page', (query.page || 1).toString());
       queryParams.set('limit', (query.limit || 50).toString());
 
+      const token = localStorage.getItem('token') || '';
       const response = await fetch(`${this.baseUrl}/api/audit-logs?${queryParams}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -365,9 +366,10 @@ export class AuditService {
     actionBreakdown: Array<{ action: AuditAction; count: number }>;
   }> {
     try {
+      const token = localStorage.getItem('token') || '';
       const response = await fetch(`${this.baseUrl}/api/audit-logs/summary?timeframe=${timeframe}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -420,20 +422,21 @@ export class AuditService {
     const hmReviewEntry = candidate.stageHistory?.find(
       h => h.toStage === InterviewStage.HM_REVIEW
     );
-    
+
     if (hmReviewEntry) {
       return Date.now() - new Date(hmReviewEntry.timestamp).getTime();
     }
-    
+
     return 0;
   }
 
   private static async persistAuditLog(entry: AuditLogEntry): Promise<void> {
     try {
+      const token = localStorage.getItem('token') || '';
       const response = await fetch(`${this.baseUrl}/api/audit-logs`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(entry)

@@ -48,21 +48,21 @@ function getCacheKey(candidate: PipelineCandidate): string {
 export function clearExpiredCache(): void {
   const now = Date.now();
   const keysToDelete: string[] = [];
-  
+
   auditCache.forEach((value, key) => {
     if (now - value.timestamp > CACHE_TTL) {
       keysToDelete.push(key);
     }
   });
-  
+
   keysToDelete.forEach(key => auditCache.delete(key));
 }
 
 // Compute audit flags with memoization
 export function computeAuditStatus(
   candidate: PipelineCandidate,
-  boardStages: InterviewStage[],
-  getStageFeedback: (c: PipelineCandidate, stage: InterviewStage) => any,
+  boardStages: string[],
+  getStageFeedback: (c: PipelineCandidate, stage: string) => any,
   checkFeedbackViolations: (c: PipelineCandidate) => any
 ): {
   status: 'healthy' | 'warning' | 'critical';
@@ -74,13 +74,13 @@ export function computeAuditStatus(
 } {
   const cacheKey = getCacheKey(candidate);
   const cached = auditCache.get(cacheKey);
-  
+
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.result;
   }
 
   const flags: AuditFlag[] = [];
-  
+
   // Flag 1: Moved without feedback
   const feedbackCheck = checkFeedbackViolations(candidate);
   if (feedbackCheck.hasViolations) {
@@ -91,7 +91,7 @@ export function computeAuditStatus(
       details: feedbackCheck.violations.map((v: any) => v.stage).join(', ')
     });
   }
-  
+
   // Flag 2: Advanced despite low score
   const currentStageIndex = boardStages.indexOf(candidate.stage);
   if (candidate.assignmentScore && candidate.assignmentScore < SCORE_THRESHOLD) {
@@ -105,7 +105,7 @@ export function computeAuditStatus(
       });
     }
   }
-  
+
   // Flag 3: Aging exceeds SLA
   const sla = STAGE_SLA[candidate.stage] || 7;
   if (candidate.aging > sla) {
@@ -116,7 +116,7 @@ export function computeAuditStatus(
       details: `Current stage: ${candidate.stage}`
     });
   }
-  
+
   // Flag 4: No hiring manager
   if (!candidate.hiringManager || candidate.hiringManager.trim() === '') {
     flags.push({
@@ -126,24 +126,24 @@ export function computeAuditStatus(
       details: 'Candidate lacks ownership'
     });
   }
-  
+
   // Flag 5: Skipped stages
   if (candidate.stageHistory && candidate.stageHistory.length > 0) {
     const visitedStages = new Set(candidate.stageHistory.map(h => h.toStage));
-    const skippedStages: InterviewStage[] = [];
-    
+    const skippedStages: string[] = [];
+
     for (let i = 0; i < currentStageIndex; i++) {
       const stage = boardStages[i];
-      if (stage === InterviewStage.SCREENING || 
-          stage === InterviewStage.L3_TECHNICAL || 
-          stage === InterviewStage.L4_TECHNICAL) {
+      if (stage === InterviewStage.SCREENING ||
+        stage === InterviewStage.L3_TECHNICAL ||
+        stage === InterviewStage.L4_TECHNICAL) {
         continue;
       }
       if (!visitedStages.has(stage)) {
         skippedStages.push(stage);
       }
     }
-    
+
     if (skippedStages.length > 0) {
       flags.push({
         type: 'skipped_stage',
@@ -153,20 +153,20 @@ export function computeAuditStatus(
       });
     }
   }
-  
+
   const criticalFlags = flags.filter(f => f.severity === 'critical');
   const warningFlags = flags.filter(f => f.severity === 'warning');
-  
+
   const reasons = flags.map(f => f.message);
   const feedbackViolations = feedbackCheck.hasViolations ? feedbackCheck.violations.length : 0;
-  
+
   let status: 'healthy' | 'warning' | 'critical' = 'healthy';
   if (criticalFlags.length > 0) {
     status = 'critical';
   } else if (warningFlags.length > 0) {
     status = 'warning';
   }
-  
+
   const result = {
     status,
     reasons,
@@ -175,30 +175,30 @@ export function computeAuditStatus(
     criticalCount: criticalFlags.length,
     warningCount: warningFlags.length
   };
-  
+
   auditCache.set(cacheKey, {
     timestamp: Date.now(),
     result
   });
-  
+
   return result;
 }
 
 // Batch compute audit status for multiple candidates
 export function batchComputeAuditStatus(
   candidates: PipelineCandidate[],
-  boardStages: InterviewStage[],
-  getStageFeedback: (c: PipelineCandidate, stage: InterviewStage) => any,
+  boardStages: string[],
+  getStageFeedback: (c: PipelineCandidate, stage: string) => any,
   checkFeedbackViolations: (c: PipelineCandidate) => any
 ): Map<string, ReturnType<typeof computeAuditStatus>> {
   const results = new Map();
-  
+
   for (const candidate of candidates) {
     results.set(
       candidate.id,
       computeAuditStatus(candidate, boardStages, getStageFeedback, checkFeedbackViolations)
     );
   }
-  
+
   return results;
 }

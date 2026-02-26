@@ -9,17 +9,17 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 // MinIO Configuration
 const minioClient = new Minio.Client({
-  endPoint: '72.60.103.151',
-  port: 9100,
+  endPoint: 's3.fluidjobs.ai',
+  port: 9002,
   useSSL: true,
-  accessKey: 'fluidaiadmin',
-  secretKey: 'Fluidbucket@123',
+  accessKey: 'admin',
+  secretKey: 'Fluid@bucket2026',
   transportAgent: new https.Agent({
     rejectUnauthorized: false
   })
 });
 
-const MINIO_BUCKET = 'fluidai-bucket';
+const MINIO_BUCKET = 'fluidjobsai';
 
 // Create uploads directories
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -70,7 +70,7 @@ async function uploadToGCS(file, folder = 'uploads') {
       { 'Content-Type': file.mimetype }
     );
 
-    const publicUrl = `https://72.60.103.151:9100/${MINIO_BUCKET}/${objectName}`;
+    const publicUrl = `https://s3.fluidjobs.ai:9002/${MINIO_BUCKET}/${objectName}`;
     console.log('✅ File uploaded to MinIO:', publicUrl);
     return publicUrl;
 
@@ -96,7 +96,7 @@ async function uploadJobPDF(file, jobId, jobTitle) {
       { 'Content-Type': 'application/pdf' }
     );
 
-    const publicUrl = `https://72.60.103.151:9100/${MINIO_BUCKET}/${objectName}`;
+    const publicUrl = `https://s3.fluidjobs.ai:9002/${MINIO_BUCKET}/${objectName}`;
     console.log('✅ Job PDF uploaded to MinIO:', publicUrl);
     return { publicUrl, fileName };
 
@@ -122,7 +122,7 @@ async function uploadToLocal(file, folder = 'uploads') {
       { 'Content-Type': file.mimetype }
     );
 
-    const publicUrl = `https://72.60.103.151:9100/${MINIO_BUCKET}/${objectName}`;
+    const publicUrl = `https://s3.fluidjobs.ai:9002/${MINIO_BUCKET}/${objectName}`;
     console.log('✅ File uploaded to MinIO:', publicUrl);
     return publicUrl;
   } catch (error) {

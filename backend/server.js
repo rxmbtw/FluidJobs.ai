@@ -98,6 +98,10 @@ app.use('/api/contact-support', require('./routes/contactSupport'));
 app.use('/api/resume-form', require('./routes/resumeForm'));
 app.use('/api/audit-logs', require('./routes/auditLogs'));
 app.use('/api/image-proxy', require('./routes/imageProxy'));
+app.use('/api/job-images', require('./routes/jobImages'));
+app.use('/api/recruiters-analytics', require('./routes/recruiters-analytics'));
+app.use('/api/recruiters', require('./routes/recruiter-assignments'));
+app.use('/api/candidate-assignments', require('./routes/candidateAssignments'));
 
 // Serve uploaded files with proper headers
 const uploadsPath = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');

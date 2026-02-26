@@ -44,8 +44,8 @@ export enum UserRole {
 export interface StageTransition {
   id: string;
   candidateId: string;
-  fromStage: InterviewStage;
-  toStage: InterviewStage;
+  fromStage: string;
+  toStage: string;
   timestamp: Date;
   userId: string;
   userName: string;
@@ -72,7 +72,7 @@ export interface CandidatePermissions {
   canEdit: boolean;
   canMove: boolean;
   canRestrict: boolean;
-  allowedStages: InterviewStage[];
+  allowedStages: string[];
 }
 
 export interface InterviewLevel {
@@ -90,18 +90,18 @@ export interface Candidate {
   name: string;
   email: string;
   phone: string;
-  currentStage: InterviewStage;
+  currentStage: string;
   status: CandidateStatus;
   hiringManagerId: string; // Now required
   hiringManager?: string; // Display name for hiring manager
-  
+
   // Audit fields
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
   updatedBy: string;
   version: number;
-  
+
   // Profile fields
   jobTitle: string;
   department: string;
@@ -110,6 +110,7 @@ export interface Candidate {
   lastUpdateDate: string;
   experience: string;
   location: string;
+  accountName?: string; // Added for Manage Candidates view
 
   // Status tracking
   isOnHold?: boolean;
@@ -172,17 +173,28 @@ export interface Candidate {
   experienceYears?: number;
   currentlyEmployed?: string;
   currentCompany?: string;
-  lastWorkingDay?: string;
+  previousCompany?: string; // Newly added
+  lastWorkingDay?: string; // Newly added
   currentSalary?: string;
   expectedSalary?: string;
   maritalStatus?: string;
   resumeScore?: number;
   skills?: string[];
   modeOfJob?: string; // Work mode in previous company
-  candidateJobStatuses?: {job_id: number, job_title: string, status: string}[];
-  
+  candidateJobStatuses?: { job_id: number, job_title: string, status: string }[];
+
   // Permissions (computed at runtime)
   permissions?: CandidatePermissions;
+}
+
+export interface JobStage {
+  id: string; // Unique identifier for the stage
+  name: string; // Display name
+  type: 'standard' | 'custom';
+  isMandatory: boolean; // Locked stages cannot be removed
+  remarksRequired: boolean; // Toggle for mandatory remarks
+  color?: string; // For visual distinction
+  order: number; // For sorting
 }
 
 export interface Job {
@@ -194,6 +206,7 @@ export interface Job {
   openings: number;
   filled: number;
   location: string;
+  stages?: JobStage[]; // Added stages configuration
 }
 
 export interface Stats {
@@ -205,15 +218,15 @@ export interface Stats {
 }
 
 export interface AuditFlag {
-  type: 'moved_without_feedback' | 'low_score_advanced' | 'aging_exceeds_sla' | 
-        'no_hiring_manager' | 'skipped_stage' | 'assignment_without_result';
+  type: 'moved_without_feedback' | 'low_score_advanced' | 'aging_exceeds_sla' |
+  'no_hiring_manager' | 'skipped_stage' | 'assignment_without_result';
   severity: 'critical' | 'warning';
   message: string;
   details?: string;
 }
 
 export interface PipelineCandidate extends Candidate {
-  stage: InterviewStage;
+  stage: string;
   aging: number;
   interviewer: string | null;
   interviewNote: string | null;

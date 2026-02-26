@@ -6,7 +6,7 @@ const fs = require('fs');
 const { PDFParse } = require('pdf-parse');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { logAudit } = require('../middleware/auditLogger');
-const { authenticateToken } = require('./auth');
+const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
 
 // Create uploads directory if it doesn't exist
@@ -16,7 +16,7 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Configure multer for disk storage
-const upload = multer({ 
+const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
       cb(null, uploadsDir);
@@ -49,7 +49,7 @@ router.get('/counts', async (req, res) => {
         COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_jobs
       FROM jobs_enhanced
     `);
-    
+
     res.json({
       success: true,
       counts: result.rows[0]
@@ -60,12 +60,40 @@ router.get('/counts', async (req, res) => {
   }
 });
 
+// Submit an edit request for a job (used by recruiters)
+router.post('/edit-request', authenticateToken, async (req, res) => {
+  try {
+    const { job_id, changes_json } = req.body;
+    const requested_by = req.user.id;
+
+    if (!job_id || !changes_json) {
+      return res.status(400).json({ success: false, error: 'job_id and changes_json are required' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO job_edit_requests (job_id, requested_by, changes_json, status, created_at) 
+       VALUES ($1, $2, $3, 'pending', NOW()) 
+       RETURNING id`,
+      [job_id, requested_by, JSON.stringify(changes_json)]
+    );
+
+    res.json({
+      success: true,
+      message: 'Edit request submitted successfully',
+      requestId: result.rows[0].id
+    });
+  } catch (error) {
+    console.error('Error submitting edit request:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
 // Get stats (user-specific if authenticated)
 router.get('/stats', (req, res, next) => {
   // Try to authenticate, but don't fail if no token
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  
+
   if (token) {
     authenticateToken(req, res, next);
   } else {
@@ -74,21 +102,21 @@ router.get('/stats', (req, res, next) => {
 }, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    
+
     let dateFilter = '';
     let params = [];
-    
+
     if (startDate && endDate) {
       dateFilter = 'AND j.created_at >= $2 AND j.created_at <= $3';
       params = [startDate, endDate];
     }
-    
+
     let query;
-    
+
     if (req.user) {
       // User is authenticated - get user-specific stats
       const userId = req.user.adminId || req.user.id;
-      
+
       if (startDate && endDate) {
         query = `
           SELECT 
@@ -151,14 +179,14 @@ router.get('/stats', (req, res, next) => {
         `;
       }
     }
-    
+
     const result = await pool.query(query, params);
     const stats = result.rows[0];
-    
+
     // Calculate changes
     const jobs_change = parseInt(stats.jobs_last_7_days) - parseInt(stats.jobs_previous_7_days);
     const candidates_change = parseInt(stats.candidates_last_7_days) - parseInt(stats.candidates_previous_7_days);
-    
+
     res.json({
       active_jobs: parseInt(stats.active_jobs) || 0,
       active_candidates: parseInt(stats.filtered_candidates || stats.active_candidates) || 0,
@@ -171,10 +199,10 @@ router.get('/stats', (req, res, next) => {
   }
 });
 
-// Get all jobs
-router.get('/list', async (req, res) => {
+// Get all jobs (Role-based access)
+router.get('/list', authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query(`
+    let query = `
       SELECT 
         j.*,
         a.account_name,
@@ -183,9 +211,32 @@ router.get('/list', async (req, res) => {
       LEFT JOIN accounts a ON j.account_id = a.account_id
       LEFT JOIN users ad ON j.created_by_user_id = ad.id
       WHERE j.status NOT IN ('rejected', 'deleted')
-      ORDER BY j.created_at DESC;
-    `);
-    
+    `;
+
+    const params = [];
+
+    // Role-based filtering
+    // SuperAdmin sees all jobs (check role OR email in superadmins table)
+    let isSuperAdmin = req.user.role === 'SuperAdmin' || req.user.role === 'superadmin';
+
+    if (!isSuperAdmin && req.user.email) {
+      // Fallback: Check if email exists in superadmins table
+      const superAdminCheck = await pool.query('SELECT 1 FROM superadmins WHERE LOWER(email) = LOWER($1)', [req.user.email]);
+      if (superAdminCheck.rows.length > 0) {
+        isSuperAdmin = true;
+      }
+    }
+
+    if (!isSuperAdmin) {
+      const userId = req.user.id || req.user.adminId;
+      query += ` AND j.account_id IN (SELECT account_id FROM account_users WHERE user_id = $1) `;
+      params.push(userId);
+    }
+
+    query += ` ORDER BY j.created_at DESC;`;
+
+    const result = await pool.query(query, params);
+
     // Map to expected format
     const jobs = result.rows.map(job => ({
       job_id: job.id,
@@ -212,7 +263,7 @@ router.get('/list', async (req, res) => {
       account_name: job.account_name,
       created_by_user_name: job.created_by_user_name
     }));
-    
+
     res.json({ success: true, jobs });
   } catch (error) {
     console.error('Error fetching jobs:', error);
@@ -245,14 +296,14 @@ router.get('/', async (req, res) => {
       ORDER BY j.created_at DESC
       LIMIT 10;
     `);
-    
+
     const jobs = result.rows.map(job => ({
       id: job.id.toString(),
       title: job.title,
       company: job.company || 'FluidJobs.ai',
       jobType: job.job_type,
-      ctc: job.min_salary && job.max_salary ? 
-        `₹${(job.min_salary/100000).toFixed(1)}L - ₹${(job.max_salary/100000).toFixed(1)}L` : 
+      ctc: job.min_salary && job.max_salary ?
+        `₹${(job.min_salary / 100000).toFixed(1)}L - ₹${(job.max_salary / 100000).toFixed(1)}L` :
         'Competitive',
       industry: job.job_domain,
       location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations || 'Remote',
@@ -275,7 +326,7 @@ router.get('/', async (req, res) => {
       minSalary: job.min_salary,
       maxSalary: job.max_salary
     }));
-    
+
     res.json(jobs);
   } catch (error) {
     console.error('Error fetching jobs:', error);
@@ -311,14 +362,14 @@ router.get('/published', async (req, res) => {
       WHERE j.status = 'Published' OR j.status = 'active'
       ORDER BY j.created_at DESC;
     `);
-    
+
     const jobs = result.rows.map(job => ({
       id: job.id.toString(),
       title: job.title,
       company: job.company || 'FluidJobs.ai',
       jobType: job.job_type,
-      ctc: job.min_salary && job.max_salary ? 
-        `₹${(job.min_salary/100000).toFixed(1)}L - ₹${(job.max_salary/100000).toFixed(1)}L` : 
+      ctc: job.min_salary && job.max_salary ?
+        `₹${(job.min_salary / 100000).toFixed(1)}L - ₹${(job.max_salary / 100000).toFixed(1)}L` :
         'Competitive',
       industry: job.job_domain,
       location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations || 'Remote',
@@ -338,7 +389,7 @@ router.get('/published', async (req, res) => {
       minSalary: job.min_salary,
       maxSalary: job.max_salary
     }));
-    
+
     res.json({ success: true, jobs });
   } catch (error) {
     console.error('Error fetching published jobs:', error);
@@ -359,7 +410,7 @@ router.get('/active', async (req, res) => {
       WHERE j.status = 'Published' OR j.status = 'active'
       ORDER BY j.created_at DESC;
     `);
-    
+
     res.json({ success: true, jobs: result.rows });
   } catch (error) {
     console.error('Error fetching active jobs:', error);
@@ -371,17 +422,17 @@ router.get('/active', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const jobResult = await pool.query(`
       SELECT * FROM jobs_enhanced WHERE id = $1;
     `, [id]);
-    
+
     if (jobResult.rows.length === 0) {
       return res.status(404).json({ error: 'Job not found' });
     }
-    
+
     const job = jobResult.rows[0];
-    
+
     // Get attachments
     const attachmentsResult = await pool.query(`
       SELECT attachment_id, original_name, file_path, file_type, attachment_type, uploaded_at
@@ -389,14 +440,14 @@ router.get('/:id', async (req, res) => {
       WHERE job_id = $1
       ORDER BY uploaded_at DESC;
     `, [id]);
-    
+
     res.json({
       id: job.id.toString(),
       title: job.title,
       company: job.company || 'FluidJobs.ai',
       jobType: job.job_type,
-      ctc: job.min_salary && job.max_salary ? 
-        `₹${(job.min_salary/100000).toFixed(1)}L - ₹${(job.max_salary/100000).toFixed(1)}L` : 
+      ctc: job.min_salary && job.max_salary ?
+        `₹${(job.min_salary / 100000).toFixed(1)}L - ₹${(job.max_salary / 100000).toFixed(1)}L` :
         'Competitive',
       industry: job.job_domain,
       location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations,
@@ -417,13 +468,13 @@ router.get('/:id', async (req, res) => {
       maxSalary: job.max_salary,
       // Legacy fields for backward compatibility
       type: job.job_type,
-      salary: job.min_salary && job.max_salary ? 
-        `₹${(job.min_salary/100000).toFixed(1)}L - ₹${(job.max_salary/100000).toFixed(1)}L` : 
+      salary: job.min_salary && job.max_salary ?
+        `₹${(job.min_salary / 100000).toFixed(1)}L - ₹${(job.max_salary / 100000).toFixed(1)}L` :
         'Competitive',
       experience: `${job.min_experience}-${job.max_experience} years`,
       employmentType: job.job_type,
-      salaryRange: job.min_salary && job.max_salary ? 
-        `Rs.${(job.min_salary/100000).toFixed(1)}L-Rs.${(job.max_salary/100000).toFixed(1)}L` : 
+      salaryRange: job.min_salary && job.max_salary ?
+        `Rs.${(job.min_salary / 100000).toFixed(1)}L-Rs.${(job.max_salary / 100000).toFixed(1)}L` :
         'Competitive',
       registration_opening_date: job.registration_opening_date,
       registration_closing_date: job.registration_closing_date,
@@ -439,10 +490,10 @@ router.get('/:id', async (req, res) => {
 router.post('/draft', async (req, res) => {
   try {
     const { userId, currentStep, jobData } = req.body;
-    
+
     // Check if draft exists
     const existing = await pool.query('SELECT draft_id FROM job_drafts WHERE user_id = $1', [userId]);
-    
+
     if (existing.rows.length > 0) {
       // Update existing draft
       const result = await pool.query(`
@@ -464,10 +515,10 @@ router.post('/draft', async (req, res) => {
         jobData.job_description, jobData.selected_image, jobData.eligible_courses,
         jobData.eligibility_criteria, jobData.selection_process, jobData.other_details,
         jobData.registration_schedule, jobData.registration_opening_date, jobData.registration_closing_date,
-        jobData.about_organisation, jobData.website, jobData.industry, jobData.organisation_size, 
+        jobData.about_organisation, jobData.website, jobData.industry, jobData.organisation_size,
         jobData.contact_person, jobData.job_close_days, currentStep, userId
       ]);
-      
+
       res.json({ success: true, draftId: result.rows[0].draft_id });
     } else {
       // Create new draft
@@ -489,10 +540,10 @@ router.post('/draft', async (req, res) => {
         jobData.job_description, jobData.selected_image, jobData.eligible_courses,
         jobData.eligibility_criteria, jobData.selection_process, jobData.other_details,
         jobData.registration_schedule, jobData.registration_opening_date, jobData.registration_closing_date,
-        jobData.about_organisation, jobData.website, jobData.industry, jobData.organisation_size, 
+        jobData.about_organisation, jobData.website, jobData.industry, jobData.organisation_size,
         jobData.contact_person, jobData.job_close_days, currentStep
       ]);
-      
+
       res.json({ success: true, draftId: result.rows[0].draft_id });
     }
   } catch (error) {
@@ -506,7 +557,7 @@ router.get('/draft/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const result = await pool.query('SELECT * FROM job_drafts WHERE user_id = $1', [userId]);
-    
+
     if (result.rows.length > 0) {
       res.json({ success: true, draft: result.rows[0] });
     } else {
@@ -524,14 +575,14 @@ router.post('/upload-jd', upload.single('jdFile'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
-    
+
     const fileUrl = `/uploads/job-descriptions/${req.file.filename}`;
     console.log('✅ JD uploaded to VPS:', fileUrl);
-    
+
     await logAudit(req.body.userId, req.body.userName || 'User', 'FILE_UPLOAD', `Uploaded JD file: ${req.file.originalname}`, 'file', null, req);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       filename: fileUrl,
       originalName: req.file.originalname
     });
@@ -547,14 +598,14 @@ router.post('/generate-jd-from-pdf', upload.single('jdFile'), async (req, res) =
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
-    
+
     // Extract text from PDF using pdf-parse v2 API
     const parser = new PDFParse({ data: fs.readFileSync(req.file.path) });
     const pdfData = await parser.getText();
     const extractedText = pdfData.text;
-    
+
     console.log('📄 Extracted text length:', extractedText.length);
-    
+
     // Generate job description using Gemini
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your-gemini-api-key') {
       return res.json({
@@ -563,10 +614,10 @@ router.post('/generate-jd-from-pdf', upload.single('jdFile'), async (req, res) =
         message: 'Gemini API not configured. Returning extracted text.'
       });
     }
-    
+
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-    
+
     const prompt = `You are a professional HR assistant. Convert the following job description text into a well-formatted, professional job description. 
 
 Format it with:
@@ -579,19 +630,19 @@ Job Description Text:
 ${extractedText}
 
 Provide only the formatted job description without any additional commentary.`;
-    
+
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const generatedDescription = response.text();
-    
+
     console.log('✅ Job description generated');
-    
+
     res.json({
       success: true,
       jobDescription: generatedDescription,
       extractedText: extractedText
     });
-    
+
   } catch (error) {
     console.error('Error generating JD from PDF:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -603,13 +654,13 @@ router.put('/update-status/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status, unpublish_reason } = req.body;
-    
+
     await pool.query(
-      'UPDATE jobs_enhanced SET status = $1, unpublish_reason = $2 WHERE id = $3', 
+      'UPDATE jobs_enhanced SET status = $1, unpublish_reason = $2 WHERE id = $3',
       [status, unpublish_reason, id]
     );
-    
-    res.json({ 
+
+    res.json({
       success: true,
       message: 'Job status updated successfully'
     });
@@ -624,10 +675,10 @@ router.put('/update/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const jobData = req.body;
-    
+
     // Convert skills to array if it's a string
     const skillsArray = Array.isArray(jobData.skills) ? jobData.skills : [jobData.skills];
-    
+
     // Convert locations to array if it's a string
     let locationsArray;
     if (Array.isArray(jobData.locations)) {
@@ -638,7 +689,7 @@ router.put('/update/:id', async (req, res) => {
     } else {
       locationsArray = [jobData.locations];
     }
-    
+
     const result = await pool.query(`
       UPDATE jobs_enhanced SET
         title = $1,
@@ -677,15 +728,15 @@ router.put('/update/:id', async (req, res) => {
       jobData.no_of_openings,
       id
     ]);
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
-    
+
     await logAudit(jobData.userId, jobData.userName || 'User', 'JOB_UPDATED', `Updated job: ${jobData.job_title}`, 'job', id, req);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       job: result.rows[0],
       message: 'Job updated successfully'
     });
@@ -699,11 +750,11 @@ router.put('/update/:id', async (req, res) => {
 router.post('/create', async (req, res) => {
   try {
     const jobData = req.body;
-    
+
     // Calculate closing date
     const closingDate = new Date();
     closingDate.setDate(closingDate.getDate() + (jobData.job_close_days || 30));
-    
+
     // Convert arrays to PostgreSQL array format
     const locationsArray = Array.isArray(jobData.locations) ? jobData.locations : [jobData.locations];
     const skillsArray = Array.isArray(jobData.skills) ? jobData.skills : [jobData.skills];
@@ -744,21 +795,21 @@ router.post('/create', async (req, res) => {
       jobData.registration_opening_date,
       jobData.registration_closing_date
     ]);
-    
+
     // Update account last activity
     if (jobData.account_id) {
       await pool.query('UPDATE accounts SET last_activity_at = NOW() WHERE account_id = $1', [jobData.account_id]);
     }
-    
+
     // Delete draft if exists
     if (jobData.userId) {
       await pool.query('DELETE FROM job_drafts WHERE user_id = $1', [jobData.userId]);
     }
-    
+
     await logAudit(jobData.created_by_user_id, jobData.userName || 'User', 'JOB_CREATED', `Created job: ${jobData.job_title}`, 'job', result.rows[0].id, req);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       jobId: result.rows[0].id,
       message: 'Job created successfully'
     });

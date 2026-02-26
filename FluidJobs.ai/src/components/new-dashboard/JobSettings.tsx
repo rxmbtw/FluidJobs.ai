@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { useDashboardHeader } from './NewDashboardContainer';
 import { JobStage } from './types';
 import { Info, FileText, CheckSquare, DollarSign, Users, ClipboardList, Trash2, Calendar, MapPin, Briefcase, Upload, Sparkles, X, Plus, ChevronUp, ChevronDown, Edit3, GripVertical, Image, AlertCircle, Check } from 'lucide-react';
@@ -6,6 +7,12 @@ import SuccessModal from '../SuccessModal';
 
 const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({ onDirtyChange }) => {
   const { setHeaderActions } = useDashboardHeader();
+  const currentUser = JSON.parse(sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('superadmin') || '{}');
+  const isRecruiterRole = currentUser.role?.toLowerCase() === 'recruiter';
+
+  const { jobSlug } = useParams<{ jobSlug?: string }>();
+  const jobId = jobSlug ? jobSlug.match(/^(\d+)/)?.[1] : null;
+
   const [jobDetails, setJobDetails] = useState({
     title: 'AI Lead',
     domain: 'Software Development',
@@ -35,6 +42,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
     isPublished: true,
     hiringManager: 'Sarah Parker',
     recruiters: ['Alex Thompson', 'James Wilson'],
+    primaryRecruiterId: '',
     // Updated to use JobStage[]
     interviewStages: [
       { id: 'screening', name: 'Screening', type: 'standard', isMandatory: true, remarksRequired: false, order: 1 },
@@ -167,8 +175,57 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
     setPendingSectionId(null);
   };
 
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
   const handleSaveClick = () => {
-    setShowSaveModal(true);
+    if (isDirty()) {
+      if (isRecruiterRole) {
+        setShowApprovalModal(true);
+      } else {
+        setShowSaveModal(true);
+      }
+    }
+  };
+
+  const handleConfirmApprovalRequest = async () => {
+    try {
+      setIsSaving(true);
+
+      const payload = {
+        job_id: jobId || 1, // Fallback to 1 if no valid slug
+        changes_json: {
+          ...jobDetails,
+          locations: selectedLocations
+        }
+      };
+
+      const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token') || localStorage.getItem('token');
+
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/edit-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit edit request');
+      }
+
+      setIsSaving(false);
+      setShowApprovalModal(false);
+      setShowSuccessModal(true);
+      setTimeout(() => setShowSuccessModal(false), 3000);
+
+      originalJobDetails.current = JSON.stringify(jobDetails);
+      originalLocations.current = JSON.stringify(selectedLocations);
+    } catch (error) {
+      console.error('Error submitting edit request:', error);
+      setIsSaving(false);
+      setShowApprovalModal(false);
+      alert('Failed to submit edit request. Please try again.');
+    }
   };
 
   const handleConfirmSave = async () => {
@@ -1048,6 +1105,26 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                   <p className="text-sm text-gray-500 mt-1">Select responsibilities for each team member for this specific job opening.</p>
                 </div>
 
+                {/* Primary Sourcing Recruiter Selection */}
+                <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Primary Sourcing Recruiter
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Select the main recruiter responsible for sourcing and candidate pipelines for this role.
+                  </p>
+                  <select
+                    value={jobDetails.primaryRecruiterId}
+                    onChange={(e) => setJobDetails({ ...jobDetails, primaryRecruiterId: e.target.value })}
+                    className="w-full md:w-1/2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  >
+                    <option value="">-- Select Primary Recruiter --</option>
+                    {users.filter(u => u.role === 'Recruiter' || u.role === 'Admin' || u.role === 'SuperAdmin').map(user => (
+                      <option key={user.id} value={user.id}>{user.name} ({user.role})</option>
+                    ))}
+                  </select>
+                </div>
+
                 {users.length === 0 ? (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
                     <svg className="w-12 h-12 text-yellow-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1654,6 +1731,45 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                   className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
                 >
                   Discard
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Request Approval Modal */}
+      {showApprovalModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden animate-in slide-in-from-bottom duration-500">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-6 h-6 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Submit Changes for Approval?</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                As a Recruiter, updates to active job postings require Admin approval. Would you like to submit an edit request now?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowApprovalModal(false)}
+                  disabled={isSaving}
+                  className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 bg-white rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all font-medium text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmApprovalRequest}
+                  disabled={isSaving}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/20 active:scale-[0.98] transition-all font-medium text-sm flex items-center justify-center"
+                >
+                  {isSaving ? (
+                    <span className="flex items-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    </span>
+                  ) : 'Submit Request'}
                 </button>
               </div>
             </div>

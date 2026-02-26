@@ -11,7 +11,7 @@ cd backend
 call npm install
 cd ..
 cd FluidJobs.ai
-call npm install
+call npm install --legacy-peer-deps
 cd ..
 
 echo.

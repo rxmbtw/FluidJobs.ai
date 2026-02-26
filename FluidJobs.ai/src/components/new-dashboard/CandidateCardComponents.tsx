@@ -3,7 +3,7 @@ import { InterviewStage, PipelineCandidate } from './types';
 
 interface CandidateCardSkipBadgeProps {
     candidate: PipelineCandidate;
-    skippedStages: InterviewStage[];
+    skippedStages: string[];
 }
 
 export const CandidateCardSkipBadge: React.FC<CandidateCardSkipBadgeProps> = ({ candidate, skippedStages }) => {
@@ -31,7 +31,7 @@ export const CandidateCardSkipBadge: React.FC<CandidateCardSkipBadgeProps> = ({ 
 interface CandidateCardActionsProps {
     candidate: PipelineCandidate;
     onStageJump: (candidate: PipelineCandidate, direction: 'forward' | 'backward') => void;
-    onViewFeedback: (candidate: PipelineCandidate, stage: InterviewStage) => void;
+    onViewFeedback: (candidate: PipelineCandidate, stage: string) => void;
     showBackward?: boolean;
     isSkippable?: boolean;
 }
@@ -85,7 +85,7 @@ export const CandidateCardActions: React.FC<CandidateCardActionsProps> = ({
             <button
                 onClick={(e) => {
                     e.stopPropagation();
-                    onViewFeedback(candidate, candidate.stage as InterviewStage);
+                    onViewFeedback(candidate, candidate.stage);
                 }}
                 className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors duration-200"
                 title="View Feedback"
