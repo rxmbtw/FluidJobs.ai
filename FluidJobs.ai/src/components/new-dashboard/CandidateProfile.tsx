@@ -26,6 +26,10 @@ const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate, onBack, 
   const [showSaveModal, setShowSaveModal] = React.useState(false);
   const [showSuccessModal, setShowSuccessModal] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  // Feedback modal for Hiring Timeline "Move to Next Stage"
+  const [showTimelineFeedbackModal, setShowTimelineFeedbackModal] = React.useState(false);
+  const [timelineFeedbackText, setTimelineFeedbackText] = React.useState('');
+  const [isMovingStage, setIsMovingStage] = React.useState(false);
 
   React.useEffect(() => {
     setDisplayCandidate(candidate);
@@ -383,40 +387,54 @@ const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate, onBack, 
     return currentStage;
   };
 
-  const handleMoveToNextStage = async () => {
+  // Show the feedback modal first; actual move happens in executeTimelineMove
+  const handleMoveToNextStage = () => {
+    setTimelineFeedbackText('');
+    setShowTimelineFeedbackModal(true);
+    setShowMoveModal(false);
+  };
+
+  // Execute the actual stage move after feedback is collected
+  const executeTimelineMove = async () => {
     try {
-      // Use production validation
-      const user = { id: 'current-user', name: 'Current User', role: 'admin' } as any; // This should come from auth context
+      setIsMovingStage(true);
+      const user = {
+        id: (JSON.parse(sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('superadmin') || '{}')).id || 'current-user',
+        name: (JSON.parse(sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('superadmin') || '{}')).name || 'Admin',
+        role: 'admin'
+      } as any;
       const targetStage = getNextStage();
 
       const validationResult = ValidationService.validateStageTransition(candidate, targetStage, user);
-
       if (!validationResult.valid) {
         alert(validationResult.reason || 'Cannot move to next stage');
-        setShowMoveModal(false);
+        setShowTimelineFeedbackModal(false);
         return;
       }
+
+      const feedbackToUse = timelineFeedbackText.trim() || `Moved to ${targetStage} by admin`;
 
       const result = await CandidateService.updateCandidateStage({
         candidateId: candidate.id,
         newStage: targetStage,
         userId: user.id,
-        reason: 'Manual progression from candidate profile'
+        reason: feedbackToUse
       });
 
       if (result.success) {
         if (onStageUpdate) {
           onStageUpdate(candidate.id, targetStage);
         }
-        setShowMoveModal(false);
+        setShowTimelineFeedbackModal(false);
+        setTimelineFeedbackText('');
       } else {
         alert(result.error || 'Failed to update stage');
-        setShowMoveModal(false);
       }
     } catch (error) {
       console.error('Stage update failed:', error);
       alert('Failed to update candidate stage. Please try again.');
-      setShowMoveModal(false);
+    } finally {
+      setIsMovingStage(false);
     }
   };
 
@@ -1323,6 +1341,99 @@ const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate, onBack, 
                     ) : 'Save'}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ────────────────────────────────────────────────
+            Timeline Stage Move Feedback Modal
+            Mirrors the board-view StageJumpModal UX
+        ──────────────────────────────────────────────── */}
+        {showTimelineFeedbackModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200] animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+              {/* Header */}
+              <div className="px-6 py-4 flex items-center justify-between bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-2xl">
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Move to Next Stage</h3>
+                    <p className="text-sm text-white/80">{candidate.name} → {getNextStage()}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setShowTimelineFeedbackModal(false); setTimelineFeedbackText(''); }}
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-4">
+                {/* Stage info */}
+                <div className="flex gap-3">
+                  <div className="flex-1 bg-gray-50 rounded-lg p-3 border border-gray-200 text-center">
+                    <div className="text-xs font-medium text-gray-400 mb-1">Current</div>
+                    <div className="text-sm font-semibold text-gray-900">{candidate.currentStage}</div>
+                  </div>
+                  <div className="flex items-center text-blue-500">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 bg-blue-50 rounded-lg p-3 border border-blue-200 text-center">
+                    <div className="text-xs font-medium text-blue-400 mb-1">Moving To</div>
+                    <div className="text-sm font-semibold text-blue-700">{getNextStage()}</div>
+                  </div>
+                </div>
+
+                {/* Feedback textarea */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Stage Notes / Feedback
+                    <span className="ml-1 text-xs font-normal text-gray-400">(optional — recorded in audit trail)</span>
+                  </label>
+                  <textarea
+                    value={timelineFeedbackText}
+                    onChange={(e) => setTimelineFeedbackText(e.target.value)}
+                    rows={4}
+                    placeholder={`Add notes about moving ${candidate.name} to ${getNextStage()}...`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Info banner */}
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-blue-700">This action will update the pipeline stage and create an audit log entry.</p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200 rounded-b-2xl">
+                <button
+                  onClick={() => { setShowTimelineFeedbackModal(false); setTimelineFeedbackText(''); }}
+                  disabled={isMovingStage}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeTimelineMove}
+                  disabled={isMovingStage}
+                  className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow-md flex items-center gap-2"
+                >
+                  {isMovingStage ? (
+                    <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Moving...</>
+                  ) : (
+                    <>Confirm &amp; Move</>
+                  )}
+                </button>
               </div>
             </div>
           </div>
