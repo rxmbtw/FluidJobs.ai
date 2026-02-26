@@ -1,7 +1,136 @@
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const pool = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
+
+// ── Multer setup for public CV uploads ────────────────────────────────────────
+const cvUploadDir = path.join(__dirname, '../uploads/applications');
+if (!fs.existsSync(cvUploadDir)) fs.mkdirSync(cvUploadDir, { recursive: true });
+
+const cvUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, cvUploadDir),
+    filename: (req, file, cb) => {
+      const safe = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+      cb(null, `${Date.now()}-${safe}`);
+    }
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  fileFilter: (req, file, cb) => {
+    const ok = /pdf|doc|docx/.test(path.extname(file.originalname).toLowerCase());
+    ok ? cb(null, true) : cb(new Error('Only PDF, DOC, DOCX files allowed'));
+  }
+});
+
+// ── PUBLIC APPLY (no auth) ─────────────────────────────────────────────────────
+// Called from the careers page application form
+router.post('/public-apply', cvUpload.single('cv'), async (req, res) => {
+  try {
+    const {
+      jobId, fullName, email, phone,
+      gender, maritalStatus,
+      experience, currentlyWorking,
+      currentCompany, noticePeriod, currentCTC,
+      lastCompany, joiningDate, lastCTC,
+      expectedCTC, currentCity, workMode, jobProfile
+    } = req.body;
+
+    if (!jobId || !fullName || !email || !phone) {
+      return res.status(400).json({ success: false, message: 'Job ID, name, email and phone are required.' });
+    }
+
+    // 1. Verify the job exists and is published
+    const jobCheck = await pool.query(
+      `SELECT id, title, status FROM jobs_enhanced WHERE id = $1`,
+      [parseInt(jobId)]
+    );
+    if (jobCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Job not found.' });
+    }
+    const job = jobCheck.rows[0];
+    const jobStatus = (job.status || '').toLowerCase();
+    if (!['published', 'active'].includes(jobStatus)) {
+      return res.status(400).json({ success: false, message: 'This job is no longer accepting applications.' });
+    }
+
+    // 2. Find or create candidate by email
+    let candidateId;
+    const existing = await pool.query(
+      `SELECT candidate_id FROM candidates WHERE LOWER(email) = LOWER($1)`,
+      [email]
+    );
+
+    if (existing.rows.length > 0) {
+      candidateId = existing.rows[0].candidate_id;
+    } else {
+      // Create new candidate record from form data
+      const newId = `FLC${Date.now()}`;
+      const currentCTCNum = currentCTC ? parseFloat(String(currentCTC).replace(/[^0-9.]/g, '')) : null;
+      const previousCTCNum = lastCTC ? parseFloat(String(lastCTC).replace(/[^0-9.]/g, '')) : null;
+      const expectedCTCNum = expectedCTC ? parseFloat(String(expectedCTC).replace(/[^0-9.]/g, '')) : null;
+
+      await pool.query(
+        `INSERT INTO candidates (
+          candidate_id, full_name, email, phone_number, gender, marital_status,
+          current_company, notice_period, current_ctc,
+          last_company, previous_ctc, city, work_mode, work_status,
+          experience_years, expected_ctc, created_at, updated_at
+        ) VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'Active',$14,$15,
+          CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )`,
+        [
+          newId, fullName, email.toLowerCase(), phone,
+          gender || null, maritalStatus || null,
+          currentCompany || lastCompany || null,
+          noticePeriod || null,
+          currentCTCNum,
+          lastCompany || null, previousCTCNum,
+          currentCity || null, workMode || null,
+          experience ? parseFloat(experience) : null,
+          expectedCTCNum
+        ]
+      );
+      candidateId = newId;
+    }
+
+    // 3. Check for duplicate application
+    const dupCheck = await pool.query(
+      `SELECT application_id FROM job_applications WHERE job_id = $1 AND candidate_id = $2`,
+      [parseInt(jobId), candidateId]
+    );
+    if (dupCheck.rows.length > 0) {
+      return res.status(400).json({ success: false, message: 'You have already applied for this job.' });
+    }
+
+    // 4. Store CV path if uploaded
+    const resumePath = req.file ? `/uploads/applications/${req.file.filename}` : null;
+
+    // 5. Create the job application record
+    const appResult = await pool.query(
+      `INSERT INTO job_applications (job_id, candidate_id, user_id, status, resume_path, applied_at)
+       VALUES ($1, $2, $2, 'submitted', $3, CURRENT_TIMESTAMP)
+       RETURNING application_id`,
+      [parseInt(jobId), candidateId, resumePath]
+    );
+
+    console.log(`✅ Public application: ${fullName} (${email}) applied to job ${jobId} [${job.title}] → app#${appResult.rows[0].application_id}`);
+
+    return res.json({
+      success: true,
+      message: 'Application submitted successfully! We will review your profile and get in touch.',
+      applicationId: appResult.rows[0].application_id
+    });
+
+  } catch (error) {
+    console.error('❌ Public apply error:', error.message);
+    return res.status(500).json({ success: false, message: 'Failed to submit application. Please try again.' });
+  }
+});
+
 
 // Get all applications for a candidate
 router.get('/', authenticateToken, async (req, res) => {
