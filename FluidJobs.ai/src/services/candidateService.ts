@@ -190,27 +190,36 @@ export class CandidateService {
 
         // Transform database applications to match our Candidate interface
         const transformedCandidates = data.applications.map((app: any, index: number) => {
-          // Map application status to InterviewStage
-          // For demo: distribute candidates across stages using a seeded approach
+          // ── Status → Pipeline Stage Mapping ──────────────────────────────────
+          // The DB stores job_applications.status as a string. We must map it to
+          // the correct InterviewStage. New applications always start at APPLIED.
           let currentStage: InterviewStage;
 
-          // Check if status matches a known stage
-          if (Object.values(InterviewStage).includes(app.status as InterviewStage)) {
-            currentStage = app.status as InterviewStage;
+          const rawStatus = (app.status || '').toLowerCase().trim();
+
+          // 1. Exact match against known InterviewStage values
+          const knownStage = Object.values(InterviewStage).find(
+            s => s.toLowerCase() === rawStatus
+          );
+
+          if (knownStage) {
+            // Status is already a valid pipeline stage name stored in the DB
+            currentStage = knownStage as InterviewStage;
+          } else if (
+            rawStatus === 'submitted' ||
+            rawStatus === 'new' ||
+            rawStatus === 'applied' ||
+            rawStatus === 'pending' ||
+            rawStatus === ''
+          ) {
+            // All fresh / unprocessed applications → APPLIED (first stage)
+            currentStage = InterviewStage.APPLIED;
           } else {
-            // Distribute across stages using index for consistent demo display
-            // This creates a realistic distribution: more candidates at early stages
-            const weights = [15, 12, 10, 8, 7, 7, 6, 5, 5]; // higher weight = more candidates at that stage
-            const totalWeight = weights.reduce((a, b) => a + b, 0);
-            const seed = (index * 7 + (app.id ? app.id.toString().charCodeAt(0) : 0)) % totalWeight;
-            let cumulative = 0;
-            let stageIndex = 0;
-            for (let i = 0; i < weights.length; i++) {
-              cumulative += weights[i];
-              if (seed < cumulative) { stageIndex = i; break; }
-            }
-            currentStage = PIPELINE_STAGES[stageIndex] || InterviewStage.APPLIED;
+            // Unknown status: default to APPLIED rather than randomising
+            console.warn(`[CandidateService] Unknown application status "${app.status}" — defaulting to APPLIED`);
+            currentStage = InterviewStage.APPLIED;
           }
+
 
           return {
             ...this.mapDbCandidateToCandidate({
