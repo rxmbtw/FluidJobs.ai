@@ -65,7 +65,11 @@ const FunnelStep: React.FC<{ label: string; count: number; total: number; color:
   );
 };
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  jobId?: string;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ jobId }) => {
   const { setHeaderActions } = useDashboardHeader();
   const [timeFilter, setTimeFilter] = useState('this_month');
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -98,18 +102,24 @@ const Dashboard: React.FC = () => {
     try {
       setLoading(true);
 
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidates?page=1&limit=1000`, {
+      const url = jobId
+        ? `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/job-applications/admin/list?jobId=${jobId}`
+        : `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidates?page=1&limit=1000`;
+
+      const response = await fetch(url, {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('superadmin_token')}`
         }
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.data && data.data.candidates && data.data.candidates.length > 0) {
-          const formattedCandidates = data.data.candidates.map((candidate: any) => ({
-            id: candidate.candidate_id,
-            jobId: 'default-job-id', // Add required field
+        const candList = data.applications || (data.data && data.data.candidates) || [];
+        if (candList.length > 0) {
+          const formattedCandidates = candList.map((candidate: any) => ({
+            id: candidate.candidate_id || candidate.id,
+            jobId: candidate.job_id || jobId || 'default-job-id',
             name: candidate.full_name,
             email: candidate.email,
             phone: candidate.phone_number || '',

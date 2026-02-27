@@ -172,6 +172,8 @@ router.get('/admin/list', authenticateToken, async (req, res) => {
     // Check SuperAdmin status first (this is a separate fast query)
     let isSuperAdmin = req.user.role === 'SuperAdmin' || req.user.role === 'superadmin';
 
+    const { jobId } = req.query;
+
     if (!isSuperAdmin && req.user.email) {
       try {
         const saCheck = await pool.query('SELECT 1 FROM superadmins WHERE LOWER(email) = LOWER($1)', [req.user.email]);
@@ -215,8 +217,10 @@ router.get('/admin/list', authenticateToken, async (req, res) => {
         LEFT JOIN job_applications ja ON ja.candidate_id = c.candidate_id
         LEFT JOIN jobs_enhanced j ON ja.job_id = j.id
         LEFT JOIN accounts a ON j.account_id = a.account_id
+        ${jobId ? ' WHERE j.id = $1' : ''}
         ORDER BY c.candidate_id, COALESCE(ja.applied_at, c.created_at) DESC
       `;
+      if (jobId) params.push(jobId);
     } else {
       // Regular admin: filter by account
       const userId = req.user.id || req.user.adminId;
@@ -245,9 +249,11 @@ router.get('/admin/list', authenticateToken, async (req, res) => {
         LEFT JOIN jobs_enhanced j ON ja.job_id = j.id
         LEFT JOIN accounts a ON j.account_id = a.account_id
         WHERE (j.account_id IN (SELECT account_id FROM account_users WHERE user_id = $1) OR j.account_id IS NULL)
+        ${jobId ? ' AND j.id = $2' : ''}
         ORDER BY date DESC
       `;
       params.push(userId);
+      if (jobId) params.push(jobId);
     }
 
     const result = await pool.query(query, params);

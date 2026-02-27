@@ -62,8 +62,7 @@ const BOARD_STAGES = [
   InterviewStage.SCREENING,           // Added: Screening stage
   InterviewStage.CV_SHORTLIST,
   InterviewStage.HM_REVIEW,
-  InterviewStage.ASSIGNMENT,
-  InterviewStage.ASSIGNMENT_RESULT,
+  InterviewStage.ASSIGNMENT,          // Single assignment column (no separate result)
   InterviewStage.L1_TECHNICAL,
   InterviewStage.L2_TECHNICAL,
   InterviewStage.L3_TECHNICAL,
@@ -72,10 +71,10 @@ const BOARD_STAGES = [
   InterviewStage.MANAGEMENT_ROUND,
   InterviewStage.SELECTED,
   InterviewStage.JOINED,
-  InterviewStage.REJECTED,            // Added: Terminal outcome
-  InterviewStage.DROPPED,             // Added: Terminal outcome
-  InterviewStage.NO_SHOW,             // Added: Terminal outcome
-  InterviewStage.ON_HOLD              // Added: On hold status
+  InterviewStage.REJECTED,            // Terminal outcome
+  InterviewStage.DROPPED,             // Terminal outcome
+  InterviewStage.NO_SHOW,             // Terminal outcome
+  InterviewStage.ON_HOLD              // On hold status
 ];
 
 // Terminal outcomes (now included in board for visibility)
@@ -132,11 +131,24 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   // Get authenticated user
   const { user: authUser } = useAuth();
 
+  // Normalize legacy stage names → canonical InterviewStage enum values
+  const STAGE_ALIAS: Record<string, string> = {
+    'Technical Assessment': InterviewStage.ASSIGNMENT,
+    'Assignment Result': InterviewStage.ASSIGNMENT,
+    'Phone Screening': InterviewStage.SCREENING,
+    'Application Review': InterviewStage.CV_SHORTLIST,
+    'L1 Technical Interview': InterviewStage.L1_TECHNICAL,
+    'L2 Technical Interview': InterviewStage.L2_TECHNICAL,
+    'L3 Technical Interview': InterviewStage.L3_TECHNICAL,
+    'L4 Technical Interview': InterviewStage.L4_TECHNICAL,
+    'System Design Round': InterviewStage.ASSIGNMENT,
+    'Cultural Fit Interview': InterviewStage.MANAGEMENT_ROUND,
+    'Final Interview': InterviewStage.MANAGEMENT_ROUND,
+  };
+
   useEffect(() => {
     if (jobStages && jobStages.length > 0) {
-      // Construct full pipeline: Applied -> Job Stages -> Terminal
-      // Ensure we don't duplicate if jobStages includes Applied/Selected etc (though it shouldn't based on my update)
-      const middleStages = jobStages.map(s => s.name);
+      const middleStages = jobStages.map(s => STAGE_ALIAS[s.name] || s.name);
 
       const fullStages = [
         InterviewStage.APPLIED,
@@ -145,14 +157,13 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
         InterviewStage.JOINED,
         InterviewStage.REJECTED,
         InterviewStage.DROPPED,
-        InterviewStage.NO_SHOW,
         InterviewStage.ON_HOLD
       ];
 
-      // Filter out potential duplicates just in case
-      const uniqueStages = Array.from(new Set(fullStages));
+      const uniqueStages = Array.from(new Set(fullStages)).filter(s => s !== InterviewStage.ASSIGNMENT_RESULT);
       setActiveStages(uniqueStages);
     } else {
+      // If no job stages, use the standard ones but ensure terminal outcomes are present
       setActiveStages(BOARD_STAGES);
     }
   }, [jobStages]);
@@ -245,6 +256,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   // Modal states
 
   const [showBulkMoveModal, setShowBulkMoveModal] = useState(false);
+  const [bulkMoveFeedback, setBulkMoveFeedback] = useState('');
 
   const [showHMReviewModal, setShowHMReviewModal] = useState(false);
   const [showHMFeedbackModal, setShowHMFeedbackModal] = useState(false);
@@ -272,15 +284,12 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   const [daysSinceRejection, setDaysSinceRejection] = useState<number>(0);
 
   // Configuration: Define which stages allow skipping
-  // REMOVED: Applied, Screening, CV Shortlist, HM Review, HR Round, Management Round to enforce sequential progression
   const SKIPPABLE_STAGES: string[] = [
     InterviewStage.ASSIGNMENT,
-    InterviewStage.ASSIGNMENT_RESULT,
     InterviewStage.L1_TECHNICAL,
     InterviewStage.L2_TECHNICAL,
     InterviewStage.L3_TECHNICAL,
     InterviewStage.L4_TECHNICAL,
-    // InterviewStage.MANAGEMENT_ROUND // Made mandatory
   ];
 
   // Helper function to check if a stage is skippable
@@ -749,6 +758,25 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   };
 
   const generateMockStageHistory = (candidate: PipelineCandidate) => {
+    // If candidate has real stageHistory data, use it directly
+    if (candidate.stageHistory && candidate.stageHistory.length > 0) {
+      return candidate.stageHistory.map((entry: any) => ({
+        stage: entry.toStage || entry.stage,
+        movedBy: entry.movedBy || entry.changedBy || getRandomUser(),
+        timestamp: entry.timestamp || entry.changedAt || new Date().toISOString(),
+        feedback: (entry.reason || entry.feedback || '').trim() || undefined,
+        hasFeedback: !!(entry.reason || entry.feedback),
+        score: entry.score || (
+          ((entry.toStage || entry.stage || '').includes('Technical') ||
+            (entry.toStage || entry.stage || '') === InterviewStage.ASSIGNMENT_RESULT)
+            ? Math.floor(Math.random() * 30) + 70
+            : null
+        ),
+        duration: entry.duration || null
+      }));
+    }
+
+    // Fallback: generate mock history (no real data available)
     const currentStageIndex = activeStages.indexOf(candidate.stage);
     const history = [];
 
@@ -764,7 +792,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
         stage,
         movedBy: getRandomUser(),
         timestamp: date.toISOString(),
-        feedback: stageFeedback.exists ? stageFeedback.feedback : 'No feedback provided',
+        feedback: stageFeedback.exists ? stageFeedback.feedback : undefined,
         hasFeedback: stageFeedback.exists && !stageFeedback.isEmpty,
         score: stage.includes('Technical') || stage === InterviewStage.ASSIGNMENT_RESULT
           ? Math.floor(Math.random() * 30) + 70
@@ -775,6 +803,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
     return history;
   };
+
 
   // Get stage status for timeline
   const getStageStatus = (stage: string, candidate: PipelineCandidate):
@@ -861,6 +890,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
       return activeStages[currentIndex + 1];
     }
     return currentStage;
+  };
+
+  // Get previous stage for feedback display
+  const getPreviousStage = (currentStage: string): string => {
+    const currentIndex = activeStages.indexOf(currentStage);
+    if (currentIndex > 0) {
+      return activeStages[currentIndex - 1];
+    }
+    return currentStage; // fallback: show current if no previous
   };
 
   // ==================== STAGE JUMPING SYSTEM ====================
@@ -1530,13 +1568,12 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                 <div className="flex items-center gap-1">
                                   <CandidateCardActions
                                     candidate={candidate}
-                                    onStageJump={handleStageJump}
-                                    onViewFeedback={(candidate, stage) => {
-                                      setSelectedFeedbackCandidate(candidate);
-                                      setSelectedFeedbackStage(stage);
+                                    onViewFeedback={async (candidate, stage) => {
+                                      const history = await CandidateService.getStageHistory(candidate.id);
+                                      setSelectedFeedbackCandidate({ ...candidate, stageHistory: history });
+                                      setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
-                                    isSkippable={isStageSkippable(stage)}
                                   />
                                   <button
                                     onClick={() => onViewProfile(candidate.id)}
@@ -1550,7 +1587,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
                               {/* Applied date + aging badge inline */}
                               <div className="flex items-center justify-between mb-3">
-                                <p className="text-[11px] text-gray-500">Applied: {candidate.appliedDate}</p>
+                                <p className="text-[11px] text-gray-500">Applied: {new Date(candidate.appliedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                                 <div className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${candidate.aging <= 3 ? 'bg-gray-50 text-gray-600 border-gray-200' :
                                   candidate.aging <= 7 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
                                     candidate.aging <= 14 ? 'bg-orange-50 text-orange-700 border-orange-200' :
@@ -1572,7 +1609,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
                               {/* Hiring Manager with warning if not assigned */}
                               <div className="mb-3">
-                                {candidate.hiringManager ? (
+                                {candidate.hiringManager && candidate.hiringManager !== 'Not Assigned' ? (
                                   <div className="flex items-center gap-2 text-xs">
                                     <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center ring-2 ring-white">
                                       <LucideUser className="w-2 h-2 text-green-600" />
@@ -1583,7 +1620,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                 ) : (
                                   <div className="flex items-center gap-2 text-xs">
                                     <AlertCircle className="w-3 h-3 text-amber-500" />
-                                    <span className="text-amber-600 font-medium">No HM assigned</span>
+                                    <span className="text-amber-600 font-medium">No Recruiter assigned</span>
                                   </div>
                                 )}
                               </div>
@@ -1629,13 +1666,12 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                 <div className="flex items-center gap-1">
                                   <CandidateCardActions
                                     candidate={candidate}
-                                    onStageJump={handleStageJump}
-                                    onViewFeedback={(candidate, stage) => {
-                                      setSelectedFeedbackCandidate(candidate);
-                                      setSelectedFeedbackStage(stage);
+                                    onViewFeedback={async (candidate, stage) => {
+                                      const history = await CandidateService.getStageHistory(candidate.id);
+                                      setSelectedFeedbackCandidate({ ...candidate, stageHistory: history });
+                                      setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
-                                    isSkippable={isStageSkippable(stage)}
                                   />
                                   <button
                                     onClick={() => onViewProfile(candidate.id)}
@@ -1649,7 +1685,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
                               {/* Applied date + aging badge inline (smaller) */}
                               <div className="flex items-center justify-between mb-3">
-                                <p className="text-[11px] text-gray-500">Applied: {candidate.appliedDate}</p>
+                                <p className="text-[11px] text-gray-500">Applied: {new Date(candidate.appliedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                                 <div className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${candidate.aging <= 3 ? 'bg-gray-50 text-gray-600 border-gray-200' :
                                   candidate.aging <= 7 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
                                     candidate.aging <= 14 ? 'bg-orange-50 text-orange-700 border-orange-200' :
@@ -1741,13 +1777,12 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                 <div className="flex items-center gap-1">
                                   <CandidateCardActions
                                     candidate={candidate}
-                                    onStageJump={handleStageJump}
-                                    onViewFeedback={(candidate, stage) => {
-                                      setSelectedFeedbackCandidate(candidate);
-                                      setSelectedFeedbackStage(stage);
+                                    onViewFeedback={async (candidate, stage) => {
+                                      const history = await CandidateService.getStageHistory(candidate.id);
+                                      setSelectedFeedbackCandidate({ ...candidate, stageHistory: history });
+                                      setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
-                                    isSkippable={isStageSkippable(stage)}
                                   />
                                   <button
                                     onClick={() => onViewProfile(candidate.id)}
@@ -1785,7 +1820,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
                               {/* Applied date + aging badge inline (consistent format) */}
                               <div className="flex items-center justify-between mb-3">
-                                <p className="text-[11px] text-gray-500">Applied: {candidate.appliedDate}</p>
+                                <p className="text-[11px] text-gray-500">Applied: {new Date(candidate.appliedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                                 <div className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${candidate.aging <= 3 ? 'bg-gray-50 text-gray-600 border-gray-200' :
                                   candidate.aging <= 7 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
                                     candidate.aging <= 14 ? 'bg-orange-50 text-orange-700 border-orange-200' :
@@ -1897,13 +1932,12 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                 <div className="flex items-center gap-1">
                                   <CandidateCardActions
                                     candidate={candidate}
-                                    onStageJump={handleStageJump}
-                                    onViewFeedback={(candidate, stage) => {
-                                      setSelectedFeedbackCandidate(candidate);
-                                      setSelectedFeedbackStage(stage);
+                                    onViewFeedback={async (candidate, stage) => {
+                                      const history = await CandidateService.getStageHistory(candidate.id);
+                                      setSelectedFeedbackCandidate({ ...candidate, stageHistory: history });
+                                      setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
-                                    isSkippable={isStageSkippable(stage)}
                                   />
                                   <button
                                     onClick={() => onViewProfile(candidate.id)}
@@ -2003,13 +2037,12 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                 <div className="flex items-center gap-1">
                                   <CandidateCardActions
                                     candidate={candidate}
-                                    onStageJump={handleStageJump}
-                                    onViewFeedback={(candidate, stage) => {
-                                      setSelectedFeedbackCandidate(candidate);
-                                      setSelectedFeedbackStage(stage);
+                                    onViewFeedback={async (candidate, stage) => {
+                                      const history = await CandidateService.getStageHistory(candidate.id);
+                                      setSelectedFeedbackCandidate({ ...candidate, stageHistory: history });
+                                      setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
-                                    isSkippable={isStageSkippable(stage)}
                                   />
                                   <button
                                     onClick={() => onViewProfile(candidate.id)}
@@ -2137,13 +2170,12 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                 <div className="flex items-center gap-1">
                                   <CandidateCardActions
                                     candidate={candidate}
-                                    onStageJump={handleStageJump}
-                                    onViewFeedback={(candidate, stage) => {
-                                      setSelectedFeedbackCandidate(candidate);
-                                      setSelectedFeedbackStage(stage);
+                                    onViewFeedback={async (candidate, stage) => {
+                                      const history = await CandidateService.getStageHistory(candidate.id);
+                                      setSelectedFeedbackCandidate({ ...candidate, stageHistory: history });
+                                      setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
-                                    isSkippable={isStageSkippable(stage)}
                                   />
                                   <button
                                     onClick={() => onViewProfile(candidate.id)}
@@ -2270,13 +2302,12 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                 <div className="flex items-center gap-1">
                                   <CandidateCardActions
                                     candidate={candidate}
-                                    onStageJump={handleStageJump}
-                                    onViewFeedback={(candidate, stage) => {
-                                      setSelectedFeedbackCandidate(candidate);
-                                      setSelectedFeedbackStage(stage);
+                                    onViewFeedback={async (candidate, stage) => {
+                                      const history = await CandidateService.getStageHistory(candidate.id);
+                                      setSelectedFeedbackCandidate({ ...candidate, stageHistory: history });
+                                      setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
-                                    isSkippable={isStageSkippable(stage)}
                                   />
                                   <button
                                     onClick={() => onViewProfile(candidate.id)}
@@ -2407,13 +2438,12 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                 <div className="flex items-center gap-1">
                                   <CandidateCardActions
                                     candidate={candidate}
-                                    onStageJump={handleStageJump}
-                                    onViewFeedback={(candidate, stage) => {
-                                      setSelectedFeedbackCandidate(candidate);
-                                      setSelectedFeedbackStage(stage);
+                                    onViewFeedback={async (candidate, stage) => {
+                                      const history = await CandidateService.getStageHistory(candidate.id);
+                                      setSelectedFeedbackCandidate({ ...candidate, stageHistory: history });
+                                      setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
-                                    isSkippable={isStageSkippable(stage)}
                                   />
                                   <button
                                     onClick={() => onViewProfile(candidate.id)}
@@ -2540,13 +2570,12 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                 <div className="flex items-center gap-1">
                                   <CandidateCardActions
                                     candidate={candidate}
-                                    onStageJump={handleStageJump}
-                                    onViewFeedback={(candidate, stage) => {
-                                      setSelectedFeedbackCandidate(candidate);
-                                      setSelectedFeedbackStage(stage);
+                                    onViewFeedback={async (candidate, stage) => {
+                                      const history = await CandidateService.getStageHistory(candidate.id);
+                                      setSelectedFeedbackCandidate({ ...candidate, stageHistory: history });
+                                      setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
-                                    isSkippable={isStageSkippable(stage)}
                                   />
                                   <button
                                     onClick={() => onViewProfile(candidate.id)}
@@ -2669,13 +2698,12 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                 <div className="flex items-center gap-1">
                                   <CandidateCardActions
                                     candidate={candidate}
-                                    onStageJump={handleStageJump}
-                                    onViewFeedback={(candidate, stage) => {
-                                      setSelectedFeedbackCandidate(candidate);
-                                      setSelectedFeedbackStage(stage);
+                                    onViewFeedback={async (candidate, stage) => {
+                                      const history = await CandidateService.getStageHistory(candidate.id);
+                                      setSelectedFeedbackCandidate({ ...candidate, stageHistory: history });
+                                      setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
-                                    isSkippable={isStageSkippable(stage)}
                                   />
                                   <button
                                     onClick={() => onViewProfile(candidate.id)}
@@ -2794,13 +2822,12 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                 <div className="flex items-center gap-1">
                                   <CandidateCardActions
                                     candidate={candidate}
-                                    onStageJump={handleStageJump}
-                                    onViewFeedback={(candidate, stage) => {
-                                      setSelectedFeedbackCandidate(candidate);
-                                      setSelectedFeedbackStage(stage);
+                                    onViewFeedback={async (candidate, stage) => {
+                                      const history = await CandidateService.getStageHistory(candidate.id);
+                                      setSelectedFeedbackCandidate({ ...candidate, stageHistory: history });
+                                      setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
-                                    isSkippable={isStageSkippable(stage)}
                                   />
                                   <button
                                     onClick={() => onViewProfile(candidate.id)}
@@ -2910,13 +2937,12 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                 <div className="flex items-center gap-1">
                                   <CandidateCardActions
                                     candidate={candidate}
-                                    onStageJump={handleStageJump}
-                                    onViewFeedback={(candidate, stage) => {
-                                      setSelectedFeedbackCandidate(candidate);
-                                      setSelectedFeedbackStage(stage);
+                                    onViewFeedback={async (candidate, stage) => {
+                                      const history = await CandidateService.getStageHistory(candidate.id);
+                                      setSelectedFeedbackCandidate({ ...candidate, stageHistory: history });
+                                      setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
-                                    isSkippable={isStageSkippable(stage)}
                                   />
                                   <button
                                     onClick={() => onViewProfile(candidate.id)}
@@ -3059,9 +3085,18 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                     {candidate.name}
                                   </h4>
                                 </button>
-                                <p className="text-xs text-gray-500 mt-1">Applied: {candidate.appliedDate}</p>
+                                <p className="text-xs text-gray-500 mt-1">Applied: {new Date(candidate.appliedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                               </div>
-                              <div className="flex flex-col items-end gap-2">
+                              <div className="flex items-center gap-1">
+                                <CandidateCardActions
+                                  candidate={candidate}
+                                  onViewFeedback={async (candidate, stage) => {
+                                    const history = await CandidateService.getStageHistory(candidate.id);
+                                    setSelectedFeedbackCandidate({ ...candidate, stageHistory: history });
+                                    setSelectedFeedbackStage(getPreviousStage(stage));
+                                    setShowFeedbackReviewModal(true);
+                                  }}
+                                />
                                 <button
                                   onClick={() => onViewProfile(candidate.id)}
                                   className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
@@ -3070,7 +3105,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                   <Eye className="w-4 h-4" />
                                 </button>
                                 <div className={`px-2 py-0.5 rounded text-xs font-medium ${candidate.aging > 15 ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
-                                  {candidate.aging}d aging
+                                  {candidate.aging}d
                                 </div>
                               </div>
                             </div>
@@ -3116,7 +3151,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                             )}
 
                             {/* Hiring Manager Information */}
-                            {candidate.hiringManager && (
+                            {candidate.hiringManager && candidate.hiringManager !== 'Not Assigned' ? (
                               <div className="mb-3">
                                 <div className="flex items-center gap-2 text-xs text-gray-600">
                                   <div className="w-4 h-4 rounded-full bg-purple-100 flex items-center justify-center ring-2 ring-white">
@@ -3124,6 +3159,13 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                   </div>
                                   <span className="font-medium text-gray-700">{candidate.hiringManager}</span>
                                   <span className="text-xs text-gray-500">HM</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="mb-3">
+                                <div className="flex items-center gap-2 text-xs">
+                                  <AlertCircle className="w-3 h-3 text-amber-500" />
+                                  <span className="text-amber-600 font-medium">No Recruiter assigned</span>
                                 </div>
                               </div>
                             )}
@@ -3528,6 +3570,18 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                       ))
                     }
                   </div>
+                </div>
+
+                {/* Feedback textarea */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Stage Notes / Feedback <span className="text-gray-400 font-normal">(optional)</span></label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                    rows={3}
+                    placeholder="Add notes or feedback for this stage move..."
+                    value={bulkMoveFeedback}
+                    onChange={(e) => setBulkMoveFeedback(e.target.value)}
+                  />
                 </div>
               </div>
             </div>

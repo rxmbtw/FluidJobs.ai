@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDashboardHeader } from './NewDashboardContainer';
 import { JobStage } from './types';
-import { Info, FileText, CheckSquare, DollarSign, Users, ClipboardList, Trash2, Calendar, MapPin, Briefcase, Upload, Sparkles, X, Plus, ChevronUp, ChevronDown, Edit3, GripVertical, Image, AlertCircle, Check } from 'lucide-react';
+import { Info, FileText, CheckSquare, DollarSign, Users, ClipboardList, Trash2, Calendar, MapPin, Briefcase, Upload, Sparkles, X, Plus, ChevronUp, ChevronDown, Edit3, GripVertical, Image, AlertCircle, Check, Bold, Italic, Underline, Strikethrough } from 'lucide-react';
 import SuccessModal from '../SuccessModal';
 
-const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({ onDirtyChange }) => {
+const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSaveSuccess?: () => void }> = ({ onDirtyChange, onSaveSuccess }) => {
   const { setHeaderActions } = useDashboardHeader();
   const currentUser = JSON.parse(sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('superadmin') || '{}');
   const isRecruiterRole = currentUser.role?.toLowerCase() === 'recruiter';
@@ -22,38 +22,23 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
     maxExperience: '7',
     numberOfOpenings: '2',
     modeOfJob: 'Remote',
-    description: 'We are looking for an experienced AI Lead to drive our artificial intelligence initiatives and lead a team of ML engineers.',
-    requirements: [
-      '5+ years of experience in AI/ML',
-      'Strong leadership skills',
-      'Experience with Python, TensorFlow, PyTorch',
-      'PhD in Computer Science or related field preferred'
-    ],
-    skills: ['Python', 'Machine Learning', 'TensorFlow', 'Leadership'],
+    description: '',
+    requirements: [] as string[],
+    skills: [] as string[],
     salary: {
-      min: 150000,
-      max: 200000,
+      min: 0,
+      max: 0,
       currency: 'INR',
       showToCandidate: true
     },
-    registrationOpeningDate: '2024-02-01',
-    registrationClosingDate: '2024-03-01',
+    registrationOpeningDate: '',
+    registrationClosingDate: '',
     status: 'Active',
-    isPublished: true,
-    hiringManager: 'Sarah Parker',
-    recruiters: ['Alex Thompson', 'James Wilson'],
+    hiringManager: '',
+    recruiters: [] as string[],
     primaryRecruiterId: '',
-    // Updated to use JobStage[]
-    interviewStages: [
-      { id: 'screening', name: 'Screening', type: 'standard', isMandatory: true, remarksRequired: false, order: 1 },
-      { id: 'tech_assess', name: 'Technical Assessment', type: 'standard', isMandatory: false, remarksRequired: true, order: 2 },
-      { id: 'l1_tech', name: 'L1 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 3 },
-      { id: 'l2_tech', name: 'L2 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 4 },
-      { id: 'l3_tech', name: 'L3 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 5 },
-      { id: 'l4_tech', name: 'L4 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 6 },
-      { id: 'hr_round', name: 'HR Round', type: 'standard', isMandatory: true, remarksRequired: true, order: 7 },
-      { id: 'management', name: 'Management Round', type: 'standard', isMandatory: false, remarksRequired: true, order: 8 }
-    ]
+    // Populated from DB on mount via useEffect below
+    interviewStages: [] as JobStage[]
   });
 
   const [activeSection, setActiveSection] = useState('basic');
@@ -61,15 +46,103 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
   const [locationInput, setLocationInput] = useState('');
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [skillInput, setSkillInput] = useState('');
-  const [showUnpublishModal, setShowUnpublishModal] = useState(false);
-  const [unpublishReason, setUnpublishReason] = useState('');
   const [newStageInput, setNewStageInput] = useState('');
   const [currentStageType, setCurrentStageType] = useState<'standard' | 'custom'>('standard');
   const [showNewStageInput, setShowNewStageInput] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showAllTech, setShowAllTech] = useState(false);
+  const [showAllManagement, setShowAllManagement] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [teamAssignments, setTeamAssignments] = useState<{ [userId: string]: string[] }>({});
+  // occupiedStages: stage name -> count of candidates currently in that stage
+  const [occupiedStages, setOccupiedStages] = useState<Record<string, number>>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [isUserEditing, setIsUserEditing] = useState(false);
+  const [isGeneratingFromPdf, setIsGeneratingFromPdf] = useState(false);
+  const [uploadedPdfFile, setUploadedPdfFile] = useState<File | null>(null);
+  const [pdfFileName, setPdfFileName] = useState('');
+  const [uploadedPdfUrl, setUploadedPdfUrl] = useState('');
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+
+  const validateSection = (sectionId: string) => {
+    let newErrors: { [key: string]: string } = {};
+
+    switch (sectionId) {
+      case 'basic':
+        if (!jobDetails.title.trim()) newErrors.title = 'Job title is required';
+        if (!jobDetails.domain) newErrors.domain = 'Job domain is required';
+        if (!jobDetails.minExperience) newErrors.minExperience = 'Min experience is required';
+        if (!jobDetails.maxExperience) newErrors.maxExperience = 'Max experience is required';
+        if (!jobDetails.numberOfOpenings || parseInt(jobDetails.numberOfOpenings) < 1) newErrors.numberOfOpenings = 'Valid number of openings is required';
+        break;
+      case 'image':
+        if (!selectedImage) newErrors.selectedImage = 'Job posting image is required';
+        break;
+      case 'timeline':
+        if (!jobDetails.registrationOpeningDate) newErrors.registrationOpeningDate = 'Registration opening date is required';
+        if (!jobDetails.registrationClosingDate) newErrors.registrationClosingDate = 'Registration closing date is required';
+        break;
+      case 'location':
+        if (selectedLocations.length === 0) newErrors.locations = 'At least one location is required';
+        if (!jobDetails.modeOfJob) newErrors.modeOfJob = 'Mode of job is required';
+        break;
+      case 'description':
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = jobDetails.description;
+        const textContent = tempDiv.textContent || tempDiv.innerText || '';
+        if (!textContent.trim()) newErrors.description = 'Job description is required';
+        break;
+      case 'requirements':
+        if (jobDetails.skills.length === 0) newErrors.skills = 'At least one skill is required';
+        break;
+      case 'compensation':
+        if (!jobDetails.salary.min && jobDetails.salary.min !== 0) newErrors.minSalary = 'Min salary is required';
+        if (!jobDetails.salary.max && jobDetails.salary.max !== 0) newErrors.maxSalary = 'Max salary is required';
+        break;
+    }
+
+    setErrors(prev => ({ ...prev, ...newErrors }));
+    return Object.keys(newErrors).length === 0;
+  };
+  const [blockedStageName, setBlockedStageName] = useState<string | null>(null); // for locked-stage tooltip modal
+  const [usedImages, setUsedImages] = useState<string[]>([]);
+
+  const jobImages = [
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&h=250&fit=crop',
+    'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop'
+  ];
+
+  const checkIsAlreadyUsed = (imageUrl: string) => {
+    if (!imageUrl) return false;
+    // Base URL match (ignore queries like MinIO signature)
+    const getBaseUrl = (url: string) => {
+      try {
+        const urlObj = new URL(url);
+        return urlObj.origin + urlObj.pathname;
+      } catch (e) {
+        return url.split('?')[0];
+      }
+    };
+
+    const targetBase = getBaseUrl(imageUrl);
+    // Ignore if the targetBase matches the original job cover (allow keeping current image)
+    if (originalCoverImage.current && getBaseUrl(originalCoverImage.current) === targetBase) {
+      return false;
+    }
+
+    return usedImages.some(usedUrl => getBaseUrl(usedUrl) === targetBase);
+  };
 
   const IMG_PROXY = (url: string) => `http://localhost:8000/api/image-proxy?url=${encodeURIComponent(url)}`;
 
@@ -110,11 +183,70 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
   // Snapshot of original data to detect dirty state
   const originalJobDetails = useRef(JSON.stringify(jobDetails));
   const originalLocations = useRef(JSON.stringify(selectedLocations));
+  const originalCoverImage = useRef<string | null>(null);
 
   const isDirty = () => {
     return JSON.stringify(jobDetails) !== originalJobDetails.current ||
-      JSON.stringify(selectedLocations) !== originalLocations.current;
+      JSON.stringify(selectedLocations) !== originalLocations.current ||
+      selectedImage !== originalCoverImage.current;
   };
+
+  // Load real hiring stages AND selected image from DB for this job on mount
+  useEffect(() => {
+    if (!jobId) return;
+    const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token') || localStorage.getItem('token');
+    fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/${jobId}`, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) { console.warn('[JobSettings] Could not fetch job', jobId); return; }
+        // API returns interview_stages (mapped from hiring_process), also check hiring_process directly
+        const rawStages: any[] = data.interview_stages || data.hiring_process || data.stages || [];
+        console.log('[JobSettings] raw stages from API for job', jobId, rawStages);
+        if (Array.isArray(rawStages) && rawStages.length > 0) {
+          const loaded: JobStage[] = rawStages.map((s: any, idx: number) => ({
+            id: s.id || `stage_${idx}`,
+            name: s.name || String(s),
+            type: (s.type as 'standard' | 'custom') || 'standard',
+            isMandatory: s.isMandatory ?? false,
+            remarksRequired: s.remarksRequired ?? false,
+            order: s.order || idx + 1
+          }));
+          setJobDetails(prev => ({ ...prev, interviewStages: loaded }));
+          // Sync snapshot safely — don't crash if ref empty
+          try {
+            const snap = originalJobDetails.current ? JSON.parse(originalJobDetails.current) : {};
+            originalJobDetails.current = JSON.stringify({ ...snap, interviewStages: loaded });
+          } catch (_) {
+            originalJobDetails.current = JSON.stringify({ interviewStages: loaded });
+          }
+        }
+        // Load the saved cover image
+        if (data.selectedImage || data.selected_image) {
+          setSelectedImage(data.selectedImage || data.selected_image);
+          originalCoverImage.current = data.selectedImage || data.selected_image;
+        }
+      })
+      .catch(err => { console.error('[JobSettings] Error loading stages:', err); });
+
+    // Fetch used images across account
+    const fetchUsedImages = async () => {
+      try {
+        const accountId = 1; // Placeholder
+        const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/account-used-images?account_id=${accountId}`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (res.ok) {
+          const uData = await res.json();
+          setUsedImages(uData.usedImages || []);
+        }
+      } catch (e) {
+        console.error('[JobSettings] Error fetching used images:', e);
+      }
+    };
+    fetchUsedImages();
+  }, [jobId]); // run once on mount
 
   // Report dirty state to parent (NewDashboardContainer) for tab/route navigation protection
   useEffect(() => {
@@ -151,6 +283,10 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
 
   // Guard internal section switching
   const handleSectionClick = (sectionId: string) => {
+    if (!validateSection(activeSection)) {
+      return; // prevent navigation if current section is invalid
+    }
+
     if (isDirty()) {
       setPendingSectionId(sectionId);
       setShowNavigationWarningModal(true);
@@ -220,6 +356,8 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
 
       originalJobDetails.current = JSON.stringify(jobDetails);
       originalLocations.current = JSON.stringify(selectedLocations);
+      // Explicitly notify parent that dirty state is cleared after save
+      if (onDirtyChange) onDirtyChange(false);
     } catch (error) {
       console.error('Error submitting edit request:', error);
       setIsSaving(false);
@@ -231,21 +369,50 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
   const handleConfirmSave = async () => {
     try {
       setIsSaving(true);
-      // TODO: Replace with actual API call to persist job settings
-      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token') || localStorage.getItem('token');
+      if (jobId && token) {
+        // Save hiring stages
+        const stagesRes = await fetch(
+          `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/update-stages/${jobId}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ interview_stages: jobDetails.interviewStages })
+          }
+        );
+        if (!stagesRes.ok) {
+          const err = await stagesRes.json().catch(() => ({}));
+          throw new Error(err.error || `Server error ${stagesRes.status}`);
+        }
+
+        // Save selected image if changed
+        if (selectedImage) {
+          await fetch(
+            `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/update-image/${jobId}`,
+            {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ selected_image: selectedImage })
+            }
+          ).catch(() => { }); // non-blocking
+        }
+      }
 
       // Update the snapshot to the new saved state
       originalJobDetails.current = JSON.stringify(jobDetails);
       originalLocations.current = JSON.stringify(selectedLocations);
+      originalCoverImage.current = selectedImage;
+
+      // Explicitly clear dirty flag in parent
+      if (onDirtyChange) onDirtyChange(false);
+      // Notify parent to refresh pipeline stages
+      if (onSaveSuccess) onSaveSuccess();
 
       setIsSaving(false);
       setShowSaveModal(false);
       setShowSuccessModal(true);
-
-      // Auto-close success modal after 3 seconds
-      setTimeout(() => {
-        setShowSuccessModal(false);
-      }, 3000);
+      setTimeout(() => setShowSuccessModal(false), 3000);
     } catch (error) {
       console.error('Error saving job settings:', error);
       setIsSaving(false);
@@ -254,20 +421,18 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
     }
   };
 
-  // Predefined stage options for quick selection
+  // Predefined stage options for quick selection — must match InterviewStage enum values
   const predefinedStages = [
-    'Application Review',
-    'Phone Screening',
-    'Technical Assessment',
-    'L1 Technical Interview',
-    'L2 Technical Interview',
-    'L3 Technical Interview',
-    'L4 Technical Interview',
-    'System Design Round',
+    'CV Shortlist',
+    'HM Review',
+    'Assignment',
+    'L1 Technical',
+    'L2 Technical',
+    'L3 Technical',
+    'L4 Technical',
     'HR Round',
     'Management Round',
-    'Cultural Fit Interview',
-    'Final Interview',
+    'Offer Extended',
     'Reference Check',
     'Background Verification'
   ];
@@ -296,6 +461,85 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
       ...prev,
       [field]: value
     }));
+  };
+
+  const execEditorCommand = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+  };
+
+  const handleEditorChange = () => {
+    if (editorRef.current) {
+      setIsUserEditing(true);
+      handleInputChange('description', editorRef.current.innerHTML);
+      if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+    }
+  };
+
+  useEffect(() => {
+    if (editorRef.current && !isUserEditing) {
+      // Sync DB/State data to contentEditable div when loaded/updated externally
+      editorRef.current.innerHTML = jobDetails.description || '';
+    }
+  }, [jobDetails.description, isUserEditing]);
+
+  const generateDescription = async () => {
+    if (uploadedPdfFile) {
+      setIsGeneratingFromPdf(true);
+      try {
+        const formDataGenerate = new FormData();
+        formDataGenerate.append('jdFile', uploadedPdfFile);
+
+        const generateResponse = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/generate-jd-from-pdf`, {
+          method: 'POST',
+          body: formDataGenerate
+        });
+        const generateData = await generateResponse.json();
+
+        if (generateData.success && generateData.jobDescription) {
+          setIsUserEditing(false);
+          handleInputChange('description', generateData.jobDescription);
+          if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+          setShowSuccessModal(true);
+        } else {
+          alert('Failed to generate description from PDF');
+        }
+      } catch (error) {
+        console.error('Error generating from PDF:', error);
+        alert('Failed to generate description from PDF');
+      } finally {
+        setIsGeneratingFromPdf(false);
+      }
+    } else {
+      const description = `We are looking for a talented ${jobDetails.title} to join our team.
+
+<div><br></div>
+<p><strong>Key Responsibilities:</strong></p>
+<ul>
+<li>Develop and maintain high-quality solutions</li>
+<li>Collaborate with cross-functional teams</li>
+<li>Participate in discussions</li>
+<li>Contribute to architectural decisions</li>
+</ul>
+<div><br></div>
+<p><strong>Requirements:</strong></p>
+<ul>
+<li>${jobDetails.minExperience}-${jobDetails.maxExperience} years of experience</li>
+<li>Strong technical skills and problem-solving abilities</li>
+<li>Excellent communication and teamwork skills</li>
+</ul>
+<div><br></div>
+<p><strong>What We Offer:</strong></p>
+<ul>
+<li>Competitive salary package</li>
+<li>Flexible working arrangements</li>
+<li>Growth opportunities</li>
+</ul>`;
+
+      setIsUserEditing(false);
+      handleInputChange('description', description);
+      if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+    }
   };
 
   const handleSalaryChange = (field: string, value: number | string | boolean) => {
@@ -334,6 +578,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
       setSelectedLocations([...selectedLocations, city]);
       setLocationInput('');
       setShowLocationSuggestions(false);
+      if (errors.locations) setErrors(prev => ({ ...prev, locations: '' }));
     }
   };
 
@@ -348,6 +593,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
         skills: [...prev.skills, skillInput.trim()]
       }));
       setSkillInput('');
+      if (errors.skills) setErrors(prev => ({ ...prev, skills: '' }));
     }
   };
 
@@ -358,21 +604,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
     }));
   };
 
-  const handlePublishToggle = () => {
-    if (jobDetails.isPublished) {
-      setShowUnpublishModal(true);
-    } else {
-      setJobDetails(prev => ({ ...prev, isPublished: true }));
-    }
-  };
 
-  const confirmUnpublish = () => {
-    if (unpublishReason.trim()) {
-      setJobDetails(prev => ({ ...prev, isPublished: false }));
-      setShowUnpublishModal(false);
-      setUnpublishReason('');
-    }
-  };
 
   const addHiringStage = (stageName?: string) => {
     const nameToAdd = stageName || newStageInput;
@@ -398,6 +630,13 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
   const removeHiringStage = (index: number) => {
     const stage = jobDetails.interviewStages[index];
     if (stage.isMandatory) return; // Prevent removing mandatory stages
+
+    // Block removal if candidates are currently in this stage
+    const count = occupiedStages[stage.name] || 0;
+    if (count > 0) {
+      setBlockedStageName(stage.name);
+      return;
+    }
 
     setJobDetails(prev => ({
       ...prev,
@@ -442,6 +681,27 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
       )
     }));
   };
+
+  // Fetch occupied stages: how many candidates are currently in each stage for this job
+  useEffect(() => {
+    const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token') || localStorage.getItem('token');
+    if (!jobId || !token) return;
+    fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/pipeline-stages/${jobId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.success && Array.isArray(data.stages)) {
+          const counts: Record<string, number> = {};
+          data.stages.forEach((s: any) => {
+            const stage = s.current_stage || '';
+            if (stage) counts[stage] = (counts[stage] || 0) + 1;
+          });
+          setOccupiedStages(counts);
+        }
+      })
+      .catch(() => { });
+  }, [jobId]);
 
   // Fetch users for team assignment
   useEffect(() => {
@@ -501,10 +761,10 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
     { id: 'image', label: 'Job Image', icon: Image },
     { id: 'timeline', label: 'Timeline & Dates', icon: Calendar },
     { id: 'location', label: 'Location & Mode', icon: MapPin },
-    { id: 'description', label: 'Job Description', icon: FileText },
     { id: 'requirements', label: 'Requirements & Skills', icon: CheckSquare },
     { id: 'compensation', label: 'Compensation', icon: DollarSign },
     { id: 'team', label: 'Team & Recruiters', icon: Users },
+    { id: 'description', label: 'Job Description', icon: FileText },
     { id: 'process', label: 'Hiring Process', icon: ClipboardList },
   ];
 
@@ -515,23 +775,94 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
 
       {/* Job Status Card */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Job Publish Status</h3>
-            <p className="text-sm text-gray-600">Control whether this job is published and visible to candidates.</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600">{jobDetails.isPublished ? 'Published' : 'Unpublished'}</span>
-            <button
-              onClick={handlePublishToggle}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${jobDetails.isPublished ? 'bg-blue-600' : 'bg-gray-300'
-                }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${jobDetails.isPublished ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-              />
-            </button>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Job Status</h3>
+          <p className="text-sm text-gray-600 mb-4">Control the current state of this job posting. Active jobs are visible, paused jobs are temporarily hidden, and closed jobs are archived.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {([
+              {
+                value: 'Active',
+                label: 'Active',
+                description: 'Accepting applications',
+                icon: (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ),
+                activeColor: 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20',
+                activeDot: 'bg-emerald-500',
+                activeText: 'text-emerald-700',
+                activeIcon: 'text-emerald-600',
+                inactiveColor: 'border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/50'
+              },
+              {
+                value: 'Paused',
+                label: 'Paused',
+                description: 'Temporarily on hold',
+                icon: (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ),
+                activeColor: 'border-amber-500 bg-amber-50 ring-2 ring-amber-500/20',
+                activeDot: 'bg-amber-500',
+                activeText: 'text-amber-700',
+                activeIcon: 'text-amber-600',
+                inactiveColor: 'border-gray-200 bg-white hover:border-amber-300 hover:bg-amber-50/50'
+              },
+              {
+                value: 'Closed',
+                label: 'Closed',
+                description: 'No longer accepting',
+                icon: (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                ),
+                activeColor: 'border-red-500 bg-red-50 ring-2 ring-red-500/20',
+                activeDot: 'bg-red-500',
+                activeText: 'text-red-700',
+                activeIcon: 'text-red-600',
+                inactiveColor: 'border-gray-200 bg-white hover:border-red-300 hover:bg-red-50/50'
+              }
+            ] as const).map((option) => {
+              const isSelected = jobDetails.status === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => handleInputChange('status', option.value)}
+                  className={`relative flex flex-col items-center justify-center gap-1.5 px-4 py-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${isSelected ? option.activeColor : option.inactiveColor
+                    }`}
+                >
+                  {/* Selection indicator dot */}
+                  <div className={`absolute top-3 right-3 w-2.5 h-2.5 rounded-full transition-all duration-200 ${isSelected ? `${option.activeDot} scale-100` : 'bg-gray-300 scale-75'
+                    }`}>
+                    {isSelected && (
+                      <div className={`absolute inset-0 rounded-full ${option.activeDot} animate-ping opacity-40`} />
+                    )}
+                  </div>
+
+                  {/* Icon */}
+                  <div className={`transition-colors duration-200 ${isSelected ? option.activeIcon : 'text-gray-400'
+                    }`}>
+                    {option.icon}
+                  </div>
+
+                  {/* Label */}
+                  <span className={`text-sm font-semibold transition-colors duration-200 ${isSelected ? option.activeText : 'text-gray-700'
+                    }`}>
+                    {option.label}
+                  </span>
+
+                  {/* Description */}
+                  <span className={`text-xs text-center transition-colors duration-200 ${isSelected ? option.activeText + ' opacity-80' : 'text-gray-500'
+                    }`}>
+                    {option.description}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -573,9 +904,13 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                     <input
                       type="text"
                       value={jobDetails.title}
-                      onChange={(e) => handleInputChange('title', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onChange={(e) => {
+                        handleInputChange('title', e.target.value);
+                        if (errors.title) setErrors(prev => ({ ...prev, title: '' }));
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.title ? 'border-red-500' : 'border-gray-300'}`}
                     />
+                    {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
                   </div>
 
                   <div>
@@ -584,13 +919,17 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                     </label>
                     <select
                       value={jobDetails.domain}
-                      onChange={(e) => handleInputChange('domain', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onChange={(e) => {
+                        handleInputChange('domain', e.target.value);
+                        if (errors.domain) setErrors(prev => ({ ...prev, domain: '' }));
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.domain ? 'border-red-500' : 'border-gray-300'}`}
                     >
                       {domainOptions.map(domain => (
                         <option key={domain} value={domain}>{domain}</option>
                       ))}
                     </select>
+                    {errors.domain && <p className="text-red-500 text-sm mt-1">{errors.domain}</p>}
                   </div>
 
                   <div>
@@ -613,13 +952,17 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                     </label>
                     <select
                       value={jobDetails.minExperience}
-                      onChange={(e) => handleInputChange('minExperience', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onChange={(e) => {
+                        handleInputChange('minExperience', e.target.value);
+                        if (errors.minExperience) setErrors(prev => ({ ...prev, minExperience: '' }));
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.minExperience ? 'border-red-500' : 'border-gray-300'}`}
                     >
                       {experienceOptions.map(exp => (
                         <option key={exp} value={exp}>{exp}</option>
                       ))}
                     </select>
+                    {errors.minExperience && <p className="text-red-500 text-sm mt-1">{errors.minExperience}</p>}
                   </div>
 
                   <div>
@@ -628,13 +971,17 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                     </label>
                     <select
                       value={jobDetails.maxExperience}
-                      onChange={(e) => handleInputChange('maxExperience', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onChange={(e) => {
+                        handleInputChange('maxExperience', e.target.value);
+                        if (errors.maxExperience) setErrors(prev => ({ ...prev, maxExperience: '' }));
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.maxExperience ? 'border-red-500' : 'border-gray-300'}`}
                     >
                       {experienceOptions.map(exp => (
                         <option key={exp} value={exp}>{exp}</option>
                       ))}
                     </select>
+                    {errors.maxExperience && <p className="text-red-500 text-sm mt-1">{errors.maxExperience}</p>}
                   </div>
 
                   <div>
@@ -644,103 +991,18 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                     <input
                       type="number"
                       value={jobDetails.numberOfOpenings}
-                      onChange={(e) => handleInputChange('numberOfOpenings', e.target.value)}
+                      onChange={(e) => {
+                        handleInputChange('numberOfOpenings', e.target.value);
+                        if (errors.numberOfOpenings) setErrors(prev => ({ ...prev, numberOfOpenings: '' }));
+                      }}
                       min="1"
                       placeholder="Enter number of openings"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.numberOfOpenings ? 'border-red-500' : 'border-gray-300'}`}
                     />
+                    {errors.numberOfOpenings && <p className="text-red-500 text-sm mt-1">{errors.numberOfOpenings}</p>}
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Status</label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {([
-                      {
-                        value: 'Active',
-                        label: 'Active',
-                        description: 'Accepting applications',
-                        icon: (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        ),
-                        activeColor: 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20',
-                        activeDot: 'bg-emerald-500',
-                        activeText: 'text-emerald-700',
-                        activeIcon: 'text-emerald-600',
-                        inactiveColor: 'border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/50'
-                      },
-                      {
-                        value: 'Paused',
-                        label: 'Paused',
-                        description: 'Temporarily on hold',
-                        icon: (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        ),
-                        activeColor: 'border-amber-500 bg-amber-50 ring-2 ring-amber-500/20',
-                        activeDot: 'bg-amber-500',
-                        activeText: 'text-amber-700',
-                        activeIcon: 'text-amber-600',
-                        inactiveColor: 'border-gray-200 bg-white hover:border-amber-300 hover:bg-amber-50/50'
-                      },
-                      {
-                        value: 'Closed',
-                        label: 'Closed',
-                        description: 'No longer accepting',
-                        icon: (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                          </svg>
-                        ),
-                        activeColor: 'border-red-500 bg-red-50 ring-2 ring-red-500/20',
-                        activeDot: 'bg-red-500',
-                        activeText: 'text-red-700',
-                        activeIcon: 'text-red-600',
-                        inactiveColor: 'border-gray-200 bg-white hover:border-red-300 hover:bg-red-50/50'
-                      }
-                    ] as const).map((option) => {
-                      const isSelected = jobDetails.status === option.value;
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => handleInputChange('status', option.value)}
-                          className={`relative flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg border-2 cursor-pointer transition-all duration-200 ${isSelected ? option.activeColor : option.inactiveColor
-                            }`}
-                        >
-                          {/* Selection indicator dot */}
-                          <div className={`absolute top-2 right-2 w-2 h-2 rounded-full transition-all duration-200 ${isSelected ? `${option.activeDot} scale-100` : 'bg-gray-300 scale-75'
-                            }`}>
-                            {isSelected && (
-                              <div className={`absolute inset-0 rounded-full ${option.activeDot} animate-ping opacity-40`} />
-                            )}
-                          </div>
-
-                          {/* Icon */}
-                          <div className={`transition-colors duration-200 ${isSelected ? option.activeIcon : 'text-gray-400'
-                            }`}>
-                            {option.icon}
-                          </div>
-
-                          {/* Label */}
-                          <span className={`text-xs font-semibold transition-colors duration-200 ${isSelected ? option.activeText : 'text-gray-700'
-                            }`}>
-                            {option.label}
-                          </span>
-
-                          {/* Description */}
-                          <span className={`text-[10px] leading-tight text-center transition-colors duration-200 ${isSelected ? option.activeText + ' opacity-70' : 'text-gray-400'
-                            }`}>
-                            {option.description}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
             )}
 
@@ -753,20 +1015,25 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                     Select an attractive image for your job opening to make it stand out to candidates.
                   </div>
 
-                  {/* Current Image Display */}
-                  {selectedImage && (
-                    <div className="relative">
+                  {/* Current cover image */}
+                  {selectedImage ? (
+                    <div className="relative rounded-xl overflow-hidden border-2 border-indigo-400 ring-2 ring-indigo-100 max-w-2xl">
                       <img
                         src={selectedImage}
-                        alt="Selected job image"
-                        className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                        alt="Current job cover"
+                        className="w-full aspect-[2/1] object-cover"
                       />
-                      <button
-                        onClick={() => setSelectedImage(null)}
-                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                      <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full font-medium flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        Current Cover
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-40 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                      <div className="text-center">
+                        <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <p className="text-sm text-gray-500">No cover image selected</p>
+                      </div>
                     </div>
                   )}
 
@@ -777,14 +1044,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                       className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm transition-all flex items-center gap-2"
                     >
                       <Image className="w-4 h-4" />
-                      {selectedImage ? 'Change Image' : 'Select Image'}
-                    </button>
-
-                    <button
-                      className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg text-sm transition-all flex items-center gap-2"
-                    >
-                      <Upload className="w-4 h-4" />
-                      Upload Custom
+                      {selectedImage ? 'Change Cover Image' : 'Select Image'}
                     </button>
                   </div>
 
@@ -814,9 +1074,13 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                     <input
                       type="date"
                       value={jobDetails.registrationOpeningDate}
-                      onChange={(e) => handleInputChange('registrationOpeningDate', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onChange={(e) => {
+                        handleInputChange('registrationOpeningDate', e.target.value);
+                        if (errors.registrationOpeningDate) setErrors(prev => ({ ...prev, registrationOpeningDate: '' }));
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.registrationOpeningDate ? 'border-red-500' : 'border-gray-300'}`}
                     />
+                    {errors.registrationOpeningDate && <p className="text-red-500 text-sm mt-1">{errors.registrationOpeningDate}</p>}
                   </div>
 
                   <div>
@@ -826,9 +1090,13 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                     <input
                       type="date"
                       value={jobDetails.registrationClosingDate}
-                      onChange={(e) => handleInputChange('registrationClosingDate', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onChange={(e) => {
+                        handleInputChange('registrationClosingDate', e.target.value);
+                        if (errors.registrationClosingDate) setErrors(prev => ({ ...prev, registrationClosingDate: '' }));
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.registrationClosingDate ? 'border-red-500' : 'border-gray-300'}`}
                     />
+                    {errors.registrationClosingDate && <p className="text-red-500 text-sm mt-1">{errors.registrationClosingDate}</p>}
                   </div>
                 </div>
               </div>
@@ -844,13 +1112,17 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                   </label>
                   <select
                     value={jobDetails.modeOfJob}
-                    onChange={(e) => handleInputChange('modeOfJob', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    onChange={(e) => {
+                      handleInputChange('modeOfJob', e.target.value);
+                      if (errors.modeOfJob) setErrors(prev => ({ ...prev, modeOfJob: '' }));
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.modeOfJob ? 'border-red-500' : 'border-gray-300'}`}
                   >
                     {modeOptions.map(mode => (
                       <option key={mode} value={mode}>{mode}</option>
                     ))}
                   </select>
+                  {errors.modeOfJob && <p className="text-red-500 text-sm mt-1">{errors.modeOfJob}</p>}
                 </div>
 
                 <div>
@@ -907,53 +1179,161 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                       </div>
                     )}
                   </div>
+                  {errors.locations && <p className="text-red-500 text-sm mt-2">{errors.locations}</p>}
                 </div>
               </div>
             )}
 
             {activeSection === 'description' && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-gray-900">Job Description</h3>
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Job Description</h3>
+                  <button
+                    type="button"
+                    onClick={generateDescription}
+                    disabled={isGeneratingFromPdf}
+                    className={`flex items-center gap-2 px-4 py-2 ${isGeneratingFromPdf
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : uploadedPdfFile
+                        ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                      } rounded-lg text-sm font-medium transition-all`}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {isGeneratingFromPdf ? 'Generating...' : uploadedPdfFile ? 'Generate from PDF' : 'Generate Description'}
+                  </button>
+                </div>
 
-                <div className="space-y-4">
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg text-sm transition-all"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      Generate Description
-                    </button>
-                  </div>
+                <div className="bg-gray-50 p-4 border border-gray-200 rounded-lg">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Job Description PDF <span className="text-gray-500 font-normal">(Optional context)</span></label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setIsUploadingPdf(true);
+                          try {
+                            const formDataPdf = new FormData();
+                            formDataPdf.append('jdFile', file);
+                            const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token') || localStorage.getItem('token');
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                    <textarea
-                      value={jobDetails.description}
-                      onChange={(e) => handleInputChange('description', e.target.value)}
-                      rows={8}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter job description..."
+                            const uploadResponse = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/upload-jd-pdf`, {
+                              method: 'POST',
+                              headers: { 'Authorization': `Bearer ${token}` },
+                              body: formDataPdf
+                            });
+
+                            const uploadData = await uploadResponse.json();
+                            if (uploadData.success) {
+                              setUploadedPdfUrl(uploadData.filename);
+                              setPdfFileName(uploadData.originalName);
+                              setUploadedPdfFile(file);
+                            } else {
+                              alert('Failed to upload PDF');
+                            }
+                          } catch (error) {
+                            console.error('Error uploading PDF:', error);
+                            alert('Failed to upload PDF');
+                          } finally {
+                            setIsUploadingPdf(false);
+                          }
+                        }
+                      }}
+                      className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Job Description PDF</label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <button
-                        type="button"
-                        className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg text-sm transition-all flex items-center gap-2"
-                      >
-                        <Upload className="w-4 h-4" />
-                        Upload
-                      </button>
+                    <div className="text-gray-500">
+                      {isUploadingPdf ? <span className="text-sm">🔄 Uploading...</span> : <Upload className="w-5 h-5" />}
                     </div>
                   </div>
+                  {pdfFileName && <p className="text-sm text-green-600 mt-2 font-medium">✓ {pdfFileName} uploaded. Click "Generate from PDF" to extract text.</p>}
+                </div>
+
+                <div className="rich-text-editor">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Description <span className="text-red-500">*</span></label>
+                  <div className={`border rounded-lg ${errors.description ? 'border-red-500' : 'border-gray-300'}`}>
+                    <div className="rich-text-toolbar flex items-center gap-2 p-2 bg-gray-50 border-b border-gray-300 rounded-t-lg flex-wrap">
+                      <select
+                        onChange={(e) => execEditorCommand('formatBlock', e.target.value)}
+                        className="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none"
+                        defaultValue="p"
+                      >
+                        <option value="p">Paragraph</option>
+                        <option value="h1">Heading 1</option>
+                        <option value="h2">Heading 2</option>
+                        <option value="h3">Heading 3</option>
+                      </select>
+
+                      <div className="w-px h-6 bg-gray-300"></div>
+
+                      <button type="button" onClick={() => execEditorCommand('bold')} className="p-2 text-gray-700 hover:bg-gray-200 rounded" title="Bold">
+                        <Bold className="w-4 h-4" />
+                      </button>
+                      <button type="button" onClick={() => execEditorCommand('italic')} className="p-2 text-gray-700 hover:bg-gray-200 rounded" title="Italic">
+                        <Italic className="w-4 h-4" />
+                      </button>
+                      <button type="button" onClick={() => execEditorCommand('underline')} className="p-2 text-gray-700 hover:bg-gray-200 rounded" title="Underline">
+                        <Underline className="w-4 h-4" />
+                      </button>
+                      <button type="button" onClick={() => execEditorCommand('strikeThrough')} className="p-2 text-gray-700 hover:bg-gray-200 rounded" title="Strikethrough">
+                        <Strikethrough className="w-4 h-4" />
+                      </button>
+
+                      <div className="w-px h-6 bg-gray-300"></div>
+
+                      <button type="button" onClick={() => execEditorCommand('insertUnorderedList')} className="px-3 py-1 text-gray-700 hover:bg-gray-200 rounded text-sm font-medium" title="Bullet List">
+                        • List
+                      </button>
+                      <button type="button" onClick={() => execEditorCommand('insertOrderedList')} className="px-3 py-1 text-gray-700 hover:bg-gray-200 rounded text-sm font-medium" title="Numbered List">
+                        1. List
+                      </button>
+
+                      <div className="w-px h-6 bg-gray-300"></div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = prompt('Enter URL:');
+                          if (url) execEditorCommand('createLink', url);
+                        }}
+                        className="px-3 py-1 text-gray-700 hover:bg-gray-200 rounded text-sm font-medium"
+                      >
+                        Link
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => execEditorCommand('unlink')}
+                        className="px-3 py-1 text-gray-700 hover:bg-gray-200 rounded text-sm font-medium"
+                      >
+                        Unlink
+                      </button>
+
+                      <div className="flex-1"></div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editorRef.current) {
+                            editorRef.current.innerHTML = '';
+                            handleInputChange('description', '');
+                          }
+                        }}
+                        className="px-3 py-1 hover:bg-red-50 border border-transparent hover:border-red-200 rounded text-sm text-red-600 transition-colors"
+                      >
+                        Clear
+                      </button>
+                    </div>
+
+                    <div
+                      ref={editorRef}
+                      contentEditable
+                      onInput={handleEditorChange}
+                      className="min-h-[250px] max-h-[500px] overflow-y-auto p-4 focus:outline-none bg-white rounded-b-lg text-sm text-gray-800"
+                      style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}
+                      data-placeholder="Enter job description here..."
+                    />
+                  </div>
+                  {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
                 </div>
               </div>
             )}
@@ -1031,7 +1411,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                         }
                       }}
                       placeholder="Add a skill and press Enter"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.skills ? 'border-red-500' : 'border-gray-300'}`}
                     />
                     <button
                       onClick={addSkill}
@@ -1040,6 +1420,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                       Add
                     </button>
                   </div>
+                  {errors.skills && <p className="text-red-500 text-sm mt-2">{errors.skills}</p>}
                 </div>
               </div>
             )}
@@ -1054,9 +1435,13 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                     <input
                       type="number"
                       value={jobDetails.salary.min}
-                      onChange={(e) => handleSalaryChange('min', parseInt(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onChange={(e) => {
+                        handleSalaryChange('min', parseInt(e.target.value));
+                        if (errors.minSalary) setErrors(prev => ({ ...prev, minSalary: '' }));
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.minSalary ? 'border-red-500' : 'border-gray-300'}`}
                     />
+                    {errors.minSalary && <p className="text-red-500 text-sm mt-1">{errors.minSalary}</p>}
                   </div>
 
                   <div>
@@ -1064,9 +1449,13 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                     <input
                       type="number"
                       value={jobDetails.salary.max}
-                      onChange={(e) => handleSalaryChange('max', parseInt(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onChange={(e) => {
+                        handleSalaryChange('max', parseInt(e.target.value));
+                        if (errors.maxSalary) setErrors(prev => ({ ...prev, maxSalary: '' }));
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.maxSalary ? 'border-red-500' : 'border-gray-300'}`}
                     />
+                    {errors.maxSalary && <p className="text-red-500 text-sm mt-1">{errors.maxSalary}</p>}
                   </div>
 
                   <div>
@@ -1358,73 +1747,93 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
                 </div>
 
                 <div className="space-y-3">
-                  {jobDetails.interviewStages.map((stage, index) => (
-                    <div key={index} className="group flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
-                      {/* Drag Handle */}
-                      <div className="flex flex-col gap-1 opacity-40 group-hover:opacity-60 cursor-move">
-                        <GripVertical className="w-4 h-4 text-gray-400" />
+                  {jobDetails.interviewStages.map((stage, index) => {
+                    const occupiedCount = occupiedStages[stage.name] || 0;
+                    const isOccupied = occupiedCount > 0;
+                    return (
+                      <div key={index} className="group flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
+                        {/* Drag Handle */}
+                        <div className="flex flex-col gap-1 opacity-40 group-hover:opacity-60 cursor-move">
+                          <GripVertical className="w-4 h-4 text-gray-400" />
+                        </div>
+
+                        {/* Stage Number */}
+                        <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${stage.isMandatory ? 'bg-amber-100 text-amber-700' : isOccupied ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-600'}`}>
+                          {index + 1}
+                        </span>
+
+                        {/* Stage Name - Editable or Display */}
+                        <div className="flex-1">
+                          {stage.isMandatory ? (
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-900">{stage.name}</span>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 uppercase tracking-wide">
+                                Mandatory
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={stage.name}
+                                onChange={(e) => updateStageName(index, e.target.value)}
+                                className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-gray-700 focus:bg-white focus:border focus:border-blue-300 focus:rounded px-2 py-1 transition-all"
+                                placeholder="Enter stage name..."
+                              />
+                              {isOccupied && (
+                                <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-[10px] font-semibold">
+                                  🔒 {occupiedCount} candidate{occupiedCount > 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* Move Up */}
+                          <button
+                            onClick={() => moveStageUp(index)}
+                            disabled={index === 0 || stage.isMandatory || jobDetails.interviewStages[index - 1].isMandatory}
+                            className={`p-1 transition-colors ${index === 0 || stage.isMandatory || jobDetails.interviewStages[index - 1].isMandatory ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-blue-600'}`}
+                            title={stage.isMandatory || jobDetails.interviewStages[index - 1]?.isMandatory ? "Cannot reorder mandatory stages" : "Move up"}
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </button>
+
+                          {/* Move Down */}
+                          <button
+                            onClick={() => moveStageDown(index)}
+                            disabled={index === jobDetails.interviewStages.length - 1 || stage.isMandatory || jobDetails.interviewStages[index + 1].isMandatory}
+                            className={`p-1 transition-colors ${index === jobDetails.interviewStages.length - 1 || stage.isMandatory || jobDetails.interviewStages[index + 1].isMandatory ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-blue-600'}`}
+                            title={stage.isMandatory || jobDetails.interviewStages[index + 1]?.isMandatory ? "Cannot reorder mandatory stages" : "Move down"}
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
+
+                          {/* Remove — locked if candidates are in this stage */}
+                          {isOccupied ? (
+                            <button
+                              onClick={() => setBlockedStageName(stage.name)}
+                              className="p-1 text-orange-400 hover:text-orange-600 transition-colors"
+                              title={`${occupiedCount} candidate(s) in this stage — move them first`}
+                            >
+                              <AlertCircle className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => removeHiringStage(index)}
+                              disabled={stage.isMandatory}
+                              className={`p-1 transition-colors ${stage.isMandatory ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-red-600'}`}
+                              title={stage.isMandatory ? "Cannot remove mandatory stage" : "Remove stage"}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-
-                      {/* Stage Number */}
-                      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${stage.isMandatory ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-600'}`}>
-                        {index + 1}
-                      </span>
-
-                      {/* Stage Name - Editable */}
-                      {/* Stage Name - Editable or Display */}
-                      <div className="flex-1">
-                        {stage.isMandatory ? (
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-gray-900">{stage.name}</span>
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 uppercase tracking-wide">
-                              Mandatory
-                            </span>
-                          </div>
-                        ) : (
-                          <input
-                            type="text"
-                            value={stage.name}
-                            onChange={(e) => updateStageName(index, e.target.value)}
-                            className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-700 focus:bg-white focus:border focus:border-blue-300 focus:rounded px-2 py-1 transition-all"
-                            placeholder="Enter stage name..."
-                          />
-                        )}
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {/* Move Up */}
-                        <button
-                          onClick={() => moveStageUp(index)}
-                          disabled={index === 0 || stage.isMandatory || jobDetails.interviewStages[index - 1].isMandatory}
-                          className={`p-1 transition-colors ${index === 0 || stage.isMandatory || jobDetails.interviewStages[index - 1].isMandatory ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-blue-600'}`}
-                          title={stage.isMandatory || jobDetails.interviewStages[index - 1]?.isMandatory ? "Cannot reorder mandatory stages" : "Move up"}
-                        >
-                          <ChevronUp className="w-4 h-4" />
-                        </button>
-
-                        {/* Move Down */}
-                        <button
-                          onClick={() => moveStageDown(index)}
-                          disabled={index === jobDetails.interviewStages.length - 1 || stage.isMandatory || jobDetails.interviewStages[index + 1].isMandatory}
-                          className={`p-1 transition-colors ${index === jobDetails.interviewStages.length - 1 || stage.isMandatory || jobDetails.interviewStages[index + 1].isMandatory ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-blue-600'}`}
-                          title={stage.isMandatory || jobDetails.interviewStages[index + 1]?.isMandatory ? "Cannot reorder mandatory stages" : "Move down"}
-                        >
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
-
-                        {/* Remove */}
-                        <button
-                          onClick={() => removeHiringStage(index)}
-                          disabled={stage.isMandatory}
-                          className={`p-1 transition-colors ${stage.isMandatory ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-red-600'}`}
-                          title={stage.isMandatory ? "Cannot remove mandatory stage" : "Remove stage"}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Add New Stage */}
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
@@ -1496,51 +1905,6 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
           </div>
         </div>
       </div>
-
-      {/* Unpublish Modal */}
-      {
-        showUnpublishModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Unpublish Job</h3>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Reason for Unpublishing <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={unpublishReason}
-                  onChange={(e) => setUnpublishReason(e.target.value)}
-                  placeholder="Enter reason for unpublishing this job..."
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
-                />
-              </div>
-
-              <p className="text-gray-600 mb-6">Are you sure you want to unpublish this job? It will no longer be visible to candidates.</p>
-
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => {
-                    setShowUnpublishModal(false);
-                    setUnpublishReason('');
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmUnpublish}
-                  disabled={!unpublishReason.trim()}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Unpublish
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      }
 
       {/* Image Selection Modal */}
       {
@@ -1850,6 +2214,300 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void }> = ({
           </div>
         </div>
       )}
+      {/* Blocked Stage Modal */}
+      {blockedStageName && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Stage Has Active Candidates</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Cannot remove this stage</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-700 mb-2">
+              The <span className="font-semibold text-orange-700">{blockedStageName}</span> stage currently has{' '}
+              <span className="font-semibold">{occupiedStages[blockedStageName] || 0} candidate(s)</span> in it.
+            </p>
+            <p className="text-sm text-gray-500 mb-5">
+              Please move or reject all candidates in this stage in the Hiring Pipeline before removing it.
+            </p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setBlockedStageName(null)}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {
+        showImageModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto mx-4">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-semibold text-gray-900">Select Job Posting Image</h2>
+                <button
+                  onClick={() => setShowImageModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Technology & Development Section */}
+              <div className="mb-8">
+                <h3 className="text-lg font-medium text-gray-800 mb-4">
+                  Technology & Development
+                  {fluidJobsImages.tech.length > 8 && (
+                    <span className="ml-2 text-sm text-gray-500">({fluidJobsImages.tech.length} images)</span>
+                  )}
+                </h3>
+                {fluidJobsImages.tech.length > 0 ? (
+                  <>
+                    <div className="grid grid-cols-4 gap-4">
+                      {(showAllTech ? fluidJobsImages.tech : fluidJobsImages.tech.slice(0, 8)).map((image, index) => {
+                        const url = image;
+                        const isAlreadyUsed = checkIsAlreadyUsed(url);
+                        const isSelected = selectedImage === url;
+                        return (
+                          <div
+                            key={`tech-${index}`}
+                            onClick={() => {
+                              if (isAlreadyUsed) return;
+                              setSelectedImage(url);
+                              if (errors.selectedImage) setErrors(prev => ({ ...prev, selectedImage: '' }));
+                              setShowImageModal(false);
+                            }}
+                            title={isAlreadyUsed ? 'Already used in another job for this account' : ''}
+                            className={`relative rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${isAlreadyUsed
+                              ? 'border-green-400 cursor-not-allowed opacity-75'
+                              : isSelected
+                                ? 'border-indigo-600 ring-2 ring-indigo-200 cursor-pointer'
+                                : 'border-gray-200 hover:border-indigo-300 cursor-pointer'
+                              }`}
+                          >
+                            <img
+                              src={url}
+                              alt="Tech"
+                              loading="lazy"
+                              className="w-full h-32 object-cover bg-gray-100"
+                              style={{ contentVisibility: 'auto' }}
+                              onError={(e) => {
+                                e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12"%3EImage unavailable%3C/text%3E%3C/svg%3E';
+                              }}
+                            />
+                            {isSelected && (
+                              <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                                <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              </div>
+                            )}
+                            {isAlreadyUsed && (
+                              <div className="absolute inset-0 bg-green-600 bg-opacity-30 flex flex-col items-center justify-center">
+                                <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center shadow">
+                                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                                <span className="text-white text-xs font-semibold mt-1 drop-shadow">In Use</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {!showAllTech && fluidJobsImages.tech.length > 8 && (
+                      <button
+                        onClick={() => setShowAllTech(true)}
+                        className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span>Show {fluidJobsImages.tech.length - 8} more images</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    )}
+                    {showAllTech && fluidJobsImages.tech.length > 8 && (
+                      <button
+                        onClick={() => setShowAllTech(false)}
+                        className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span>Show less</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No technology images available</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Management & Business Section */}
+              <div className="mb-6">
+                <h3 className="text-lg font-medium text-gray-800 mb-4">
+                  Management & Business
+                  {fluidJobsImages.management.length > 8 && (
+                    <span className="ml-2 text-sm text-gray-500">({fluidJobsImages.management.length} images)</span>
+                  )}
+                </h3>
+                {fluidJobsImages.management.length > 0 ? (
+                  <>
+                    <div className="grid grid-cols-4 gap-4">
+                      {(showAllManagement ? fluidJobsImages.management : fluidJobsImages.management.slice(0, 8)).map((image, index) => {
+                        const url = image;
+                        const isAlreadyUsed = checkIsAlreadyUsed(url);
+                        const isSelected = selectedImage === url;
+                        return (
+                          <div
+                            key={`mgmt-${index}`}
+                            onClick={() => {
+                              if (isAlreadyUsed) return;
+                              setSelectedImage(url);
+                              if (errors.selectedImage) setErrors(prev => ({ ...prev, selectedImage: '' }));
+                              setShowImageModal(false);
+                            }}
+                            title={isAlreadyUsed ? 'Already used in another job for this account' : ''}
+                            className={`relative rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${isAlreadyUsed
+                              ? 'border-green-400 cursor-not-allowed opacity-75'
+                              : isSelected
+                                ? 'border-indigo-600 ring-2 ring-indigo-200 cursor-pointer'
+                                : 'border-gray-200 hover:border-indigo-300 cursor-pointer'
+                              }`}
+                          >
+                            <img
+                              src={url}
+                              alt="Management"
+                              loading="lazy"
+                              className="w-full h-32 object-cover bg-gray-100"
+                              style={{ contentVisibility: 'auto' }}
+                              onError={(e) => {
+                                e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12"%3EImage unavailable%3C/text%3E%3C/svg%3E';
+                              }}
+                            />
+                            {isSelected && (
+                              <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                                <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              </div>
+                            )}
+                            {isAlreadyUsed && (
+                              <div className="absolute inset-0 bg-green-600 bg-opacity-30 flex flex-col items-center justify-center">
+                                <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center shadow">
+                                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                                <span className="text-white text-xs font-semibold mt-1 drop-shadow">In Use</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {!showAllManagement && fluidJobsImages.management.length > 8 && (
+                      <button
+                        onClick={() => setShowAllManagement(true)}
+                        className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span>Show {fluidJobsImages.management.length - 8} more images</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    )}
+                    {showAllManagement && fluidJobsImages.management.length > 8 && (
+                      <button
+                        onClick={() => setShowAllManagement(false)}
+                        className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span>Show less</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No management images available</p>
+                  </div>
+                )}
+              </div>
+
+              {/* General Professional Section (Unsplash fallback) */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-4">General Professional</h3>
+                <div className="grid grid-cols-4 gap-4">
+                  {jobImages.map((image, index) => {
+                    const isAlreadyUsed = checkIsAlreadyUsed(image);
+                    const isSelected = selectedImage === image;
+                    return (
+                      <div
+                        key={`original-${index}`}
+                        onClick={() => {
+                          if (isAlreadyUsed) return;
+                          setSelectedImage(image);
+                          if (errors.selectedImage) setErrors(prev => ({ ...prev, selectedImage: '' }));
+                          setShowImageModal(false);
+                        }}
+                        title={isAlreadyUsed ? 'Already used in another job for this account' : ''}
+                        className={`relative rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${isAlreadyUsed
+                          ? 'border-green-400 cursor-not-allowed opacity-75'
+                          : isSelected
+                            ? 'border-indigo-600 ring-2 ring-indigo-200 cursor-pointer'
+                            : 'border-gray-200 hover:border-indigo-300 cursor-pointer'
+                          }`}
+                      >
+                        <img
+                          src={image}
+                          alt={`Professional image ${index + 1}`}
+                          className="w-full h-32 object-cover"
+                        />
+                        {isSelected && (
+                          <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                            <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          </div>
+                        )}
+                        {isAlreadyUsed && (
+                          <div className="absolute inset-0 bg-green-600 bg-opacity-30 flex flex-col items-center justify-center">
+                            <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center shadow">
+                              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                            <span className="text-white text-xs font-semibold mt-1 drop-shadow">In Use</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
     </div >
   );
 };

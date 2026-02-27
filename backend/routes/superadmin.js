@@ -833,7 +833,9 @@ router.get('/jobs/:id', async (req, res) => {
       return res.status(404).json({ error: 'Job not found' });
     }
 
-    res.json(result.rows[0]);
+    const job = result.rows[0];
+    // Explicitly handle interview_stages if needed or just return rows[0]
+    res.json(job);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1160,11 +1162,11 @@ router.post('/create-job', async (req, res) => {
         locations, selected_image, jd_attachment_name,
         registration_opening_date, registration_closing_date,
         no_of_openings, account_id, created_by_user_id,
-        status, approved_at, created_at, posted_date
+        status, approved_at, created_at, posted_date, hiring_process
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-        $21, $22, $23, $24, 'Published', NOW(), NOW(), NOW()
+        $21, $22, $23, $24, 'Published', NOW(), NOW(), NOW(), $25
       ) RETURNING id`,
       [
         job_title, company, Array.isArray(locations) ? locations[0] : locations,
@@ -1174,7 +1176,9 @@ router.post('/create-job', async (req, res) => {
         show_salary_to_candidate, locations, selected_image,
         jd_attachment_name, registration_opening_date,
         registration_closing_date, no_of_openings, account_id,
-        finalUserId
+        finalUserId,
+        JSON.stringify(req.body.interview_stages || req.body.hiringStages || [])
+
       ]
     );
 

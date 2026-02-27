@@ -191,9 +191,18 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
           account_name: job.account_name,
           created_by_user_name: job.created_by_user_name
         }));
-        console.log('Formatted jobs:', formattedJobs);
-        setJobs(formattedJobs);
-        setVisibleJobs(formattedJobs.length);
+        // Sort by created_at DESC and take latest 5
+        const latestJobs = formattedJobs
+          .sort((a, b) => {
+            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return dateB - dateA;
+          })
+          .slice(0, 5);
+
+        console.log('Latest 5 jobs:', latestJobs);
+        setJobs(latestJobs);
+        setVisibleJobs(latestJobs.length);
       }
     } catch (error) {
       console.error('Error fetching jobs:', error);

@@ -43,12 +43,18 @@ const OptimizedCandidateRow: React.FC<OptimizedCandidateRowProps> = memo(({
   const currentStageIndex = boardStages.indexOf(candidate.stage as InterviewStage);
   const progressPercentage = ((currentStageIndex + 1) / boardStages.length) * 100;
 
-  // Mock interview scores
+  // Dynamic interview scores based on board stages
+  const getSubStageScore = (label: string) => {
+    const stageName = boardStages.find(s => s.toString().includes(label));
+    if (!stageName) return null;
+    return currentStageIndex >= boardStages.indexOf(stageName as InterviewStage) ? 80 : null; // Mock score if reached
+  };
+
   const interviewScores = {
-    l1: currentStageIndex >= boardStages.indexOf(InterviewStage.L1_TECHNICAL) ? 85 : null,
-    l2: currentStageIndex >= boardStages.indexOf(InterviewStage.L2_TECHNICAL) ? 78 : null,
-    l3: currentStageIndex >= boardStages.indexOf(InterviewStage.L3_TECHNICAL) ? 82 : null,
-    l4: currentStageIndex >= boardStages.indexOf(InterviewStage.L4_TECHNICAL) ? 90 : null,
+    l1: getSubStageScore('L1'),
+    l2: getSubStageScore('L2'),
+    l3: getSubStageScore('L3'),
+    l4: getSubStageScore('L4'),
   };
 
   return (

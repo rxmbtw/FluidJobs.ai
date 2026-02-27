@@ -73,17 +73,20 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
   const [loadingImages, setLoadingImages] = useState(false);
   const [imageError, setImageError] = useState('');
   const [users, setUsers] = useState<any[]>([]);
+  const [usedImages, setUsedImages] = useState<string[]>([]); // images used by other jobs in the same account
   const [selectedHiringManager, setSelectedHiringManager] = useState('');
   const [selectedRecruiters, setSelectedRecruiters] = useState<string[]>([]);
   const [hiringStages, setHiringStages] = useState<any[]>([
     { id: 'screening', name: 'Screening', type: 'standard', isMandatory: true, remarksRequired: false, order: 1 },
-    { id: 'tech_assess', name: 'Technical Assessment', type: 'standard', isMandatory: false, remarksRequired: true, order: 2 },
-    { id: 'l1_tech', name: 'L1 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 3 },
-    { id: 'l2_tech', name: 'L2 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 4 },
-    { id: 'l3_tech', name: 'L3 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 5 },
-    { id: 'l4_tech', name: 'L4 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 6 },
-    { id: 'hr_round', name: 'HR Round', type: 'standard', isMandatory: true, remarksRequired: true, order: 7 },
-    { id: 'management', name: 'Management Round', type: 'standard', isMandatory: false, remarksRequired: true, order: 8 }
+    { id: 'cv_shortlist', name: 'CV Shortlist', type: 'standard', isMandatory: false, remarksRequired: false, order: 2 },
+    { id: 'hm_review', name: 'HM Review', type: 'standard', isMandatory: false, remarksRequired: false, order: 3 },
+    { id: 'assignment', name: 'Assignment', type: 'standard', isMandatory: false, remarksRequired: true, order: 4 },
+    { id: 'l1_tech', name: 'L1 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 5 },
+    { id: 'l2_tech', name: 'L2 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 6 },
+    { id: 'l3_tech', name: 'L3 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 7 },
+    { id: 'l4_tech', name: 'L4 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 8 },
+    { id: 'hr_round', name: 'HR Round', type: 'standard', isMandatory: true, remarksRequired: true, order: 9 },
+    { id: 'management', name: 'Management Round', type: 'standard', isMandatory: false, remarksRequired: true, order: 10 }
   ]);
   const [newStageInput, setNewStageInput] = useState('');
   const [currentStageType, setCurrentStageType] = useState<'standard' | 'custom'>('standard');
@@ -174,27 +177,35 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     { id: 'image', label: 'Job Image' },
     { id: 'timeline', label: 'Timeline & Dates' },
     { id: 'location', label: 'Location & Mode' },
-    { id: 'description', label: 'Job Description' },
     { id: 'requirements', label: 'Requirements & Skills' },
     { id: 'compensation', label: 'Compensation' },
     { id: 'team', label: 'Team & Recruiters' },
+    { id: 'description', label: 'Job Description' },
     { id: 'process', label: 'Hiring Process' }
   ];
 
   const predefinedStages = [
-    'Application Review',
-    'Phone Screening',
-    'Technical Assessment',
-    'L1 Technical Interview',
-    'L2 Technical Interview',
-    'L3 Technical Interview',
-    'L4 Technical Interview',
-    'System Design Round',
+    'CV Shortlist',
+    'HM Review',
+    'Assignment',
+    'L1 Technical',
+    'L2 Technical',
+    'L3 Technical',
+    'L4 Technical',
     'HR Round',
     'Management Round',
-    'Cultural Fit Interview',
-    'Final Interview'
+    'Offer Extended',
   ];
+
+  // Helper to check if an image is used, ignoring dynamic presigned URL query parameters like AWS signatures
+  const checkIsAlreadyUsed = (imgUrl: string) => {
+    if (!imgUrl) return false;
+    // If we've just selected it, it's not "already used by another job"
+    if (imgUrl === selectedImage) return false;
+
+    const baseUrl = imgUrl.split('?')[0];
+    return usedImages.some(usedUrl => usedUrl && usedUrl.split('?')[0] === baseUrl);
+  };
 
   useEffect(() => {
     const hasOpenDropdown = showDomainSuggestions || showMinExpSuggestions || showMaxExpSuggestions ||
@@ -210,6 +221,16 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
       document.body.classList.remove('dropdown-open');
     };
   }, [showDomainSuggestions, showMinExpSuggestions, showMaxExpSuggestions, showJobTypeSuggestions, showLocationSuggestions, showModeSuggestions, showSkillsSuggestions]);
+
+  // Fetch images already used by other jobs in this account (to mark them as unavailable)
+  useEffect(() => {
+    if (activeSection !== 'image') return;
+    if (!selectedAccount) return;
+    fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/account-used-images?account_id=${selectedAccount}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.usedImages) setUsedImages(data.usedImages); })
+      .catch(() => { });
+  }, [activeSection, selectedAccount]);
 
   useEffect(() => {
     const fetchAccounts = async () => {
@@ -508,8 +529,18 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
   };
 
   const handleSectionChange = (sectionId: string) => {
-    validateSection(activeSection);
-    setActiveSection(sectionId);
+    if (validateSection(activeSection)) {
+      setActiveSection(sectionId);
+    }
+  };
+
+  const handleNextSection = () => {
+    if (validateSection(activeSection)) {
+      const currentIndex = sections.findIndex(s => s.id === activeSection);
+      if (currentIndex < sections.length - 1) {
+        setActiveSection(sections[currentIndex + 1].id);
+      }
+    }
   };
 
   const numberToWords = (num: number): string => {
@@ -749,6 +780,15 @@ What We Offer:
                         </div>
                         {errors.selectedAccount && <p className="text-red-500 text-sm mt-1">{errors.selectedAccount}</p>}
                       </div>
+                      <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={handleNextSection}
+                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                        >
+                          Next
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -944,6 +984,15 @@ What We Offer:
                         />
                         {errors.no_of_openings && <p className="text-red-500 text-sm mt-1">{errors.no_of_openings}</p>}
                       </div>
+                      <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={handleNextSection}
+                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                        >
+                          Next
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -955,34 +1004,55 @@ What We Offer:
                           Job Posting Image <span className="text-red-500">*</span>
                         </label>
                         <div className="grid grid-cols-5 gap-3">
-                          {jobImages.map((image, index) => (
-                            <div
-                              key={index}
-                              onClick={() => {
-                                setSelectedImage(image);
-                                setErrors(prev => ({ ...prev, selectedImage: '' }));
-                              }}
-                              className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedImage === image
-                                ? 'border-indigo-600 ring-2 ring-indigo-200'
-                                : 'border-gray-200 hover:border-indigo-300'
-                                }`}
-                            >
-                              <img
-                                src={image}
-                                alt={`Job image ${index + 1}`}
-                                className="w-full h-24 object-cover"
-                              />
-                              {selectedImage === image && (
-                                <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
-                                  <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center">
-                                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
+                          {jobImages.map((image, index) => {
+                            const isAlreadyUsed = checkIsAlreadyUsed(image);
+                            const isSelected = selectedImage === image;
+                            return (
+                              <div
+                                key={index}
+                                onClick={() => {
+                                  if (isAlreadyUsed) return; // prevent selecting used images
+                                  setSelectedImage(image);
+                                  setErrors(prev => ({ ...prev, selectedImage: '' }));
+                                  setCompletedSections(prev => { const s = new Set(prev); s.add('image'); return s; });
+                                }}
+                                title={isAlreadyUsed ? 'Already used in another job for this account' : ''}
+                                className={`relative rounded-lg overflow-hidden border-2 transition-all ${isAlreadyUsed
+                                  ? 'border-green-400 cursor-not-allowed opacity-75'
+                                  : isSelected
+                                    ? 'border-indigo-600 ring-2 ring-indigo-200 cursor-pointer'
+                                    : 'border-gray-200 hover:border-indigo-300 cursor-pointer'
+                                  }`}
+                              >
+                                <img
+                                  src={image}
+                                  alt={`Job image ${index + 1}`}
+                                  className="w-full h-24 object-cover"
+                                />
+                                {/* Selected badge */}
+                                {isSelected && (
+                                  <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                                    <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center">
+                                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
                                   </div>
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                                )}
+                                {/* Already-used badge */}
+                                {isAlreadyUsed && (
+                                  <div className="absolute inset-0 bg-green-600 bg-opacity-30 flex flex-col items-center justify-center">
+                                    <div className="w-7 h-7 bg-green-600 rounded-full flex items-center justify-center shadow">
+                                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                    <span className="text-white text-[9px] font-semibold mt-0.5 drop-shadow">In Use</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                         <div className="flex justify-end mt-3">
                           <button
@@ -994,6 +1064,15 @@ What We Offer:
                           </button>
                         </div>
                         {errors.selectedImage && <p className="text-red-500 text-sm mt-1">{errors.selectedImage}</p>}
+                      </div>
+                      <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={handleNextSection}
+                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                        >
+                          Next
+                        </button>
                       </div>
                     </div>
                   )}
@@ -1345,6 +1424,15 @@ What We Offer:
                           </div>
                         )}
                       </div>
+                      <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={handleNextSection}
+                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                        >
+                          Next
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -1401,6 +1489,15 @@ What We Offer:
                           </label>
                         </div>
                       </div>
+                      <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={handleNextSection}
+                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                        >
+                          Next
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -1411,26 +1508,7 @@ What We Offer:
                         <p className="text-sm text-gray-500 mt-1">Select responsibilities for each team member for this specific job opening.</p>
                       </div>
 
-                      {/* Primary Sourcing Recruiter Selection */}
-                      <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm mb-6">
-                        <label className="block text-sm font-semibold text-gray-900 mb-2">
-                          Primary Sourcing Recruiter
-                        </label>
-                        <p className="text-xs text-gray-500 mb-3">
-                          Select the main recruiter responsible for sourcing and candidate pipelines for this role.
-                        </p>
-                        <select
-                          value={formData.primary_recruiter_id}
-                          onChange={handleInputChange}
-                          name="primary_recruiter_id"
-                          className="w-full md:w-1/2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        >
-                          <option value="">-- Select Primary Recruiter --</option>
-                          {users?.filter(u => u.role === 'Recruiter' || u.role === 'Admin' || u.role === 'SuperAdmin').map(user => (
-                            <option key={user.id} value={user.id}>{user.name} ({user.role})</option>
-                          ))}
-                        </select>
-                      </div>
+
 
                       {users.length === 0 ? (
                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
@@ -1519,15 +1597,16 @@ What We Offer:
                                   id={`responsibilities-${user.id}`}
                                 >
                                   <option value="hiring_manager">Hiring Manager</option>
-                                  <option value="screening_reviewer">Screening Reviewer</option>
-                                  <option value="cv_shortlist_reviewer">CV Shortlist Reviewer</option>
-                                  <option value="assignment_reviewer">Assignment Reviewer</option>
-                                  <option value="l1_technical_interviewer">L1 Technical Interviewer</option>
-                                  <option value="l2_technical_interviewer">L2 Technical Interviewer</option>
-                                  <option value="l3_technical_interviewer">L3 Technical Interviewer</option>
-                                  <option value="l4_technical_interviewer">L4 Technical Interviewer</option>
-                                  <option value="hr_round">HR Round</option>
-                                  <option value="management_round">Management Round</option>
+                                  <option value="screening">Screening Interviewer</option>
+                                  <option value="cv_shortlist">CV Shortlist Reviewer</option>
+                                  <option value="hm_review">HM Review</option>
+                                  <option value="assignment">Assignment Reviewer</option>
+                                  <option value="l1_technical">L1 Technical Interviewer</option>
+                                  <option value="l2_technical">L2 Technical Interviewer</option>
+                                  <option value="l3_technical">L3 Technical Interviewer</option>
+                                  <option value="l4_technical">L4 Technical Interviewer</option>
+                                  <option value="hr_round">HR Round Interviewer</option>
+                                  <option value="management_round">Management Round Interviewer</option>
                                   <option value="final_decision_maker">Final Decision Maker</option>
                                 </select>
 
@@ -1545,15 +1624,16 @@ What We Offer:
                                         {(() => {
                                           const allResponsibilities = [
                                             { value: 'hiring_manager', label: 'Hiring Manager' },
-                                            { value: 'screening_reviewer', label: 'Screening Reviewer' },
-                                            { value: 'cv_shortlist_reviewer', label: 'CV Shortlist Reviewer' },
-                                            { value: 'assignment_reviewer', label: 'Assignment Reviewer' },
-                                            { value: 'l1_technical_interviewer', label: 'L1 Technical Interviewer' },
-                                            { value: 'l2_technical_interviewer', label: 'L2 Technical Interviewer' },
-                                            { value: 'l3_technical_interviewer', label: 'L3 Technical Interviewer' },
-                                            { value: 'l4_technical_interviewer', label: 'L4 Technical Interviewer' },
-                                            { value: 'hr_round', label: 'HR Round' },
-                                            { value: 'management_round', label: 'Management Round' },
+                                            { value: 'screening', label: 'Screening Interviewer' },
+                                            { value: 'cv_shortlist', label: 'CV Shortlist Reviewer' },
+                                            { value: 'hm_review', label: 'HM Review' },
+                                            { value: 'assignment', label: 'Assignment Reviewer' },
+                                            { value: 'l1_technical', label: 'L1 Technical Interviewer' },
+                                            { value: 'l2_technical', label: 'L2 Technical Interviewer' },
+                                            { value: 'l3_technical', label: 'L3 Technical Interviewer' },
+                                            { value: 'l4_technical', label: 'L4 Technical Interviewer' },
+                                            { value: 'hr_round', label: 'HR Round Interviewer' },
+                                            { value: 'management_round', label: 'Management Round Interviewer' },
                                             { value: 'final_decision_maker', label: 'Final Decision Maker' }
                                           ];
 
@@ -1654,6 +1734,15 @@ What We Offer:
                           </div>
                         </div>
                       )}
+                      <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={handleNextSection}
+                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                        >
+                          Next
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -1859,278 +1948,338 @@ What We Offer:
             </div>
           </div>
         </div>
-      </div>
 
-      {showSuccessModal && (
-        <div className="modal-overlay">
-          <div className="modal-content bg-white rounded-lg p-8 max-w-sm w-full mx-4 text-center relative">
-            <button
-              onClick={() => {
-                setShowSuccessModal(false);
-                onBack();
-              }}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        {
+          showSuccessModal && (
+            <div className="modal-overlay">
+              <div className="modal-content bg-white rounded-lg p-8 max-w-sm w-full mx-4 text-center relative">
+                <button
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    onBack();
+                  }}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
 
-            <div className="mb-4">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            </div>
-
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Success!</h2>
-            <p className="text-gray-600 mb-6">Job created successfully</p>
-
-            <button
-              onClick={() => {
-                setShowSuccessModal(false);
-                onBack();
-              }}
-              className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      )}
-
-      <SuccessModal
-        isOpen={showPdfSuccessModal}
-        onClose={() => setShowPdfSuccessModal(false)}
-        title="Success!"
-        message="✅ Job description generated from PDF successfully!"
-      />
-
-      {showImageModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto mx-4">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-semibold text-gray-900">Select Job Posting Image</h2>
-              <button
-                onClick={() => setShowImageModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {loadingImages && (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-                <span className="ml-3 text-gray-600">Loading images...</span>
-              </div>
-            )}
-
-            {imageError && (
-              <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-yellow-800 text-sm">{imageError}</p>
-              </div>
-            )}
-
-            {!loadingImages && (
-              <>
-                {/* Technology & Development Section */}
-                <div className="mb-8">
-                  <h3 className="text-lg font-medium text-gray-800 mb-4">
-                    Technology & Development
-                    {minioImages.tech.length > 8 && (
-                      <span className="ml-2 text-sm text-gray-500">({minioImages.tech.length} images)</span>
-                    )}
-                  </h3>
-                  {minioImages.tech.length > 0 ? (
-                    <>
-                      <div className="grid grid-cols-4 gap-4">
-                        {(showAllTech ? minioImages.tech : minioImages.tech.slice(0, 8)).map((image, index) => (
-                          <div
-                            key={`tech-${index}`}
-                            onClick={() => {
-                              setSelectedImage(image.url);
-                              setErrors(prev => ({ ...prev, selectedImage: '' }));
-                              setShowImageModal(false);
-                            }}
-                            className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${selectedImage === image.url
-                              ? 'border-indigo-600 ring-2 ring-indigo-200'
-                              : 'border-gray-200 hover:border-indigo-300'
-                              }`}
-                          >
-                            <img
-                              src={image.url}
-                              alt={image.name}
-                              loading="lazy"
-                              className="w-full h-32 object-cover bg-gray-100"
-                              style={{ contentVisibility: 'auto' }}
-                              onError={(e) => {
-                                console.log('Image failed to load:', image.name);
-                                e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12"%3EImage unavailable%3C/text%3E%3C/svg%3E';
-                              }}
-                            />
-                            {selectedImage === image.url && (
-                              <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
-                                <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      {!showAllTech && minioImages.tech.length > 8 && (
-                        <button
-                          onClick={() => setShowAllTech(true)}
-                          className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                        >
-                          <span>Show {minioImages.tech.length - 8} more images</span>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
-                      )}
-                      {showAllTech && minioImages.tech.length > 8 && (
-                        <button
-                          onClick={() => setShowAllTech(false)}
-                          className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                        >
-                          <span>Show less</span>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                          </svg>
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <p>No technology images available</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Management & Business Section */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-medium text-gray-800 mb-4">
-                    Management & Business
-                    {minioImages.management.length > 8 && (
-                      <span className="ml-2 text-sm text-gray-500">({minioImages.management.length} images)</span>
-                    )}
-                  </h3>
-                  {minioImages.management.length > 0 ? (
-                    <>
-                      <div className="grid grid-cols-4 gap-4">
-                        {(showAllManagement ? minioImages.management : minioImages.management.slice(0, 8)).map((image, index) => (
-                          <div
-                            key={`mgmt-${index}`}
-                            onClick={() => {
-                              setSelectedImage(image.url);
-                              setErrors(prev => ({ ...prev, selectedImage: '' }));
-                              setShowImageModal(false);
-                            }}
-                            className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${selectedImage === image.url
-                              ? 'border-indigo-600 ring-2 ring-indigo-200'
-                              : 'border-gray-200 hover:border-indigo-300'
-                              }`}
-                          >
-                            <img
-                              src={image.url}
-                              alt={image.name}
-                              loading="lazy"
-                              className="w-full h-32 object-cover bg-gray-100"
-                              style={{ contentVisibility: 'auto' }}
-                              onError={(e) => {
-                                console.log('Image failed to load:', image.name);
-                                e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12"%3EImage unavailable%3C/text%3E%3C/svg%3E';
-                              }}
-                            />
-                            {selectedImage === image.url && (
-                              <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
-                                <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      {!showAllManagement && minioImages.management.length > 8 && (
-                        <button
-                          onClick={() => setShowAllManagement(true)}
-                          className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                        >
-                          <span>Show {minioImages.management.length - 8} more images</span>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
-                      )}
-                      {showAllManagement && minioImages.management.length > 8 && (
-                        <button
-                          onClick={() => setShowAllManagement(false)}
-                          className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                        >
-                          <span>Show less</span>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                          </svg>
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <p>No management images available</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* General Professional Section (Unsplash fallback) */}
-                <div>
-                  <h3 className="text-lg font-medium text-gray-800 mb-4">General Professional</h3>
-                  <div className="grid grid-cols-4 gap-4">
-                    {jobImages.map((image, index) => (
-                      <div
-                        key={`original-${index}`}
-                        onClick={() => {
-                          setSelectedImage(image);
-                          setErrors(prev => ({ ...prev, selectedImage: '' }));
-                          setShowImageModal(false);
-                        }}
-                        className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${selectedImage === image
-                          ? 'border-indigo-600 ring-2 ring-indigo-200'
-                          : 'border-gray-200 hover:border-indigo-300'
-                          }`}
-                      >
-                        <img
-                          src={image}
-                          alt={`Professional image ${index + 1}`}
-                          className="w-full h-32 object-cover"
-                        />
-                        {selectedImage === image && (
-                          <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
-                            <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                <div className="mb-4">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                    <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
                   </div>
                 </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Success!</h2>
+                <p className="text-gray-600 mb-6">Job created successfully</p>
+
+                <button
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    onBack();
+                  }}
+                  className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          )
+        }
+
+        <SuccessModal
+          isOpen={showPdfSuccessModal}
+          onClose={() => setShowPdfSuccessModal(false)}
+          title="Success!"
+          message="✅ Job description generated from PDF successfully!"
+        />
+
+        {
+          showImageModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto mx-4">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-semibold text-gray-900">Select Job Posting Image</h2>
+                  <button
+                    onClick={() => setShowImageModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {loadingImages && (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                    <span className="ml-3 text-gray-600">Loading images...</span>
+                  </div>
+                )}
+
+                {imageError && (
+                  <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-yellow-800 text-sm">{imageError}</p>
+                  </div>
+                )}
+
+                {!loadingImages && (
+                  <>
+                    {/* Technology & Development Section */}
+                    <div className="mb-8">
+                      <h3 className="text-lg font-medium text-gray-800 mb-4">
+                        Technology & Development
+                        {minioImages.tech.length > 8 && (
+                          <span className="ml-2 text-sm text-gray-500">({minioImages.tech.length} images)</span>
+                        )}
+                      </h3>
+                      {minioImages.tech.length > 0 ? (
+                        <>
+                          <div className="grid grid-cols-4 gap-4">
+                            {(showAllTech ? minioImages.tech : minioImages.tech.slice(0, 8)).map((image, index) => {
+                              const isAlreadyUsed = checkIsAlreadyUsed(image.url);
+                              const isSelected = selectedImage === image.url;
+                              return (
+                                <div
+                                  key={`tech-${index}`}
+                                  onClick={() => {
+                                    if (isAlreadyUsed) return;
+                                    setSelectedImage(image.url);
+                                    setErrors(prev => ({ ...prev, selectedImage: '' }));
+                                    setShowImageModal(false);
+                                    setCompletedSections(prev => { const s = new Set(prev); s.add('image'); return s; });
+                                  }}
+                                  title={isAlreadyUsed ? 'Already used in another job for this account' : ''}
+                                  className={`relative rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${isAlreadyUsed
+                                    ? 'border-green-400 cursor-not-allowed opacity-75'
+                                    : isSelected
+                                      ? 'border-indigo-600 ring-2 ring-indigo-200 cursor-pointer'
+                                      : 'border-gray-200 hover:border-indigo-300 cursor-pointer'
+                                    }`}
+                                >
+                                  <img
+                                    src={image.url}
+                                    alt={image.name}
+                                    loading="lazy"
+                                    className="w-full h-32 object-cover bg-gray-100"
+                                    style={{ contentVisibility: 'auto' }}
+                                    onError={(e) => {
+                                      console.log('Image failed to load:', image.name);
+                                      e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12"%3EImage unavailable%3C/text%3E%3C/svg%3E';
+                                    }}
+                                  />
+                                  {isSelected && (
+                                    <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                                      <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {isAlreadyUsed && (
+                                    <div className="absolute inset-0 bg-green-600 bg-opacity-30 flex flex-col items-center justify-center">
+                                      <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center shadow">
+                                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                      </div>
+                                      <span className="text-white text-xs font-semibold mt-1 drop-shadow">In Use</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {!showAllTech && minioImages.tech.length > 8 && (
+                            <button
+                              onClick={() => setShowAllTech(true)}
+                              className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                              <span>Show {minioImages.tech.length - 8} more images</span>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          )}
+                          {showAllTech && minioImages.tech.length > 8 && (
+                            <button
+                              onClick={() => setShowAllTech(false)}
+                              className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                              <span>Show less</span>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>No technology images available</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Management & Business Section */}
+                    <div className="mb-6">
+                      <h3 className="text-lg font-medium text-gray-800 mb-4">
+                        Management & Business
+                        {minioImages.management.length > 8 && (
+                          <span className="ml-2 text-sm text-gray-500">({minioImages.management.length} images)</span>
+                        )}
+                      </h3>
+                      {minioImages.management.length > 0 ? (
+                        <>
+                          <div className="grid grid-cols-4 gap-4">
+                            {(showAllManagement ? minioImages.management : minioImages.management.slice(0, 8)).map((image, index) => {
+                              const isAlreadyUsed = checkIsAlreadyUsed(image.url);
+                              const isSelected = selectedImage === image.url;
+                              return (
+                                <div
+                                  key={`mgmt-${index}`}
+                                  onClick={() => {
+                                    if (isAlreadyUsed) return;
+                                    setSelectedImage(image.url);
+                                    setErrors(prev => ({ ...prev, selectedImage: '' }));
+                                    setShowImageModal(false);
+                                    setCompletedSections(prev => { const s = new Set(prev); s.add('image'); return s; });
+                                  }}
+                                  title={isAlreadyUsed ? 'Already used in another job for this account' : ''}
+                                  className={`relative rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${isAlreadyUsed
+                                    ? 'border-green-400 cursor-not-allowed opacity-75'
+                                    : isSelected
+                                      ? 'border-indigo-600 ring-2 ring-indigo-200 cursor-pointer'
+                                      : 'border-gray-200 hover:border-indigo-300 cursor-pointer'
+                                    }`}
+                                >
+                                  <img
+                                    src={image.url}
+                                    alt={image.name}
+                                    loading="lazy"
+                                    className="w-full h-32 object-cover bg-gray-100"
+                                    style={{ contentVisibility: 'auto' }}
+                                    onError={(e) => {
+                                      console.log('Image failed to load:', image.name);
+                                      e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12"%3EImage unavailable%3C/text%3E%3C/svg%3E';
+                                    }}
+                                  />
+                                  {isSelected && (
+                                    <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                                      <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {isAlreadyUsed && (
+                                    <div className="absolute inset-0 bg-green-600 bg-opacity-30 flex flex-col items-center justify-center">
+                                      <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center shadow">
+                                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                      </div>
+                                      <span className="text-white text-xs font-semibold mt-1 drop-shadow">In Use</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {!showAllManagement && minioImages.management.length > 8 && (
+                            <button
+                              onClick={() => setShowAllManagement(true)}
+                              className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                              <span>Show {minioImages.management.length - 8} more images</span>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          )}
+                          {showAllManagement && minioImages.management.length > 8 && (
+                            <button
+                              onClick={() => setShowAllManagement(false)}
+                              className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                              <span>Show less</span>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>No management images available</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* General Professional Section (Unsplash fallback) */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-800 mb-4">General Professional</h3>
+                      <div className="grid grid-cols-4 gap-4">
+                        {jobImages.map((image, index) => {
+                          const isAlreadyUsed = checkIsAlreadyUsed(image);
+                          const isSelected = selectedImage === image;
+                          return (
+                            <div
+                              key={`original-${index}`}
+                              onClick={() => {
+                                if (isAlreadyUsed) return;
+                                setSelectedImage(image);
+                                setErrors(prev => ({ ...prev, selectedImage: '' }));
+                                setShowImageModal(false);
+                                setCompletedSections(prev => { const s = new Set(prev); s.add('image'); return s; });
+                              }}
+                              title={isAlreadyUsed ? 'Already used in another job for this account' : ''}
+                              className={`relative rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${isAlreadyUsed
+                                ? 'border-green-400 cursor-not-allowed opacity-75'
+                                : isSelected
+                                  ? 'border-indigo-600 ring-2 ring-indigo-200 cursor-pointer'
+                                  : 'border-gray-200 hover:border-indigo-300 cursor-pointer'
+                                }`}
+                            >
+                              <img
+                                src={image}
+                                alt={`Professional image ${index + 1}`}
+                                className="w-full h-32 object-cover"
+                              />
+                              {isSelected && (
+                                <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
+                                  <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                </div>
+                              )}
+                              {isAlreadyUsed && (
+                                <div className="absolute inset-0 bg-green-600 bg-opacity-30 flex flex-col items-center justify-center">
+                                  <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center shadow">
+                                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                  <span className="text-white text-xs font-semibold mt-1 drop-shadow">In Use</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+      </div>
     </div>
   );
 };

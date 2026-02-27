@@ -272,6 +272,71 @@ router.put('/:id', async (req, res) => {
 });
 
 
+// Update candidate pipeline stage
+router.put('/:id/stage', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { currentStage, status, reason, feedback, jobId } = req.body;
+
+    if (!currentStage) {
+      return res.status(400).json({ status: 'error', message: 'currentStage is required' });
+    }
+
+    // Update current_stage on the candidates table (migration 020 added this column)
+    const updateResult = await pool.query(
+      `UPDATE candidates
+       SET current_stage = $1,
+           current_stage_since = NOW(),
+           last_stage_change_at = NOW(),
+           updated_at = NOW()
+       WHERE candidate_id = $2
+       RETURNING *`,
+      [currentStage, id]
+    );
+
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'Candidate not found' });
+    }
+
+    // Optionally log to candidate_stage_history (migration 020 table)
+    try {
+      const feedbackText = reason || feedback || null;
+      const jobIdVal = jobId ? parseInt(jobId) : 0;
+      await pool.query(
+        `INSERT INTO candidate_stage_history 
+         (candidate_id, job_id, from_stage, to_stage, stage_index, moved_by_name, moved_at, feedback, reason)
+         VALUES ($1, $2, NULL, $3, 0, 'System', NOW(), $4, $5)`,
+        [id, jobIdVal, currentStage, feedbackText, feedbackText]
+      );
+    } catch (historyErr) {
+      console.warn('Could not log stage history (non-fatal):', historyErr.message);
+    }
+
+    try {
+      await logAudit(null, 'System', 'STAGE_UPDATED',
+        `Candidate ${id} moved to stage: ${currentStage}${reason ? ` | Reason: ${reason}` : ''}`,
+        'candidate', id, req);
+    } catch (auditErr) {
+      console.warn('Audit log failed (non-fatal):', auditErr.message);
+    }
+
+    res.json({
+      success: true,
+      data: updateResult.rows[0],
+      message: `Stage updated to ${currentStage}`
+    });
+
+  } catch (error) {
+    console.error('Error updating candidate stage:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to update candidate stage',
+      error: error.message
+    });
+  }
+});
+
+
 
 // Send invite to candidate
 router.post('/send-invite', async (req, res) => {
@@ -559,6 +624,44 @@ router.put('/:id/stage', async (req, res) => {
   } catch (error) {
     console.error('Error updating candidate stage:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get candidate stage history
+router.get('/:id/history', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `SELECT 
+        history_id as id,
+        candidate_id,
+        job_id,
+        from_stage,
+        to_stage,
+        stage_index,
+        moved_by_name,
+        moved_at,
+        feedback,
+        reason
+       FROM candidate_stage_history 
+       WHERE candidate_id = $1 
+       ORDER BY moved_at DESC`,
+      [id]
+    );
+
+    res.json({
+      success: true,
+      data: result.rows
+    });
+
+  } catch (error) {
+    console.error('Error fetching candidate history:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch candidate history',
+      error: error.message
+    });
   }
 });
 

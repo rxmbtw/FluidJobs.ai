@@ -10,8 +10,10 @@ export interface StageUpdateRequest {
   approvals?: any[];
 }
 
+const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+
 export class CandidateService {
-  private static baseUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+  private static baseUrl = API_BASE_URL;
 
   // Get authentication token
   private static getAuthToken(): string {
@@ -181,19 +183,6 @@ export class CandidateService {
       const data = await response.json();
 
       if (data.success && data.applications) {
-        // Define all pipeline stages for distribution
-        const PIPELINE_STAGES = [
-          InterviewStage.APPLIED,
-          InterviewStage.SCREENING,
-          InterviewStage.CV_SHORTLIST,
-          InterviewStage.HM_REVIEW,
-          InterviewStage.ASSIGNMENT,
-          InterviewStage.L1_TECHNICAL,
-          InterviewStage.L2_TECHNICAL,
-          InterviewStage.HR_ROUND,
-          InterviewStage.SELECTED,
-        ];
-
         // Transform database applications to match our Candidate interface
         const transformedCandidates = data.applications.map((app: any, index: number) => {
           // ── Status → Pipeline Stage Mapping ──────────────────────────────────
@@ -268,12 +257,119 @@ export class CandidateService {
       }
     } catch (error) {
       console.error('Error fetching candidates from API:', error);
-      // Fallback to old endpoint if new one fails (for safety)
+      // Fallback
       return {
         candidates: [],
         total: 0,
         permissions: { canCreate: true, canBulkEdit: true }
       };
+    }
+  }
+
+  // Fetch candidates for a specific job with their real pipeline stages
+  static async getJobCandidates(jobId: string): Promise<any[]> {
+    if (!jobId) return [];
+    try {
+      // Primary: fetch from pipeline-stages (has real current_stage per job)
+      const pipelineRes = await fetch(`${this.baseUrl}/api/pipeline-stages/${jobId}`, {
+        headers: { 'Authorization': `Bearer ${this.getAuthToken()}` }
+      });
+
+      if (pipelineRes.ok) {
+        const pipelineData = await pipelineRes.json();
+        if (pipelineData.success && pipelineData.stages && pipelineData.stages.length > 0) {
+          return pipelineData.stages.map((s: any) => ({
+            id: s.candidate_id,
+            candidate_id: s.candidate_id,
+            name: s.candidate_name || 'Unknown',
+            email: s.email || '',
+            phone: s.phone || '',
+            currentStage: s.current_stage || 'Applied',
+            current_stage: s.current_stage || 'Applied',
+            stageHistory: s.stage_history || [],
+            jobId: String(jobId),
+            job_id: String(jobId),
+            appliedDate: s.applied_at ? new Date(s.applied_at).toISOString() : new Date().toISOString(),
+            lastUpdateDate: s.updated_at ? new Date(s.updated_at).toISOString() : new Date().toISOString(),
+            experience: s.experience_years ? `${s.experience_years} Years` : '0 Years',
+            experienceYears: parseFloat(s.experience_years) || 0,
+            location: s.candidate_location || 'Not specified',
+            currentCompany: s.current_company || '',
+            noticePeriod: s.notice_period || 'Not specified',
+            ctc: {
+              current: parseFloat(s.current_ctc) || 0,
+              expected: parseFloat(s.expected_ctc) || 0,
+              currency: 'INR'
+            },
+            status: 'Active',
+            hiringManagerId: 'default-hm',
+            jobTitle: 'Candidate',
+            department: 'Engineering',
+            source: 'Applied',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            createdBy: 'system',
+            updatedBy: 'system',
+            version: 1,
+            cvStatusRecruiter: 'Pending' as const,
+            cvStatusHM: 'Pending' as const,
+            interviews: {
+              l1: { interviewer: '', date: '', feedbackDate: '', status: 'Pending' as const },
+              l2: { interviewer: '', date: '', feedbackDate: '', status: 'Pending' as const },
+              l3: { interviewer: '', date: '', feedbackDate: '', status: 'Pending' as const },
+              l4: { interviewer: '', date: '', feedbackDate: '', status: 'Pending' as const },
+              hr: { interviewer: '', date: '', feedbackDate: '', status: 'Pending' as const },
+              management: { interviewer: '', date: '', feedbackDate: '', status: 'Pending' as const },
+            },
+            comments: [],
+            skills: [],
+            isOnHold: s.current_stage === 'On Hold',
+            resumeScore: Math.floor(Math.random() * 30) + 70,
+          }));
+        }
+      }
+
+      // Fallback: use job-applications admin list
+      const response = await fetch(`${this.baseUrl}/api/job-applications/admin/list?jobId=${jobId}`, {
+        headers: { 'Authorization': `Bearer ${this.getAuthToken()}` }
+      });
+      if (response.ok) {
+        const result = await response.json();
+        return (result.applications || []).map((app: any) => ({
+          ...app,
+          currentStage: app.current_stage || 'Applied',
+          jobId: String(jobId),
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching job candidates:', error);
+      return [];
+    }
+  }
+
+  // Update candidate pipeline stage for a specific job (persists to DB)
+  static async updateJobCandidateStage(jobId: string, candidateId: string, newStage: string, reason?: string): Promise<boolean> {
+    try {
+      const user = this.getCurrentUser();
+      const response = await fetch(`${this.baseUrl}/api/pipeline-stages/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.getAuthToken()}`
+        },
+        body: JSON.stringify({
+          jobId: parseInt(jobId),
+          candidateId,
+          newStage,
+          reason: reason || 'Stage updated via pipeline board',
+          updatedBy: user?.name || user?.email || 'Admin'
+        })
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Error updating job candidate stage:', error);
+      return false;
     }
   }
 
@@ -302,10 +398,6 @@ export class CandidateService {
       role: 'hr', // Use HR role to bypass department checks
       email: 'system@fluidjobs.ai'
     } as unknown as User;
-
-    // if (!user) {
-    //   throw new Error('User not authenticated');
-    // }
 
     try {
       // 1. Fetch current candidate data
@@ -365,6 +457,8 @@ export class CandidateService {
       const updateData = {
         currentStage: request.newStage,
         status: this.getStatusFromStage(request.newStage),
+        reason: request.reason,
+        feedback: request.reason,
       };
 
       let updatedCandidate: Candidate;
@@ -537,12 +631,6 @@ export class CandidateService {
     candidate?: Candidate;
     error?: string;
   }> {
-    // Check for auth token first
-    // const token = this.getAuthToken();
-    // if (!token) {
-    //   throw new Error('User not authenticated');
-    // }
-
     // Try to get user, but fallback if missing (backend validates token anyway)
     const user = this.getCurrentUser() || {
       id: 'system_fallback',

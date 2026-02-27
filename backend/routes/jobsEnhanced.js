@@ -418,6 +418,21 @@ router.get('/active', async (req, res) => {
   }
 });
 
+// Get images already used by jobs for a given account (to prevent duplicate image use)
+router.get('/account-used-images', async (req, res) => {
+  try {
+    const { account_id } = req.query;
+    if (!account_id) return res.json({ usedImages: [] });
+    const result = await pool.query(
+      `SELECT selected_image FROM jobs_enhanced WHERE account_id = $1 AND selected_image IS NOT NULL AND selected_image != ''`,
+      [account_id]
+    );
+    res.json({ usedImages: result.rows.map(r => r.selected_image) });
+  } catch (error) {
+    res.status(500).json({ usedImages: [] });
+  }
+});
+
 // Get job by ID with attachments
 router.get('/:id', async (req, res) => {
   try {
@@ -435,7 +450,7 @@ router.get('/:id', async (req, res) => {
 
     // Get attachments
     const attachmentsResult = await pool.query(`
-      SELECT attachment_id, original_name, file_path, file_type, attachment_type, uploaded_at
+      SELECT id, file_name, file_url, file_type, uploaded_at
       FROM job_attachments 
       WHERE job_id = $1
       ORDER BY uploaded_at DESC;
@@ -478,11 +493,49 @@ router.get('/:id', async (req, res) => {
         'Competitive',
       registration_opening_date: job.registration_opening_date,
       registration_closing_date: job.registration_closing_date,
-      attachments: attachmentsResult.rows
+      attachments: attachmentsResult.rows,
+      interview_stages: job.hiring_process || [],
+      hiring_process: job.hiring_process || [],
+      stages: job.hiring_process || []
     });
   } catch (error) {
     console.error('Error fetching job:', error);
     res.status(500).json({ error: 'Failed to fetch job' });
+  }
+});
+
+// Update hiring stages for a job (called from JobSettings)
+router.patch('/update-stages/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { interview_stages } = req.body;
+    if (!Array.isArray(interview_stages)) {
+      return res.status(400).json({ error: 'interview_stages must be an array' });
+    }
+    await pool.query(
+      `UPDATE jobs_enhanced SET hiring_process = $1 WHERE id = $2`,
+      [JSON.stringify(interview_stages), id]
+    );
+    res.json({ success: true, message: 'Hiring stages updated' });
+  } catch (error) {
+    console.error('Error updating stages:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update cover image for a job (called from JobSettings)
+router.patch('/update-image/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { selected_image } = req.body;
+    await pool.query(
+      `UPDATE jobs_enhanced SET selected_image = $1 WHERE id = $2`,
+      [selected_image || null, id]
+    );
+    res.json({ success: true, message: 'Image updated' });
+  } catch (error) {
+    console.error('Error updating image:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -670,8 +723,42 @@ router.put('/update-status/:id', async (req, res) => {
   }
 });
 
+// Patch: update ONLY the hiring_process (stages) for a job — does not touch other fields
+router.patch('/update-stages/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { interview_stages } = req.body;
+
+    if (!interview_stages) {
+      return res.status(400).json({ success: false, error: 'interview_stages is required' });
+    }
+
+    const result = await pool.query(
+      `UPDATE jobs_enhanced
+         SET hiring_process = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2
+       RETURNING id, hiring_process`,
+      [JSON.stringify(interview_stages), id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+
+    res.json({
+      success: true,
+      hiring_process: result.rows[0].hiring_process,
+      message: 'Hiring stages updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating hiring stages:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Update job
 router.put('/update/:id', async (req, res) => {
+
   try {
     const { id } = req.params;
     const jobData = req.body;
@@ -707,8 +794,9 @@ router.put('/update/:id', async (req, res) => {
         registration_opening_date = $13,
         registration_closing_date = $14,
         no_of_openings = $15,
+        hiring_process = $16,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $16
+      WHERE id = $17
       RETURNING *;
     `, [
       jobData.job_title,
@@ -726,6 +814,7 @@ router.put('/update/:id', async (req, res) => {
       jobData.registration_opening_date,
       jobData.registration_closing_date,
       jobData.no_of_openings,
+      JSON.stringify(jobData.interview_stages || []),
       id
     ]);
 
@@ -766,8 +855,8 @@ router.post('/create', async (req, res) => {
         posted_date, created_at, account_id, created_by_user_id,
         job_domain, mode_of_job, min_experience, max_experience,
         min_salary, max_salary, show_salary_to_candidate, skills, locations,
-        selected_image, jd_attachment_name, registration_opening_date, registration_closing_date
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', NOW(), NOW(), $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+        selected_image, jd_attachment_name, registration_opening_date, registration_closing_date, hiring_process
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', NOW(), NOW(), $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
       RETURNING id;
     `, [
       jobData.job_title,
@@ -793,7 +882,8 @@ router.post('/create', async (req, res) => {
       jobData.selected_image,
       jobData.jd_attachment_name,
       jobData.registration_opening_date,
-      jobData.registration_closing_date
+      jobData.registration_closing_date,
+      JSON.stringify(jobData.interview_stages || [])
     ]);
 
     // Update account last activity

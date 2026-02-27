@@ -422,6 +422,27 @@ const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate, onBack, 
       });
 
       if (result.success) {
+        // Build a new stageHistory entry with the feedback that was just entered
+        const newHistoryEntry = {
+          toStage: targetStage,
+          fromStage: candidate.currentStage,
+          stage: targetStage,
+          changedBy: user.name,
+          movedBy: user.name,
+          timestamp: new Date().toISOString(),
+          changedAt: new Date().toISOString(),
+          reason: feedbackToUse,
+          feedback: feedbackToUse,
+          hasFeedback: true,
+        };
+
+        // Update candidate's stageHistory in-place so the timeline shows the feedback immediately
+        if (candidate.stageHistory) {
+          (candidate.stageHistory as any[]).push(newHistoryEntry);
+        } else {
+          (candidate as any).stageHistory = [newHistoryEntry];
+        }
+
         if (onStageUpdate) {
           onStageUpdate(candidate.id, targetStage);
         }

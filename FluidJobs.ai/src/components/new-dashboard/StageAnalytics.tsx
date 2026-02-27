@@ -55,7 +55,11 @@ const LAYER_CONFIGS = [
   { gradient: 'linear-gradient(135deg,#3b82f6,#60a5fa)', glow: 'rgba(59,130,246,0.45)', label: 'blue3' },
 ];
 
-const StageAnalytics: React.FC = () => {
+interface StageAnalyticsProps {
+  jobId?: string;
+}
+
+const StageAnalytics: React.FC<StageAnalyticsProps> = ({ jobId }) => {
   const { setHeaderActions } = useDashboardHeader();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,15 +87,22 @@ const StageAnalytics: React.FC = () => {
   const fetchCandidates = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidates?page=1&limit=1000`,
-        { headers: { 'Content-Type': 'application/json' } }
-      );
+      const url = jobId
+        ? `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/job-applications/admin/list?jobId=${jobId}`
+        : `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/candidates?page=1&limit=1000`;
+
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('superadmin_token')}`
+        }
+      });
       if (response.ok) {
         const data = await response.json();
-        if (data.data?.candidates?.length > 0) {
-          const formatted = data.data.candidates.map((c: any) => ({
-            id: c.candidate_id,
+        const candList = data.applications || (data.data && data.data.candidates) || [];
+        if (candList.length > 0) {
+          const formatted = candList.map((c: any) => ({
+            id: c.candidate_id || c.id,
             name: c.full_name,
             email: c.email,
             phone: c.phone_number || '',
@@ -192,9 +203,6 @@ const StageAnalytics: React.FC = () => {
     });
   }, [candidates]);
 
-  /* Reverse so index 0 = Management (top of pyramid visual) */
-  const pyramidLayers = useMemo(() => [...stageMetrics].reverse(), [stageMetrics]);
-
   const summaryStats = useMemo(() => {
     if (!stageMetrics.length) return { total: 0, finalSelections: 0, conversionRate: 0, avgDays: 0 };
     const total = stageMetrics[0]?.appeared || 0;
@@ -219,13 +227,6 @@ const StageAnalytics: React.FC = () => {
     );
   }
 
-  /* ── helpers for pyramid ── */
-  const maxAppeared = pyramidLayers.length > 0 ? Math.max(...pyramidLayers.map(l => l.appeared)) : 1;
-  /* width fraction for each layer: narrowest = top (Management), widest = bottom (L1) */
-  const getLayerWidth = (appeared: number) => {
-    const MIN = 18; const MAX = 96;
-    return MIN + ((appeared / maxAppeared) * (MAX - MIN));
-  };
 
   /* ─────────────────────────────── RENDER ──────────────────────────────── */
   return (
@@ -236,20 +237,20 @@ const StageAnalytics: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
         {[
           {
-            label: 'Candidates Started', value: summaryStats.total.toLocaleString(),
-            grad: 'linear-gradient(135deg,#3b82f6,#2563eb)', delay: 0
+            label: 'Total Applicants', value: summaryStats.total.toLocaleString(),
+            grad: 'linear-gradient(135deg,#3b82f6,#2563eb)', icon: '👥', delay: 0
           },
           {
             label: 'Final Selections', value: summaryStats.finalSelections.toLocaleString(),
-            grad: 'linear-gradient(135deg,#6366f1,#4f46e5)', delay: 60
+            grad: 'linear-gradient(135deg,#6366f1,#4f46e5)', icon: '✅', delay: 60
           },
           {
             label: 'Overall Conversion', value: `${summaryStats.conversionRate}%`,
-            grad: 'linear-gradient(135deg,#2563eb,#1d4ed8)', delay: 120
+            grad: 'linear-gradient(135deg,#2563eb,#1d4ed8)', icon: '📈', delay: 120
           },
           {
             label: 'Days to Complete', value: summaryStats.avgDays,
-            grad: 'linear-gradient(135deg,#475569,#334155)', delay: 180
+            grad: 'linear-gradient(135deg,#475569,#334155)', icon: '🕐', delay: 180
           },
         ].map((card, i) => (
           <div key={i} className="stat-card" style={{
@@ -258,27 +259,27 @@ const StageAnalytics: React.FC = () => {
             boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
             animation: mounted ? `cardFloat 0.45s ease ${card.delay}ms both` : 'none',
           }}>
+            <span style={{ fontSize: 24, marginBottom: 6, display: 'block' }}>{card.icon}</span>
             <p style={{ fontSize: 32, fontWeight: 800, lineHeight: 1, margin: '0 0 6px' }}>{card.value}</p>
             <p style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.8)', margin: 0 }}>{card.label}</p>
           </div>
         ))}
       </div>
 
-      {/* ── Pyramid Funnel ────────────────────────────────────────────── */}
+      {/* ── Stage Breakdown Table ─────────────────────────────────────── */}
       <div style={{
         background: '#ffffff',
-        borderRadius: 20, padding: '32px 36px 36px',
+        borderRadius: 20, padding: '28px 32px',
         border: '1px solid #e2e8f0',
         boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
       }}>
-        {/* header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <div>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>
-              Interview Stage Conversion Funnel
+              Interview Stage Breakdown
             </h3>
             <p style={{ fontSize: 12, color: '#94a3b8', margin: '3px 0 0' }}>
-              {candidates.length} candidates · {stageMetrics.length} stages
+              {candidates.length} candidate{candidates.length !== 1 ? 's' : ''} · {stageMetrics.length} stages
             </p>
           </div>
           <span style={{ fontSize: 13, fontWeight: 600, color: '#6366f1' }}>
@@ -288,148 +289,114 @@ const StageAnalytics: React.FC = () => {
 
         {stageMetrics.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
-            <Users style={{ width: 48, height: 48, color: '#cbd5e1', margin: '0 auto 12px' }} />
-            <p style={{ color: '#64748b', fontSize: 15 }}>No interview data available</p>
-            <p style={{ color: '#94a3b8', fontSize: 13 }}>Data will appear as candidates progress through stages</p>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
+            <p style={{ color: '#64748b', fontSize: 15, margin: 0 }}>No stage data available yet</p>
+            <p style={{ color: '#94a3b8', fontSize: 13, margin: '6px 0 0' }}>Data will appear as candidates progress through stages</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, width: '100%' }}>
-            {pyramidLayers.map((data, visIdx) => {
-              /* visIdx 0 = APEX (Management Round), last = BASE (L1 Tech) */
-              const layerCount = pyramidLayers.length;
-              const dataIdx = layerCount - 1 - visIdx; // 0=L1, last=Management in original stageMetrics order
-              const cfg = LAYER_CONFIGS[dataIdx] || LAYER_CONFIGS[0];
-              const widthPct = getLayerWidth(data.appeared);
-              const selRate = data.appeared > 0 ? ((data.selected / data.appeared) * 100).toFixed(1) : '0.0';
-              const isApex = visIdx === 0;        // Management Round
-              const isBase = visIdx === layerCount - 1; // L1 Tech
+          <>
+            {/* Header row */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '2fr 1fr 1fr 1fr 2fr',
+              gap: 12,
+              padding: '10px 16px',
+              background: '#f8fafc',
+              borderRadius: 10,
+              marginBottom: 8,
+            }}>
+              {['Stage', 'In Stage', 'Passed', 'Pass Rate', 'Progress'].map(h => (
+                <span key={h} style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</span>
+              ))}
+            </div>
 
-              /* trapezoid: top narrower than bottom for each non-apex layer */
-              const topExtra = isBase ? 0 : 3;
-              const clipPath = isApex
-                ? `polygon(${topExtra}% 0%, ${100 - topExtra}% 0%, 97% 100%, 3% 100%)`
-                : `polygon(${topExtra}% 0%, ${100 - topExtra}% 0%, 100% 100%, 0% 100%)`;
-
-              const animDelay = visIdx * 90 + 100; // apex first
+            {/* Data rows */}
+            {stageMetrics.map((data, idx) => {
+              const cfg = LAYER_CONFIGS[idx] || LAYER_CONFIGS[0];
+              const passRate = data.appeared > 0 ? Math.round((data.selected / data.appeared) * 100) : 0;
+              const barColor = cfg.gradient.includes('#f59e0b') ? '#f59e0b' : cfg.gradient.includes('#6366f1') ? '#6366f1' : '#3b82f6';
 
               return (
-                <div key={data.stage} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  {/* row = label | bar | stats */}
-                  <div style={{
-                    display: 'flex', alignItems: 'center', width: '100%', gap: 16,
-                    animation: mounted ? `slideUpFade 0.55s ease ${animDelay}ms both` : 'none',
-                  }}>
-                    {/* left label */}
-                    <div style={{ width: 130, textAlign: 'right', flexShrink: 0 }}>
-                      <p style={{
-                        fontSize: 13, fontWeight: 800, margin: 0,
-                        color: isApex ? '#b45309' : '#1e293b',
-                        letterSpacing: isApex ? '0.02em' : 'normal',
-                      }}>
-                        {data.stageLabel}
-                      </p>
-                      <p style={{ fontSize: 10, color: '#94a3b8', margin: '2px 0 0', fontWeight: 500 }}>
-                        Stage {dataIdx + 1}
-                      </p>
-                    </div>
-
-                    {/* pyramid bar */}
+                <div key={data.stage} style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1fr 1fr 1fr 2fr',
+                  gap: 12,
+                  padding: '14px 16px',
+                  borderRadius: 10,
+                  marginBottom: 4,
+                  background: idx % 2 === 0 ? '#fff' : '#fafbfc',
+                  border: '1px solid #f1f5f9',
+                  alignItems: 'center',
+                  animation: mounted ? `cardFloat 0.35s ease ${idx * 50 + 100}ms both` : 'none',
+                }}>
+                  {/* Stage name */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
-                      flex: 1, display: 'flex', justifyContent: 'center',
-                      paddingTop: isApex ? 0 : 0,
-                    }}>
-                      <div className="funnel-layer" style={{
-                        width: `${widthPct}%`,
-                        height: isApex ? 52 : 56,
-                        background: cfg.gradient,
-                        clipPath,
-                        boxShadow: `0 4px 20px ${cfg.glow}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '0 20px',
-                        position: 'relative',
-                        zIndex: layerCount - visIdx,
-                        borderRadius: isApex ? '6px 6px 2px 2px' : (isBase ? '2px 2px 6px 6px' : '1px'),
-                      }}>
-
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.5)', zIndex: 1 }}>
-                          {data.appeared.toLocaleString()} candidates
-                        </span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.85)', zIndex: 1 }}>
-                          {selRate}% pass
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* right stats */}
-                    <div style={{ width: 100, flexShrink: 0, textAlign: 'center' }}>
-                      <p style={{ fontSize: 20, fontWeight: 800, margin: 0, color: isApex ? '#b45309' : '#0f172a' }}>
-                        {data.selected.toLocaleString()}
-                      </p>
-                      <p style={{ fontSize: 10, color: '#64748b', margin: 0, fontWeight: 600 }}>Selected</p>
-
-                    </div>
+                      width: 10, height: 10, borderRadius: '50%',
+                      background: barColor, flexShrink: 0
+                    }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>
+                      {data.stageLabel}
+                    </span>
                   </div>
 
-                  {/* connector between layers (not after base) */}
-                  {!isBase && (
-                    <div style={{
-                      width: 2, height: 8, margin: '0 auto',
-                      background: 'linear-gradient(to bottom,rgba(148,163,184,0.5),rgba(148,163,184,0.1))',
-                      animation: mounted ? `slideUpFade 0.4s ease ${animDelay + 60}ms both` : 'none',
-                    }} />
-                  )}
+                  {/* In stage (appeared) */}
+                  <div style={{ textAlign: 'center' }}>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
+                      {data.appeared}
+                    </span>
+                  </div>
+
+                  {/* Passed */}
+                  <div style={{ textAlign: 'center' }}>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: '#10b981' }}>
+                      {data.selected}
+                    </span>
+                  </div>
+
+                  {/* Pass rate */}
+                  <div style={{ textAlign: 'center' }}>
+                    <span style={{
+                      fontSize: 14, fontWeight: 700,
+                      color: passRate >= 70 ? '#10b981' : passRate >= 40 ? '#f59e0b' : '#ef4444'
+                    }}>
+                      {passRate}%
+                    </span>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ flex: 1, height: 8, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${passRate}%`,
+                        background: barColor,
+                        borderRadius: 99,
+                        transition: 'width 0.8s ease',
+                      }} />
+                    </div>
+                    <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, minWidth: 28 }}>
+                      {data.avgDuration}d
+                    </span>
+                  </div>
                 </div>
               );
             })}
 
-
-          </div>
-        )}
-
-        {/* ── Stage Detail Row ──────────────────────────────────────── */}
-        {stageMetrics.length > 0 && (
-          <div style={{ marginTop: 40 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <div style={{ height: 1, flex: 1, background: '#e2e8f0' }} />
-              <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, letterSpacing: '0.08em' }}>
-                STAGE DETAILS
+            {/* Legend */}
+            <div style={{ marginTop: 16, display: 'flex', gap: 20, justifyContent: 'flex-end' }}>
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                <span style={{ fontSize: 14, marginRight: 4 }}>🟢</span>≥70% pass
               </span>
-              <div style={{ height: 1, flex: 1, background: '#e2e8f0' }} />
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                <span style={{ fontSize: 14, marginRight: 4 }}>🟡</span>40–70%
+              </span>
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                <span style={{ fontSize: 14, marginRight: 4 }}>🔴</span>&lt;40%
+              </span>
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>d = avg days in stage</span>
             </div>
-
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${stageMetrics.length}, 1fr)`,
-              gap: 10,
-            }}>
-              {stageMetrics.map((data, idx) => {
-                const cfg = LAYER_CONFIGS[idx] || LAYER_CONFIGS[0];
-                const selRate = data.appeared > 0 ? ((data.selected / data.appeared) * 100).toFixed(0) : '0';
-                return (
-                  <div key={data.stage} className="stage-detail-row" style={{
-                    background: '#fff',
-                    border: '1px solid #e2e8f0',
-                    borderTop: `3px solid ${cfg.gradient.includes('#f59e0b') ? '#f59e0b' : cfg.gradient.includes('#6366f1') ? '#6366f1' : '#3b82f6'}`,
-                    borderRadius: 12, padding: '14px 12px', textAlign: 'center',
-                    animation: mounted ? `cardFloat 0.45s ease ${idx * 60 + 300}ms both` : 'none',
-                  }}>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: '#64748b', margin: '0 0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {data.stageLabel}
-                    </p>
-                    <div style={{ height: 4, background: '#f1f5f9', borderRadius: 99, marginBottom: 10, overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', width: `${selRate}%`,
-                        background: cfg.gradient, borderRadius: 99,
-                        transition: 'width 1s ease',
-                      }} />
-                    </div>
-                    <p style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>{selRate}%</p>
-                    <p style={{ fontSize: 10, color: '#94a3b8', margin: '2px 0 0' }}>pass rate</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          </>
         )}
       </div>
     </div>

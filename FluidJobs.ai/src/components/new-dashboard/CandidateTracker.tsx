@@ -19,6 +19,7 @@ interface CandidateAssignment {
 interface TrackerProps {
   onAddCandidate: () => void;
   onViewProfile: (id: string) => void;
+  jobId?: string;
 }
 
 interface PaginationInfo {
@@ -30,7 +31,7 @@ interface PaginationInfo {
   endItem: number;
 }
 
-const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfile }) => {
+const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfile, jobId }) => {
   const { setHeaderActions } = useDashboardHeader();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +49,7 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
   const [showJobNotificationModal, setShowJobNotificationModal] = useState(false);
   const [selectedJobForNotification, setSelectedJobForNotification] = useState('');
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [availableJobs] = useState([
     { job_id: 1, job_title: 'Senior Frontend Engineer', locations: 'Remote' },
     { job_id: 2, job_title: 'Product Manager', locations: 'San Francisco' },
@@ -128,9 +130,12 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
   const fetchCandidates = async () => {
     try {
       setLoading(true);
-      const result = await CandidateService.getCandidates(1, 1000);
-      if (result.candidates && result.candidates.length > 0) {
-        setCandidates(result.candidates);
+      const result = jobId
+        ? await CandidateService.getJobCandidates(jobId)
+        : (await CandidateService.getCandidates(1, 1000)).candidates;
+
+      if (result && result.length > 0) {
+        setCandidates(result);
       } else {
         setCandidates([]);
       }
@@ -828,35 +833,55 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
                       </td>
                     )}
 
-                    {/* ACTIONS Column */}
-                    <td className="px-6 py-6">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onViewProfile(c.id); }}
-                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                          title="View Profile"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        {c.resumeUrl && (
-                          <a
-                            href={c.resumeUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
-                            title="View Resume"
+                    {/* ACTIONS Column — 3-dot menu */}
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end">
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(openMenuId === c.id ? null : c.id);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                            title="Actions"
                           >
-                            <FileText className="w-4 h-4" />
-                          </a>
-                        )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); reviewResume(c.id); }}
-                          className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
-                          title="AI Resume Review"
-                        >
-                          <Sparkles className="w-4 h-4" />
-                        </button>
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                            </svg>
+                          </button>
+                          {openMenuId === c.id && (
+                            <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedCandidate(c);
+                                  setOpenMenuId(null);
+                                  setShowRestrictModal(true);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                </svg>
+                                Restrict
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedCandidate(c);
+                                  setOpenMenuId(null);
+                                  setShowUnrestrictModal(true);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-green-600 hover:bg-green-50 transition-colors"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Unrestrict
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>

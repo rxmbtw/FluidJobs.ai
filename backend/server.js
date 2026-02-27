@@ -102,6 +102,7 @@ app.use('/api/job-images', require('./routes/jobImages'));
 app.use('/api/recruiters-analytics', require('./routes/recruiters-analytics'));
 app.use('/api/recruiters', require('./routes/recruiter-assignments'));
 app.use('/api/candidate-assignments', require('./routes/candidateAssignments'));
+app.use('/api/pipeline-stages', require('./routes/pipelineStages'));
 
 // Serve uploaded files with proper headers
 const uploadsPath = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');
