@@ -26,6 +26,9 @@ interface JobData {
   status?: string;
   account_name?: string;
   created_by_user_name?: string;
+  status_reason?: string;
+  status_updated_at?: string;
+  status_updated_by_name?: string;
 }
 
 
@@ -188,6 +191,9 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
           max_salary: job.max_salary,
           job_domain: job.job_domain,
           status: job.status,
+          status_reason: job.status_reason,
+          status_updated_at: job.status_updated_at,
+          status_updated_by_name: job.status_updated_by_name,
           account_name: job.account_name,
           created_by_user_name: job.created_by_user_name
         }));
@@ -215,10 +221,11 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
   const filteredJobs = jobs.filter(job => {
     // Tab filter
     if (jobTab !== 'all') {
-      if (jobTab === 'published' && job.status !== 'Published') return false;
-      if (jobTab === 'pending' && job.status !== 'pending') return false;
-      if (jobTab === 'unpublished' && job.status !== 'unpublished') return false;
-      if (jobTab === 'closed' && job.status !== 'closed') return false;
+      const status = (job.status || '').toLowerCase();
+      if (jobTab === 'published' && status !== 'published' && status !== 'active') return false;
+      if (jobTab === 'pending' && status !== 'pending') return false;
+      if (jobTab === 'paused' && status !== 'unpublished' && status !== 'paused') return false;
+      if (jobTab === 'closed' && status !== 'closed') return false;
     }
 
     // Search filter
@@ -557,13 +564,13 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
               Pending
             </button>
             <button
-              onClick={() => onJobTabChange?.('unpublished')}
-              className={`px-8 py-3 rounded-full text-sm font-medium transition ${jobTab === 'unpublished'
+              onClick={() => onJobTabChange?.('paused')}
+              className={`px-8 py-3 rounded-full text-sm font-medium transition ${jobTab === 'paused'
                 ? 'bg-blue-600 text-white'
                 : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
                 }`}
             >
-              Unpublished
+              Paused
             </button>
             <button
               onClick={() => onJobTabChange?.('closed')}
@@ -922,25 +929,40 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
               <div className="p-3">
                 <div className="flex items-start justify-between mb-2">
                   <h2 className="text-base font-semibold text-gray-900 leading-tight">{job.title}</h2>
+                  {((job.status || '').toLowerCase() === 'active' || (job.status || '').toLowerCase() === 'published') && (
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-semibold rounded-full flex-shrink-0 ml-2 border border-emerald-200" title="Actively accepting applications">
+                      Active
+                    </span>
+                  )}
+                  {(job.status || '').toLowerCase() === 'paused' && (
+                    <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-semibold rounded-full flex-shrink-0 ml-2 border border-amber-200" title="Job is temporarily hidden and paused">
+                      Paused
+                    </span>
+                  )}
+                  {(job.status || '').toLowerCase() === 'closed' && (
+                    <span className="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-semibold rounded-full flex-shrink-0 ml-2 border border-red-200" title="Job has been permanently closed">
+                      Closed
+                    </span>
+                  )}
                   {job.status === 'pending' && (
-                    <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-[10px] font-semibold rounded-full flex-shrink-0 ml-2">
+                    <span className="px-2 py-0.5 bg-gray-100 text-gray-800 text-[10px] font-semibold rounded-full flex-shrink-0 ml-2 border border-gray-200">
                       Pending
-                    </span>
-                  )}
-                  {job.status === 'Published' && (
-                    <span className="px-2 py-0.5 bg-green-100 text-green-800 text-[10px] font-semibold rounded-full flex-shrink-0 ml-2">
-                      Published
-                    </span>
-                  )}
-                  {job.status === 'unpublished' && (
-                    <span className="px-2 py-0.5 bg-orange-100 text-orange-800 text-[10px] font-semibold rounded-full flex-shrink-0 ml-2">
-                      Unpublished
                     </span>
                   )}
                 </div>
 
                 <div className="mb-2 pb-2 border-b border-gray-100">
                   <span className="text-xs text-gray-500">Posted: {formatDate(job.created_at)}</span>
+                  {(job.status || '').toLowerCase() === 'closed' && job.status_updated_at && (
+                    <div className="mt-1 pt-2 border-t border-gray-50 flex flex-col gap-0.5">
+                      <span className="text-[10px] text-gray-500">Closed By: <span className="font-medium text-gray-700">{job.status_updated_by_name || 'Admin'}</span> on <span className="font-medium text-gray-700">{formatDate(job.status_updated_at)}</span></span>
+                      {job.status_reason && (
+                        <span className="text-[10px] text-gray-500 italic mt-0.5 leading-tight overflow-hidden text-ellipsis whitespace-nowrap" title={job.status_reason}>
+                          Reason: {job.status_reason}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-3">
@@ -962,23 +984,56 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                   </div>
                 </div>
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDashboardLoading(true);
-                    setTimeout(() => {
-                      setSelectedJobForDashboard(job);
-                      setShowJobDashboard(true);
-                      setDashboardLoading(false);
-                    }, 500);
-                  }}
-                  className="text-blue-600 hover:text-blue-700 font-medium text-xs flex items-center gap-1"
-                >
-                  View more
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
+                <div className="flex justify-between items-center w-full">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDashboardLoading(true);
+                      setTimeout(() => {
+                        setSelectedJobForDashboard(job);
+                        setShowJobDashboard(true);
+                        setDashboardLoading(false);
+                      }, 500);
+                    }}
+                    className="text-blue-600 hover:text-blue-700 font-medium text-xs flex items-center gap-1"
+                  >
+                    View more
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  {(job.status || '').toLowerCase() === 'paused' && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        // Only allow admins to reactivate. A real app might check role here, assuming all users accessing dashboard can do basic actions or it is gated.
+                        if (window.confirm("Are you sure you want to reactivate this paused job?")) {
+                          const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token') || localStorage.getItem('token');
+                          try {
+                            const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/${job.jobId}/status`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                              body: JSON.stringify({ status: 'Active', reason: 'Re-activated from dashboard', isReactivation: true })
+                            });
+                            if (res.ok) {
+                              fetchJobs(); // refresh the list
+                            } else {
+                              const err = await res.json().catch(() => ({}));
+                              alert(err.error || 'Failed to reactivate. You may not have permission.');
+                            }
+                          } catch (err) {
+                            console.error('Reactivation error', err);
+                          }
+                        }
+                      }}
+                      className="px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+                      title="Instantly make this job Active again."
+                    >
+                      Reactivate
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

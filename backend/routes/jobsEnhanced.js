@@ -206,10 +206,12 @@ router.get('/list', authenticateToken, async (req, res) => {
       SELECT 
         j.*,
         a.account_name,
-        ad.name as created_by_user_name
+        ad.name as created_by_user_name,
+        su.name as status_updated_by_name
       FROM jobs_enhanced j
       LEFT JOIN accounts a ON j.account_id = a.account_id
       LEFT JOIN users ad ON j.created_by_user_id = ad.id
+      LEFT JOIN users su ON j.status_updated_by = su.id
       WHERE j.status NOT IN ('rejected', 'deleted')
     `;
 
@@ -259,6 +261,9 @@ router.get('/list', authenticateToken, async (req, res) => {
       registration_closing_date: job.registration_closing_date,
       number_of_openings: job.no_of_openings,
       status: job.status,
+      status_reason: job.status_reason,
+      status_updated_at: job.status_updated_at,
+      status_updated_by_name: job.status_updated_by_name,
       created_at: job.created_at,
       account_name: job.account_name,
       created_by_user_name: job.created_by_user_name
@@ -359,7 +364,7 @@ router.get('/published', async (req, res) => {
         j.registration_closing_date,
         j.no_of_openings
       FROM jobs_enhanced j
-      WHERE j.status = 'Published' OR j.status = 'active'
+      WHERE LOWER(j.status) IN ('published', 'active')
       ORDER BY j.created_at DESC;
     `);
 
@@ -481,6 +486,7 @@ router.get('/:id', async (req, res) => {
       registrationClosingDate: job.registration_closing_date,
       minSalary: job.min_salary,
       maxSalary: job.max_salary,
+      status: job.status,
       // Legacy fields for backward compatibility
       type: job.job_type,
       salary: job.min_salary && job.max_salary ?
@@ -906,6 +912,112 @@ router.post('/create', async (req, res) => {
   } catch (error) {
     console.error('Error creating job:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// --- JOB STATUS ENHANCEMENTS ---
+
+// Get active candidates count for a job
+router.get('/:id/active-candidates-count', authenticateToken, async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    // Count applications that are not rejected or withdrawn
+    const result = await pool.query(
+      `SELECT COUNT(*) as count 
+       FROM job_applications 
+       WHERE job_id = $1 AND status NOT IN ('rejected', 'withdrawn')`,
+      [jobId]
+    );
+    res.json({ success: true, count: parseInt(result.rows[0].count) });
+  } catch (error) {
+    console.error('Error fetching active candidates count:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Update Job Status
+router.patch('/:id/status', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const jobId = req.params.id;
+    const { status, reason, isReactivation } = req.body;
+    const userId = req.user.id || req.user.adminId || req.user.userId || 0;
+    const userRole = (req.user.role || '').toLowerCase();
+
+    // Verify role (only admin/superadmin can change status)
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ success: false, error: 'Unauthorized to change job status' });
+    }
+
+    if (!['Active', 'Paused', 'Closed'].includes(status)) {
+      return res.status(400).json({ success: false, error: 'Invalid status' });
+    }
+
+    if ((status === 'Paused' || status === 'Closed') && !reason) {
+      return res.status(400).json({ success: false, error: 'Reason is required for Pausing or Closing a job' });
+    }
+
+    await client.query('BEGIN');
+
+    // Update job status
+    await client.query(`
+      UPDATE jobs_enhanced 
+      SET status = $1, status_reason = $2, status_updated_at = NOW(), status_updated_by = $3 
+      WHERE id = $4
+    `, [status, reason || null, userId, jobId]);
+
+    // Determine action for log
+    let action = status; // 'Active', 'Paused', 'Closed'
+    if (status === 'Active' && isReactivation) {
+      action = 'Re-activated';
+    }
+
+    // Insert into activity log
+    await client.query(`
+      INSERT INTO job_activity_log (job_id, action, performed_by, reason, created_at)
+      VALUES ($1, $2, $3, $4, NOW())
+    `, [jobId, action, userId, reason || null]);
+
+    await client.query('COMMIT');
+
+    // Log audit
+    await logAudit(userId, req.user.name || 'Admin', 'JOB_STATUS_CHANGED', `Job ${jobId} status changed to ${status}`, 'job', jobId, req).catch(e => console.error('Audit log failed:', e));
+
+    res.json({ success: true, message: `Job status updated to ${status}` });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error updating job status:', error);
+    res.status(500).json({ success: false, error: error.message || error.toString() });
+  } finally {
+    client.release();
+  }
+});
+
+// Get Job Activity Log
+router.get('/:id/activity', authenticateToken, async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const result = await pool.query(`
+      SELECT l.*, COALESCE(u.name, sa.name) as name 
+      FROM job_activity_log l
+      LEFT JOIN users u ON l.performed_by = u.id
+      LEFT JOIN superadmins sa ON l.performed_by = sa.id
+      WHERE l.job_id = $1
+      ORDER BY l.created_at DESC
+    `, [jobId]);
+
+    const formattedLog = result.rows.map(row => ({
+      id: row.id,
+      action: row.action,
+      reason: row.reason,
+      createdAt: row.created_at,
+      performedBy: row.name || 'System'
+    }));
+
+    res.json({ success: true, activity: formattedLog });
+  } catch (error) {
+    console.error('Error fetching job activity log:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

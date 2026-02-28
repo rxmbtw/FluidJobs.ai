@@ -23,35 +23,35 @@ router.post('/upload-profile-image', authenticateToken, upload.single('profileIm
   console.log('\n=== PROFILE IMAGE UPLOAD START ===');
   console.log('File received:', req.file ? { name: req.file.originalname, size: req.file.size, type: req.file.mimetype } : 'No file');
   console.log('User:', req.user);
-  
+
   try {
     if (!req.file) {
       console.log('ERROR: No file uploaded');
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    
+
     const candidateId = req.user.candidateId;
     if (!candidateId) {
       console.log('ERROR: No candidateId in token');
       return res.status(400).json({ error: 'Invalid user token' });
     }
-    
+
     console.log('Saving file locally...');
     // Save file locally
     const publicUrl = await uploadToLocal(req.file, 'profile-images');
     console.log('File saved successfully, URL:', publicUrl);
-    
+
     // Save URL to database
     console.log('Updating database with profile image URL...');
     const result = await pool.query(
       'UPDATE candidates SET profile_image_url = $1, updated_at = CURRENT_TIMESTAMP WHERE candidate_id = $2 RETURNING profile_image_url',
       [publicUrl, candidateId]
     );
-    
+
     console.log('Database update result:', result.rows);
     console.log('SUCCESS: Profile image uploaded and saved');
     console.log('=== PROFILE IMAGE UPLOAD END ===\n');
-    
+
     res.json({ success: true, fileUrl: publicUrl });
   } catch (error) {
     console.log('FATAL ERROR in profile image upload:');
@@ -89,7 +89,7 @@ router.post('/upload-resume', authenticateToken, upload.single('resume'), async 
   console.log('\n=== RESUME UPLOAD START ===');
   console.log('File received:', req.file ? { name: req.file.originalname, size: req.file.size, type: req.file.mimetype } : 'No file');
   console.log('User:', req.user);
-  
+
   try {
     if (!req.file) {
       console.log('ERROR: No file uploaded');
@@ -112,14 +112,14 @@ router.post('/upload-resume', authenticateToken, upload.single('resume'), async 
     const result = await pool.query('SELECT resume_files FROM candidates WHERE candidate_id = $1', [candidateId]);
     const currentResumes = result.rows[0]?.resume_files || [];
     console.log('Current resumes:', currentResumes);
-    
+
     const newResume = {
       id: Date.now().toString(),
       name: req.file.originalname,
       url: publicUrl,
       uploadedAt: new Date().toISOString()
     };
-    
+
     const updatedResumes = [...currentResumes, newResume];
     console.log('Updated resumes array:', updatedResumes);
 
@@ -128,26 +128,26 @@ router.post('/upload-resume', authenticateToken, upload.single('resume'), async 
       'UPDATE candidates SET resume_files = $1, updated_at = CURRENT_TIMESTAMP WHERE candidate_id = $2',
       [JSON.stringify(updatedResumes), candidateId]
     );
-    
+
     console.log('SUCCESS: Resume uploaded and saved');
-    
+
     // Analyze resume and match with jobs
     console.log('\n=== STARTING RESUME ANALYSIS ===');
     try {
-      const jobsResult = await pool.query('SELECT * FROM jobs_enhanced WHERE status = \'Published\'');
+      const jobsResult = await pool.query("SELECT * FROM jobs_enhanced WHERE LOWER(status) IN ('published', 'active')");
       const jobs = jobsResult.rows;
       console.log(`Found ${jobs.length} published jobs to analyze`);
-      
+
       if (jobs.length === 0) {
         console.log('No jobs to analyze against');
       } else {
-        const resumeFilePath = path.join(__dirname, '..', publicUrl.replace(/^\//,''));
+        const resumeFilePath = path.join(__dirname, '..', publicUrl.replace(/^\//, ''));
         console.log('Resume file path:', resumeFilePath);
-        
+
         const analysisResult = await analyzeResumeForJobs(resumeFilePath, jobs);
         console.log('Resume keywords found:', analysisResult.resumeKeywords);
         console.log(`Found ${analysisResult.matches.length} job matches`);
-        
+
         if (analysisResult.matches.length > 0) {
           // Store ALL matches in database
           for (const match of analysisResult.matches) {
@@ -167,9 +167,9 @@ router.post('/upload-resume', authenticateToken, upload.single('resume'), async 
       console.error('Error stack:', analysisError.stack);
     }
     console.log('=== RESUME ANALYSIS COMPLETE ===\n');
-    
+
     console.log('=== RESUME UPLOAD END ===\n');
-    
+
     res.json({ success: true, fileUrl: publicUrl, resume: newResume });
   } catch (error) {
     console.log('FATAL ERROR in resume upload:');
@@ -184,15 +184,15 @@ router.post('/upload-resume', authenticateToken, upload.single('resume'), async 
 router.get('/profile', authenticateToken, async (req, res) => {
   console.log('\n=== GET PROFILE START ===');
   console.log('User:', req.user);
-  
+
   try {
     const candidateId = req.user.candidateId;
-    
+
     if (!candidateId) {
       console.log('ERROR: No candidateId in token');
       return res.status(400).json({ error: 'Invalid user token' });
     }
-    
+
     console.log('Fetching profile for candidateId:', candidateId);
     const result = await pool.query(
       'SELECT * FROM candidates WHERE candidate_id = $1',
@@ -212,7 +212,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
       profile_image_url: profile.profile_image_url,
       resume_files: profile.resume_files
     });
-    
+
     // Ensure all fields have proper values (convert NULL to empty string or appropriate default)
     const responseData = {
       ...profile,
@@ -244,10 +244,10 @@ router.get('/profile', authenticateToken, async (req, res) => {
       dream_company: profile.dream_company || '',
       created_at: profile.created_at
     };
-    
+
     console.log('SUCCESS: Profile data retrieved');
     console.log('=== GET PROFILE END ===\n');
-    
+
     res.json(responseData);
   } catch (error) {
     console.log('FATAL ERROR in get profile:');
@@ -265,7 +265,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
   console.log('Authenticated User:', req.user);
   console.log('Request Body:', req.body);
   console.log('Timestamp:', new Date().toISOString());
-  
+
   try {
     const candidateId = req.user.candidateId;
     const { fullName, phone, email, gender, maritalStatus, workStatus, currentCompany, noticePeriod, currentCTC, lastCompany, previousCTC, city, workMode, college, joiningDate, leavingDate } = req.body;
@@ -276,11 +276,11 @@ router.put('/profile', authenticateToken, async (req, res) => {
     }
 
     console.log('Attempting UPDATE for candidateId:', candidateId);
-    
+
     // Check if candidate exists first
     const checkResult = await pool.query('SELECT candidate_id, full_name, email FROM candidates WHERE candidate_id = $1', [candidateId]);
     console.log('Candidate check result:', checkResult.rows);
-    
+
     if (checkResult.rows.length === 0) {
       console.log('ERROR: Candidate not found in database');
       return res.status(404).json({ error: 'Candidate not found in database' });
@@ -301,7 +301,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
     const collegeValue = college?.trim() || null;
     const joiningDateValue = joiningDate?.trim() || null;
     const leavingDateValue = leavingDate?.trim() || null;
-    
+
     // Convert CTC values to proper numeric format
     const currentCTCNumeric = currentCTC ? parseFloat(currentCTC) : null;
     const previousCTCNumeric = previousCTC ? parseFloat(previousCTC) : null;
@@ -337,7 +337,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
     console.log('SUCCESS: Profile updated successfully');
     console.log('=== PROFILE UPDATE REQUEST END ===\n');
-    
+
     res.json({ success: true, message: 'Profile saved successfully', profile: result.rows[0] });
   } catch (error) {
     console.log('FATAL ERROR in profile update:');
@@ -353,24 +353,24 @@ router.put('/basic-details', authenticateToken, async (req, res) => {
   console.log('\n=== BASIC DETAILS UPDATE START ===');
   console.log('User:', req.user);
   console.log('Request Body:', req.body);
-  
+
   try {
     const candidateId = req.user.candidateId;
-    const { 
-      rollNo, 
-      firstName, 
-      middleName, 
-      lastName, 
-      course, 
-      primarySpecialization, 
-      gender, 
-      dateOfBirth, 
-      bloodGroup, 
-      maritalStatus, 
-      medicalHistory, 
-      disability, 
-      knownLanguages, 
-      dreamCompany 
+    const {
+      rollNo,
+      firstName,
+      middleName,
+      lastName,
+      course,
+      primarySpecialization,
+      gender,
+      dateOfBirth,
+      bloodGroup,
+      maritalStatus,
+      medicalHistory,
+      disability,
+      knownLanguages,
+      dreamCompany
     } = req.body;
 
     if (!candidateId) {
@@ -439,7 +439,7 @@ router.put('/basic-details', authenticateToken, async (req, res) => {
 
     console.log('SUCCESS: Basic details updated');
     console.log('=== BASIC DETAILS UPDATE END ===\n');
-    
+
     res.json({ success: true, message: 'Basic details saved successfully', data: result.rows[0] });
   } catch (error) {
     console.log('ERROR in basic details update:', error.message);
@@ -453,17 +453,17 @@ router.delete('/delete-resume/:resumeId', authenticateToken, async (req, res) =>
   try {
     const candidateId = req.user.candidateId;
     const { resumeId } = req.params;
-    
+
     const result = await pool.query('SELECT resume_files FROM candidates WHERE candidate_id = $1', [candidateId]);
     const currentResumes = result.rows[0]?.resume_files || [];
-    
+
     const updatedResumes = currentResumes.filter(r => r.id !== resumeId);
-    
+
     await pool.query(
       'UPDATE candidates SET resume_files = $1, updated_at = CURRENT_TIMESTAMP WHERE candidate_id = $2',
       [JSON.stringify(updatedResumes), candidateId]
     );
-    
+
     res.json({ success: true, message: 'Resume deleted successfully' });
   } catch (error) {
     console.error('Error deleting resume:', error);
@@ -475,29 +475,29 @@ router.delete('/delete-resume/:resumeId', authenticateToken, async (req, res) =>
 router.post('/analyze-resume', authenticateToken, async (req, res) => {
   try {
     const candidateId = req.user.candidateId;
-    
+
     // Get candidate's latest resume
     const result = await pool.query('SELECT resume_files FROM candidates WHERE candidate_id = $1', [candidateId]);
     const resumes = result.rows[0]?.resume_files || [];
-    
+
     if (resumes.length === 0) {
       return res.status(400).json({ error: 'No resume found. Please upload a resume first.' });
     }
-    
+
     const latestResume = resumes[resumes.length - 1];
-    const resumeFilePath = path.join(__dirname, '..', latestResume.url.replace(/^\//,''));
-    
+    const resumeFilePath = path.join(__dirname, '..', latestResume.url.replace(/^\//, ''));
+
     // Get all published jobs
-    const jobsResult = await pool.query('SELECT * FROM jobs_enhanced WHERE status = \'Published\'');
+    const jobsResult = await pool.query("SELECT * FROM jobs_enhanced WHERE LOWER(status) IN ('published', 'active')");
     const jobs = jobsResult.rows;
-    
+
     if (jobs.length === 0) {
       return res.json({ success: true, message: 'No jobs available to match against', matches: [] });
     }
-    
+
     // Analyze resume
     const analysisResult = await analyzeResumeForJobs(resumeFilePath, jobs);
-    
+
     // Store matches
     for (const match of analysisResult.matches) {
       await pool.query(
@@ -505,9 +505,9 @@ router.post('/analyze-resume', authenticateToken, async (req, res) => {
         [candidateId, match.jobId, match.score, JSON.stringify(match.matchedKeywords)]
       );
     }
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: `Found ${analysisResult.matches.length} job matches`,
       matchCount: analysisResult.matches.length,
       resumeKeywords: analysisResult.resumeKeywords.slice(0, 20)
@@ -522,7 +522,7 @@ router.post('/analyze-resume', authenticateToken, async (req, res) => {
 router.get('/matched-jobs', authenticateToken, async (req, res) => {
   try {
     const candidateId = req.user.candidateId;
-    
+
     const result = await pool.query(`
       SELECT 
         jm.match_score,
@@ -533,7 +533,7 @@ router.get('/matched-jobs', authenticateToken, async (req, res) => {
       WHERE jm.candidate_id = $1
       ORDER BY jm.match_score DESC
     `, [candidateId]);
-    
+
     res.json({ success: true, matches: result.rows });
   } catch (error) {
     console.error('Error fetching matched jobs:', error);

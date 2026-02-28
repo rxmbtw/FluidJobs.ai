@@ -9,6 +9,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
   const { setHeaderActions } = useDashboardHeader();
   const currentUser = JSON.parse(sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('superadmin') || '{}');
   const isRecruiterRole = currentUser.role?.toLowerCase() === 'recruiter';
+  const isReadonlyStatus = currentUser.role?.toLowerCase() !== 'admin' && currentUser.role?.toLowerCase() !== 'superadmin';
 
   const { jobSlug } = useParams<{ jobSlug?: string }>();
   const jobId = jobSlug ? jobSlug.match(/^(\d+)/)?.[1] : null;
@@ -58,6 +59,13 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
   // occupiedStages: stage name -> count of candidates currently in that stage
   const [occupiedStages, setOccupiedStages] = useState<Record<string, number>>({});
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusAction, setStatusAction] = useState<'Paused' | 'Closed' | null>(null);
+  const [statusReason, setStatusReason] = useState('');
+  const [isChangingStatus, setIsChangingStatus] = useState(false);
+  const [activeCandidatesCount, setActiveCandidatesCount] = useState<number>(0);
+  const [jobActivityLog, setJobActivityLog] = useState<any[]>([]);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const [isUserEditing, setIsUserEditing] = useState(false);
@@ -222,6 +230,40 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
             originalJobDetails.current = JSON.stringify({ interviewStages: loaded });
           }
         }
+
+        // Load the main job details
+        setJobDetails(prev => ({
+          ...prev,
+          title: data.title || prev.title,
+          domain: data.industry || data.job_domain || prev.domain,
+          location: data.location || prev.location,
+          type: data.jobType || data.type || prev.type,
+          minExperience: data.minExperience || data.min_experience || prev.minExperience,
+          maxExperience: data.maxExperience || data.max_experience || prev.maxExperience,
+          numberOfOpenings: data.noOfOpenings || data.no_of_openings || prev.numberOfOpenings,
+          modeOfJob: data.modeOfJob || data.mode_of_job || prev.modeOfJob,
+          description: data.description || prev.description,
+          skills: data.skills || prev.skills,
+          requirements: Array.isArray(data.requirements) ? data.requirements : prev.requirements,
+          status: data.status ? (data.status.charAt(0).toUpperCase() + data.status.slice(1).toLowerCase()) : prev.status,
+          salary: {
+            ...prev.salary,
+            min: data.minSalary || data.min_salary || prev.salary.min,
+            max: data.maxSalary || data.max_salary || prev.salary.max,
+            showToCandidate: data.showSalaryToCandidate !== undefined ? data.showSalaryToCandidate : prev.salary.showToCandidate
+          },
+          registrationOpeningDate: data.registrationOpeningDate || data.registration_opening_date ? new Date(data.registrationOpeningDate || data.registration_opening_date).toISOString().split('T')[0] : prev.registrationOpeningDate,
+          registrationClosingDate: data.registrationClosingDate || data.registration_closing_date ? new Date(data.registrationClosingDate || data.registration_closing_date).toISOString().split('T')[0] : prev.registrationClosingDate,
+        }));
+
+        // Refresh snapshot with FULL data
+        setTimeout(() => {
+          setJobDetails(latest => {
+            originalJobDetails.current = JSON.stringify(latest);
+            return latest;
+          });
+        }, 100);
+
         // Load the saved cover image
         if (data.selectedImage || data.selected_image) {
           setSelectedImage(data.selectedImage || data.selected_image);
@@ -229,6 +271,22 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
         }
       })
       .catch(err => { console.error('[JobSettings] Error loading stages:', err); });
+
+    // Fetch job activity log
+    const fetchActivityLog = async () => {
+      try {
+        const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/${jobId}/activity`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (res.ok) {
+          const logData = await res.json();
+          setJobActivityLog(logData.activity || []);
+        }
+      } catch (e) {
+        console.error('[JobSettings] Error fetching activity log:', e);
+      }
+    };
+    fetchActivityLog();
 
     // Fetch used images across account
     const fetchUsedImages = async () => {
@@ -272,6 +330,77 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
       setShowDiscardModal(true);
     }
     // If not dirty, nothing to discard
+  };
+
+  const handleStatusClick = async (newStatus: string) => {
+    if (isReadonlyStatus) return;
+    if ((jobDetails.status || '').toLowerCase() === newStatus.toLowerCase()) return;
+
+    if (newStatus === 'Active') {
+      await confirmStatusChange('Active', 'Re-activated job');
+    } else {
+      if (newStatus === 'Closed') {
+        const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token') || localStorage.getItem('token');
+        try {
+          const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/${jobId}/active-candidates-count`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setActiveCandidatesCount(data.count || 0);
+          }
+        } catch (e) {
+          console.error('Error fetching candidates count:', e);
+        }
+      }
+      setStatusAction(newStatus as 'Paused' | 'Closed');
+      setStatusReason('');
+      setShowStatusModal(true);
+    }
+  };
+
+  const confirmStatusChange = async (status: string, reason: string) => {
+    if (!jobId) return;
+    setIsChangingStatus(true);
+    const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token') || localStorage.getItem('token');
+
+    try {
+      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/${jobId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          status,
+          reason,
+          isReactivation: status === 'Active' && jobDetails.status === 'Paused'
+        })
+      });
+
+      if (res.ok) {
+        setJobDetails(prev => ({ ...prev, status }));
+        const currentSnap = originalJobDetails.current ? JSON.parse(originalJobDetails.current) : {};
+        originalJobDetails.current = JSON.stringify({ ...currentSnap, status });
+
+        // Refresh activity log
+        const logRes = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/${jobId}/activity`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (logRes.ok) {
+          const logData = await logRes.json();
+          setJobActivityLog(logData.activity || []);
+        }
+
+        setShowStatusModal(false);
+        if (onSaveSuccess) onSaveSuccess(); // Refresh parent dashboards
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Failed to update job status');
+      }
+    } catch (err) {
+      console.error('Failed to update status', err);
+      alert('Error updating job status.');
+    } finally {
+      setIsChangingStatus(false);
+    }
   };
 
   const handleConfirmDiscard = () => {
@@ -826,14 +955,22 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                 inactiveColor: 'border-gray-200 bg-white hover:border-red-300 hover:bg-red-50/50'
               }
             ] as const).map((option) => {
-              const isSelected = jobDetails.status === option.value;
+              const isSelected = (jobDetails.status || '').toLowerCase() === option.value.toLowerCase();
               return (
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => handleInputChange('status', option.value)}
-                  className={`relative flex flex-col items-center justify-center gap-1.5 px-4 py-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${isSelected ? option.activeColor : option.inactiveColor
-                    }`}
+                  onClick={() => handleStatusClick(option.value)}
+                  disabled={isReadonlyStatus || isChangingStatus}
+                  title={
+                    option.value === 'Paused' ? 'Temporarily hide this job from the careers page.' :
+                      option.value === 'Closed' ? 'Permanently close this job opening.' :
+                        'Make this job active and visible.'
+                  }
+                  className={`relative flex flex-col items-center justify-center gap-1.5 px-4 py-3 rounded-xl border-2 transition-all duration-200 ${isReadonlyStatus
+                    ? (isSelected ? option.activeColor : 'border-gray-100 bg-gray-50 opacity-60 cursor-default')
+                    : (isSelected ? option.activeColor : option.inactiveColor + ' cursor-pointer')
+                    } ${isChangingStatus ? 'opacity-50 cursor-wait' : ''}`}
                 >
                   {/* Selection indicator dot */}
                   <div className={`absolute top-3 right-3 w-2.5 h-2.5 rounded-full transition-all duration-200 ${isSelected ? `${option.activeDot} scale-100` : 'bg-gray-300 scale-75'
@@ -866,6 +1003,44 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
           </div>
         </div>
       </div>
+
+      {/* Job Activity Log */}
+      {jobActivityLog.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <ClipboardList className="w-5 h-5 text-gray-500" />
+            Job Activity Log
+          </h3>
+          <div className="space-y-4 max-h-48 overflow-y-auto pr-2">
+            {jobActivityLog.map((log) => (
+              <div key={log.id} className="flex gap-4 items-start pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+                <div className={`mt-1 flex-shrink-0 w-2 h-2 rounded-full ${log.action === 'Created' ? 'bg-blue-500' :
+                  log.action === 'Active' ? 'bg-emerald-500' :
+                    log.action === 'Paused' ? 'bg-amber-500' :
+                      log.action === 'Re-activated' ? 'bg-indigo-500' :
+                        'bg-red-500'
+                  }`} />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-gray-900">
+                      {log.action} <span className="text-gray-500 font-normal">by {log.performedBy}</span>
+                    </p>
+                    <span className="text-xs text-gray-500">
+                      {new Date(log.createdAt).toLocaleString(undefined, {
+                        year: 'numeric', month: 'short', day: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                  {log.reason && (
+                    <p className="text-sm text-gray-600 mt-1 italic">"{log.reason}"</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Settings Navigation */}
@@ -2508,6 +2683,90 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
           </div>
         )
       }
+
+      {/* Change Status Modal (Pause / Close) */}
+      {showStatusModal && statusAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-4 mb-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${statusAction === 'Closed' ? 'bg-red-100' : 'bg-amber-100'
+                }`}>
+                <AlertCircle className={`w-6 h-6 ${statusAction === 'Closed' ? 'text-red-600' : 'text-amber-600'
+                  }`} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  {statusAction === 'Closed' ? 'Close Job Opening' : 'Pause Job Opening'}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {statusAction === 'Closed' ? 'This job will be moved to the Closed tab.' : 'This job will be hidden from the careers page.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Warning for existing candidates if closing */}
+            {statusAction === 'Closed' && activeCandidatesCount > 0 && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-800">
+                  <span className="font-semibold block mb-0.5">Warning: Active Candidates</span>
+                  There are currently {activeCandidatesCount} active candidates in the pipeline. Closing this job will not reject them, but you will not be able to accept new applications.
+                </p>
+              </div>
+            )}
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Reason for {statusAction === 'Closed' ? 'closing' : 'pausing'} this job <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={statusReason}
+                onChange={(e) => setStatusReason(e.target.value)}
+                placeholder={statusAction === 'Closed' ? "e.g., Filled position, Budget pause..." : "e.g., Temporarily reviewing existing applicants..."}
+                className="w-full h-24 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none"
+                required
+              />
+            </div>
+
+            <div className="flexjustify-end gap-3 flex">
+              <button
+                onClick={() => {
+                  setShowStatusModal(false);
+                  setStatusAction(null);
+                  setStatusReason('');
+                }}
+                disabled={isChangingStatus}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => confirmStatusChange(statusAction, statusReason)}
+                disabled={!statusReason.trim() || isChangingStatus}
+                className={`flex items-center gap-2 px-6 py-2 text-sm font-medium text-white rounded-lg transition-all ${!statusReason.trim() || isChangingStatus
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : statusAction === 'Closed'
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-amber-600 hover:bg-amber-700'
+                  }`}
+              >
+                {isChangingStatus ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Updating...
+                  </>
+                ) : (
+                  `Confirm ${statusAction}`
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div >
   );
 };
