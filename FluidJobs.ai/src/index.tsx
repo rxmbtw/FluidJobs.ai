@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react'; // Recompile trigger
 import ReactDOM from 'react-dom/client';
 import './styles/tailwind.css';
 import './styles/animated-gradient.css';

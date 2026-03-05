@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { X } from 'lucide-react';
-import JobCreationForm from './JobCreationForm';
+import JobCreationForm from './admin/JobCreationForm';
 
 interface SuperAdminJobCreationModalProps {
   isOpen: boolean;

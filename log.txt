@@ -1,0 +1,35 @@
+﻿commit 8affd0f8e0a5c9c46a94410b4986dcfa9ec332a4
+Author: Rebrand Bot <devnull@example.com>
+Date:   Fri Feb 27 15:52:43 2026 +0530
+
+    feat: refine Job Settings UI, add rich text editor, fix MinIO image loading, and update job status layout
+
+commit 49f7c6953d2f3c18be2c397c4498f6571426d0a8
+Author: Rebrand Bot <devnull@example.com>
+Date:   Thu Feb 26 13:00:05 2026 +0530
+
+    feat: 8 test candidates seeded + feedback modal on hiring timeline move
+
+commit ca3ab9b2dfdb08b99091bc8497141470805639cc
+Author: Rebrand Bot <devnull@example.com>
+Date:   Thu Feb 26 12:34:33 2026 +0530
+
+    fix: user.role.toString() crash + always store role in superadmin session
+
+commit 02dd3123005c4bbb0fc81fe69d0c2369fb3c4659
+Author: Rebrand Bot <devnull@example.com>
+Date:   Thu Feb 26 12:14:58 2026 +0530
+
+    fix: new applicants always land in Applied stage (not random)
+
+commit 1aa866fde640f4c9a87411959d1cf26a1a893629
+Author: Rebrand Bot <devnull@example.com>
+Date:   Thu Feb 26 11:50:17 2026 +0530
+
+    feat: add POST /public-apply endpoint for careers page applications
+
+commit 5c31b461ee0ad7fb6a1c0a127a3cbcb79d28ed1e
+Author: Rebrand Bot <devnull@example.com>
+Date:   Thu Feb 26 11:07:37 2026 +0530
+
+    chore: project cleanup - remove old docs, debug scripts, duplicate SQL migrations, empty folders; move migrations to database/

@@ -1,0 +1,82 @@
+.header-mobile {
+  background-color: white;
+  padding: 1rem;
+}
+
+.header-mobile-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo-mobile {
+  display: flex;
+  align-items: center;
+}
+
+.logo-image-mobile {
+  height: 32px;
+  width: auto;
+}
+
+.menu-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+}
+
+.menu-toggle span {
+  width: 24px;
+  height: 2px;
+  background-color: #333;
+  transition: all 0.3s;
+}
+
+.nav-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 0;
+  margin-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.nav-link-mobile {
+  text-decoration: none;
+  color: #999;
+  font-size: 1rem;
+  padding: 0.5rem 0;
+  transition: color 0.2s;
+}
+
+.nav-link-mobile:hover {
+  color: #333;
+}
+
+.nav-link-mobile.active {
+  color: #333;
+  font-weight: 500;
+}
+
+.apply-unlisted-btn-mobile {
+  background: #4169e1;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: 'Poppins', sans-serif;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.apply-unlisted-btn-mobile:hover {
+  background: #2c4fb5;
+}

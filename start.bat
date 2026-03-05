@@ -3,15 +3,14 @@ echo Starting FluidJobs.ai Application...
 echo.
 
 echo Killing any existing processes...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000') do taskkill /PID %%a /F >nul 2>&1
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3000') do taskkill /PID %%a /F >nul 2>&1
+taskkill /F /IM node.exe >nul 2>&1
 
 echo Installing dependencies...
 cd backend
 call npm install
 cd ..
 cd FluidJobs.ai
-call npm install
+call npm install --legacy-peer-deps
 cd ..
 
 echo.

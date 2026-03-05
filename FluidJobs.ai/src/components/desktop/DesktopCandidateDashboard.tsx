@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Sun, Moon, ChevronDown, User, MessageCircle, LogOut } from 'lucide-react';
 import { Notification, Work, Paper, Bookmark } from 'react-iconly';
 import DesktopAlertsPage from './DesktopAlertsPage';
-import MyJobsView from '../../new-landing/candidate-dashboard/my-jobs/MyJobsView';
-import MyResumeView from '../../new-landing/candidate-dashboard/my-resume/MyResumeView';
+import MyJobsView from '../../components/candidate/my-jobs/MyJobsView';
+import MyResumeView from '../../components/candidate/my-resume/MyResumeView';
 import DesktopViewProfilePage from './DesktopViewProfilePage';
 import DesktopEditProfilePage from './DesktopEditProfilePage';
 import DesktopContactSupport from './DesktopContactSupport';
@@ -125,9 +125,9 @@ const DesktopCandidateDashboard: React.FC = () => {
       {/* Header */}
       <header className="flex shadow-sm h-[116px] px-8 lg:px-12 items-center justify-between z-10 gap-4" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937', borderBottom: themeState === 'dark' ? '1px solid #374151' : 'none' }}>
         <div className="flex items-center flex-shrink-0">
-          <img 
-            src='/images/FLuid Live Icon light theme.png' 
-            alt="FluidJobs" 
+          <img
+            src='/images/FLuid Live Icon light theme.png'
+            alt="FluidJobs"
             className="object-contain"
             style={{ width: '3rem', height: '3rem' }}
           />
@@ -136,8 +136,8 @@ const DesktopCandidateDashboard: React.FC = () => {
 
         {/* Navigation Tabs */}
         <nav className="flex space-x-6 text-base lg:text-lg font-semibold flex-1 max-w-md">
-          <button 
-            onClick={() => handleTabChange('alerts')} 
+          <button
+            onClick={() => handleTabChange('alerts')}
             className="flex items-center space-x-2 px-4 py-2 rounded-full transition-all font-semibold whitespace-nowrap"
             style={{
               backgroundColor: newUiTab === 'alerts' ? (themeState === 'light' ? '#DBEAFE' : 'rgba(37, 99, 235, 0.2)') : 'transparent',
@@ -147,8 +147,8 @@ const DesktopCandidateDashboard: React.FC = () => {
             <Notification set="bulk" primaryColor={newUiTab === 'alerts' ? '#2563EB' : (themeState === 'light' ? '#000000' : '#E5E7EB')} size={25} />
             <span>Alerts</span>
           </button>
-          <button 
-            onClick={() => handleTabChange('jobs')} 
+          <button
+            onClick={() => handleTabChange('jobs')}
             className="flex items-center space-x-2 px-4 py-2 rounded-full transition-all font-semibold whitespace-nowrap"
             style={{
               backgroundColor: newUiTab === 'jobs' ? (themeState === 'light' ? '#DBEAFE' : 'rgba(37, 99, 235, 0.2)') : 'transparent',
@@ -158,8 +158,8 @@ const DesktopCandidateDashboard: React.FC = () => {
             <Work set="bulk" primaryColor={newUiTab === 'jobs' ? '#2563EB' : (themeState === 'light' ? '#000000' : '#E5E7EB')} size={20} />
             <span>My Jobs</span>
           </button>
-          <button 
-            onClick={() => handleTabChange('resume')} 
+          <button
+            onClick={() => handleTabChange('resume')}
             className="flex items-center space-x-2 px-4 py-2 rounded-full transition-all font-semibold whitespace-nowrap"
             style={{
               backgroundColor: newUiTab === 'resume' ? (themeState === 'light' ? '#DBEAFE' : 'rgba(37, 99, 235, 0.2)') : 'transparent',
@@ -187,16 +187,16 @@ const DesktopCandidateDashboard: React.FC = () => {
               border: `1px solid ${newUiTab === 'jobs' && initialFilter === 'saved' ? '#2563EB' : (themeState === 'light' ? '#E5E7EB' : '#4B5563')}`
             }}
           >
-            <Bookmark 
-              set="bulk" 
-              primaryColor="rgba(19, 15, 38, 1)" 
-              size={25} 
+            <Bookmark
+              set="bulk"
+              primaryColor="rgba(19, 15, 38, 1)"
+              size={25}
             />
           </button>
 
           <div className="relative">
-            <button 
-              onClick={() => setIsLogoutOpen(!isLogoutOpen)} 
+            <button
+              onClick={() => setIsLogoutOpen(!isLogoutOpen)}
               className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 p-1.5 sm:p-2 pr-3 sm:pr-4 md:pr-6 rounded-full transition-all duration-300"
               style={{
                 backgroundColor: themeState === 'light' ? '#DBEAFE' : 'rgba(37, 99, 235, 0.1)',
@@ -210,42 +210,42 @@ const DesktopCandidateDashboard: React.FC = () => {
             </button>
 
             {isLogoutOpen && (
-              <div className="absolute right-0 mt-2 w-56 rounded-2xl overflow-hidden z-20" style={{ 
+              <div className="absolute right-0 mt-2 w-56 rounded-2xl overflow-hidden z-20" style={{
                 backgroundColor: themeState === 'light' ? '#FFFFFF' : '#2d2d2d',
                 border: `1px solid ${themeState === 'light' ? '#BFDBFE' : 'rgba(37, 99, 235, 0.3)'}`,
                 boxShadow: themeState === 'light' ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : '0 10px 15px -3px rgba(37, 99, 235, 0.2)'
               }}>
-                <a 
-                  href="#" 
-                  onClick={(e) => { e.preventDefault(); handleTabChange('profile'); setIsLogoutOpen(false); }} 
-                  className="flex items-center space-x-3 p-3 font-semibold transition-colors" 
+                <a
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); handleTabChange('profile'); setIsLogoutOpen(false); }}
+                  className="flex items-center space-x-3 p-3 font-semibold transition-colors"
                   style={{ color: textColor }}
                 >
                   <User className="w-5 h-5" />
                   <span>View Profile</span>
                 </a>
-                <a 
-                  href="#" 
+                <a
+                  href="#"
                   onClick={(e) => { e.preventDefault(); handleTabChange('contact'); setIsLogoutOpen(false); }}
-                  className="flex items-center space-x-3 p-3 font-semibold transition-colors" 
+                  className="flex items-center space-x-3 p-3 font-semibold transition-colors"
                   style={{ color: textColor }}
                 >
                   <MessageCircle className="w-5 h-5" />
                   <span>Contact Support</span>
                 </a>
-                <a 
-                  href="#" 
+                <a
+                  href="#"
                   onClick={(e) => { e.preventDefault(); setThemeState(themeState === 'light' ? 'dark' : 'light'); }}
-                  className="flex items-center space-x-3 p-3 font-semibold transition-colors" 
+                  className="flex items-center space-x-3 p-3 font-semibold transition-colors"
                   style={{ color: textColor }}
                 >
                   {themeState === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                   <span>Change theme</span>
                 </a>
                 <div className="h-px mx-3" style={{ backgroundColor: themeState === 'light' ? '#BFDBFE' : 'rgba(37, 99, 235, 0.3)' }}></div>
-                <a 
-                  href="#" 
-                  onClick={(e) => { e.preventDefault(); handleLogout(); }} 
+                <a
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); handleLogout(); }}
                   className="flex items-center space-x-3 p-3 text-red-600 font-semibold transition-colors"
                 >
                   <LogOut className="w-5 h-5" />
@@ -260,8 +260,8 @@ const DesktopCandidateDashboard: React.FC = () => {
       {/* Main Content */}
       <main style={{ height: 'calc(100vh - 116px)', backgroundColor: bgColor, overflow: 'hidden' }}>
         {newUiTab === 'editProfile' ? (
-          <DesktopEditProfilePage 
-            themeState={themeState} 
+          <DesktopEditProfilePage
+            themeState={themeState}
             onTabChange={setHasUnsavedChanges}
             saveRef={editProfileSaveRef}
           />
@@ -274,7 +274,7 @@ const DesktopCandidateDashboard: React.FC = () => {
         ) : newUiTab === 'resume' ? (
           <MyResumeView themeState={themeState} />
         ) : (
-          <DesktopAlertsPage 
+          <DesktopAlertsPage
             themeState={themeState}
             isProfileComplete={isProfileComplete}
             loading={loading}

@@ -1,0 +1,8 @@
+.job-grid-container-mobile {
+  padding: 1rem;
+}
+
+.job-grid-mobile {
+  display: flex;
+  flex-direction: column;
+}

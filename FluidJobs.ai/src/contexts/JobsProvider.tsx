@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import jobsEnhancedService from '../services/jobsEnhancedService';
+import { jobService } from '../services/jobService';
 
 interface JobOpening {
   jobId: string;
@@ -38,7 +38,7 @@ export const JobsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const loadJobs = async () => {
       try {
-        const result = await jobsEnhancedService.getJobs();
+        const result = await jobService.getJobs();
         if (result.success && result.jobs) {
           const formattedJobs = result.jobs.map(job => ({
             jobId: job.job_id?.toString() || `JOB_${Date.now()}`,
@@ -51,7 +51,7 @@ export const JobsProvider = ({ children }: { children: ReactNode }) => {
             location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations || '',
             employmentType: job.job_type,
             experience: `${job.min_experience}-${job.max_experience} years`,
-            salaryRange: job.min_salary && job.max_salary ? `₹${parseInt(job.min_salary)/100000}-${parseInt(job.max_salary)/100000} LPA` : 'Competitive',
+            salaryRange: job.min_salary && job.max_salary ? `₹${parseInt(job.min_salary) / 100000}-${parseInt(job.max_salary) / 100000} LPA` : 'Competitive',
             domain: job.job_domain,
             skills: Array.isArray(job.skills) ? job.skills : [],
             mode: job.mode_of_job,
@@ -81,13 +81,13 @@ export const JobsProvider = ({ children }: { children: ReactNode }) => {
       candidatesCount: 0,
       status: 'Published'
     };
-    
+
     setJobs(prev => [newJob, ...prev]);
   };
 
   const refreshJobs = async () => {
     try {
-      const result = await jobsEnhancedService.getJobs();
+      const result = await jobService.getJobs();
       if (result.success && result.jobs) {
         const formattedJobs = result.jobs.map(job => ({
           jobId: job.job_id?.toString() || `JOB_${Date.now()}`,
@@ -100,7 +100,7 @@ export const JobsProvider = ({ children }: { children: ReactNode }) => {
           location: Array.isArray(job.locations) ? job.locations.join(', ') : job.locations || '',
           employmentType: job.job_type,
           experience: `${job.min_experience}-${job.max_experience} years`,
-          salaryRange: job.min_salary && job.max_salary ? `₹${parseInt(job.min_salary)/100000}-${parseInt(job.max_salary)/100000} LPA` : 'Competitive',
+          salaryRange: job.min_salary && job.max_salary ? `₹${parseInt(job.min_salary) / 100000}-${parseInt(job.max_salary) / 100000} LPA` : 'Competitive',
           domain: job.job_domain,
           skills: Array.isArray(job.skills) ? job.skills : [],
           mode: job.mode_of_job,

@@ -7,18 +7,19 @@ export interface SidebarMenu {
 
 // Job entity for services
 export interface Job {
-  id: string;
-  title: string;
-  postedDate: string;
-  jobType: string;
-  ctc: string;
-  industry: string;
-  location: string;
-  description: string;
-  skills: string[];
-  companyLogo?: string;
-  matchScore?: number;
-  applicationStatus?: string;
+	id: string;
+	title: string;
+	company: string;
+	postedDate: string;
+	jobType: string;
+	ctc: string;
+	industry: string;
+	location: string;
+	description: string;
+	skills: string[];
+	companyLogo?: string;
+	matchScore?: number;
+	applicationStatus?: string;
 }
 
 // Legacy Job entity

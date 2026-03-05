@@ -3,7 +3,7 @@ import { Mail, Phone, Calendar, MapPin, User as UserIcon, Edit, Upload, ChevronD
 import axios from 'axios';
 import ImageCropperModal from '../ImageCropperModal';
 import LocationAutocomplete from '../LocationAutocomplete';
-import PhoneInput from '../../new-landing/candidate-dashboard/PhoneInput';
+import PhoneInput from '../PhoneInput';
 import CollegeAutocomplete from '../CollegeAutocomplete';
 import Loader from '../Loader';
 import Notification from '../Notification';
@@ -73,7 +73,7 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState, onTabChan
       });
       const profile: any = response.data;
       console.log('Loaded profile from database:', profile);
-      
+
       // Handle NULL values and convert to empty strings
       const profileData = {
         fullName: profile.full_name || '',
@@ -92,22 +92,22 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState, onTabChan
         joiningDate: (profile.joining_date || '').trim(),
         leavingDate: (profile.leaving_date || '').trim()
       };
-      
+
       setFormData(profileData);
       setInitialFormData(profileData);
-      
+
       const imageUrl = profile.profile_image_url;
       if (imageUrl && imageUrl.trim()) {
         const fullUrl = imageUrl.startsWith('http') ? imageUrl : `http://localhost:8000${imageUrl}`;
         setProfileImage(fullUrl);
       }
-      
+
       // Handle work status - default to 'yes' if empty
       const status = (profile.work_status || '').trim();
       const workStatusValue = status === 'no' || status === 'fresher' ? status : 'yes';
       setWorkStatus(workStatusValue);
       setInitialWorkStatus(workStatusValue);
-      
+
       console.log('Profile data loaded into form');
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -146,7 +146,7 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState, onTabChan
   const handleProfileImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = () => {
       setImageToCrop(reader.result as string);
@@ -159,7 +159,7 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState, onTabChan
   const handleCropComplete = async (croppedBlob: Blob) => {
     const formData = new FormData();
     formData.append('profileImage', croppedBlob, 'profile.jpg');
-    
+
     try {
       const token = sessionStorage.getItem('fluidjobs_token');
       const response = await axios.post('http://localhost:8000/api/profile/upload-profile-image', formData, {
@@ -183,10 +183,10 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState, onTabChan
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     const formData = new FormData();
     formData.append('resume', file);
-    
+
     try {
       const token = sessionStorage.getItem('fluidjobs_token');
       console.log('Uploading resume:', file.name);
@@ -270,20 +270,20 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState, onTabChan
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
           <div className="rounded-[25px] p-[8px] relative" style={{ backgroundColor: themeState === 'light' ? '#FFFFFF' : '#1F2937', height: 'calc(50% - 6px)' }}>
             <div className="w-full h-[118px] bg-gradient-to-r from-[#0060FF] to-[#4285F4] rounded-[12px]"></div>
-            
+
             <div className="absolute top-[78px] left-1/2 transform -translate-x-1/2 z-10">
               <div className="w-[100px] h-[100px] rounded-full bg-[rgba(66,133,244,0.16)] flex items-center justify-center relative">
                 <div className="w-[84px] h-[84px] rounded-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: profileImage ? 'transparent' : '#4285F4' }}>
                   {profileImage ? (
-                    <img 
-                      src={profileImage} 
-                      alt="Profile" 
-                      className="w-full h-full object-cover rounded-full" 
+                    <img
+                      src={profileImage}
+                      alt="Profile"
+                      className="w-full h-full object-cover rounded-full"
                       onLoad={() => console.log('Image loaded successfully:', profileImage)}
-                      onError={(e) => { 
-                        console.error('Image load error. URL:', profileImage); 
+                      onError={(e) => {
+                        console.error('Image load error. URL:', profileImage);
                         console.error('Image element:', e.currentTarget);
-                      }} 
+                      }}
                     />
                   ) : (
                     <UserIcon className="w-10 h-10 text-white" />
@@ -361,7 +361,7 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState, onTabChan
                     }}
                   >
                     <span>{formData.gender || 'Select Gender'}</span>
-                    {openDropdown === 'gender' ? 
+                    {openDropdown === 'gender' ?
                       <ChevronUp style={{ width: '16px', height: '16px', color: '#6E6E6E' }} /> :
                       <ChevronDown style={{ width: '16px', height: '16px', color: '#6E6E6E' }} />
                     }
@@ -428,7 +428,7 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState, onTabChan
                     }}
                   >
                     <span>{formData.maritalStatus || 'Select Status'}</span>
-                    {openDropdown === 'maritalStatus' ? 
+                    {openDropdown === 'maritalStatus' ?
                       <ChevronUp style={{ width: '16px', height: '16px', color: '#6E6E6E' }} /> :
                       <ChevronDown style={{ width: '16px', height: '16px', color: '#6E6E6E' }} />
                     }
@@ -540,7 +540,7 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState, onTabChan
                         }}
                       >
                         <span>{formData.workMode || 'Select Work Mode'}</span>
-                        {openDropdown === 'workModeYes' ? 
+                        {openDropdown === 'workModeYes' ?
                           <ChevronUp style={{ width: '16px', height: '16px', color: '#6E6E6E' }} /> :
                           <ChevronDown style={{ width: '16px', height: '16px', color: '#6E6E6E' }} />
                         }
@@ -628,7 +628,7 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState, onTabChan
                         }}
                       >
                         <span>{formData.workMode || 'Select Work Mode'}</span>
-                        {openDropdown === 'workModeNo' ? 
+                        {openDropdown === 'workModeNo' ?
                           <ChevronUp style={{ width: '16px', height: '16px', color: '#6E6E6E' }} /> :
                           <ChevronDown style={{ width: '16px', height: '16px', color: '#6E6E6E' }} />
                         }
@@ -713,7 +713,7 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState, onTabChan
                         }}
                       >
                         <span>{formData.workMode || 'Select Work Mode'}</span>
-                        {openDropdown === 'workModeFresher' ? 
+                        {openDropdown === 'workModeFresher' ?
                           <ChevronUp style={{ width: '16px', height: '16px', color: '#6E6E6E' }} /> :
                           <ChevronDown style={{ width: '16px', height: '16px', color: '#6E6E6E' }} />
                         }
@@ -780,7 +780,7 @@ const EditProfilePage: React.FC<EditProfilePageProps> = ({ themeState, onTabChan
         onCropComplete={handleCropComplete}
         themeState={themeState}
       />
-      
+
       <Notification
         message={message}
         isVisible={showNotification}

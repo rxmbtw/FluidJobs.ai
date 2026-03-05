@@ -1,29 +1,21 @@
-const pool = require('./config/database');
+const { Pool } = require('pg');
+const pool = new Pool({
+    host: '72.60.103.151',
+    port: 5432,
+    database: 'fluiddb',
+    user: 'fluidadmin',
+    password: 'admin123'
+});
 
 async function checkJobs() {
-  try {
-    const result = await pool.query('SELECT COUNT(*) as total FROM jobs');
-    console.log('Total jobs in database:', result.rows[0].total);
-    
-    const statusResult = await pool.query(`
-      SELECT 
-        status,
-        COUNT(*) as count
-      FROM jobs 
-      GROUP BY status
-      ORDER BY status
-    `);
-    
-    console.log('\nJobs by status:');
-    statusResult.rows.forEach(row => {
-      console.log(`${row.status}: ${row.count}`);
-    });
-    
-    process.exit(0);
-  } catch (error) {
-    console.error('Error:', error.message);
-    process.exit(1);
-  }
+    try {
+        const res = await pool.query('SELECT id, title, company, status, created_at FROM jobs_enhanced ORDER BY created_at DESC');
+        console.log(JSON.stringify(res.rows, null, 2));
+    } catch (err) {
+        console.error(err);
+    } finally {
+        await pool.end();
+    }
 }
 
 checkJobs();
