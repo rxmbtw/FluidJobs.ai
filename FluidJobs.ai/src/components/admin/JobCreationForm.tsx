@@ -1,15 +1,19 @@
-import React, { useState, useRef, useEffect } from 'react';
+import * as React from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Sparkles,
   Bold,
   Italic,
   Underline,
-  Strikethrough
+  Strikethrough,
+  Check
 } from 'lucide-react';
 import { indianCities } from '../../data/indianCities';
 import './JobCreationForm.css';
 import SuccessModal from '../../components/SuccessModal';
+import ImagePickerModal from '../common/ImagePickerModal';
 import { safeClosest } from '../../utils/domHelpers';
+import { formatJobTitle, getDuplicateTitleError } from '../../utils/jobTitleUtils';
 
 interface JobCreationFormProps {
   onBack: () => void;
@@ -51,6 +55,7 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
   const [locationInput, setLocationInput] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [showDomainSuggestions, setShowDomainSuggestions] = useState(false);
+  const [apiDomainSuggestions, setApiDomainSuggestions] = useState<string[]>([]);
   const [showMinExpSuggestions, setShowMinExpSuggestions] = useState(false);
   const [showMaxExpSuggestions, setShowMaxExpSuggestions] = useState(false);
   const [showJobTypeSuggestions, setShowJobTypeSuggestions] = useState(false);
@@ -58,6 +63,7 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
   const [showModeSuggestions, setShowModeSuggestions] = useState(false);
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
+  const [selectedImageId, setSelectedImageId] = useState<number | undefined>(undefined);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [uploadedPdfUrl, setUploadedPdfUrl] = useState('');
   const [pdfFileName, setPdfFileName] = useState('');
@@ -67,11 +73,6 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
   const [isUserEditing, setIsUserEditing] = useState(false);
   const [showPdfSuccessModal, setShowPdfSuccessModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
-  const [minioImages, setMinioImages] = useState<{ tech: any[], management: any[] }>({ tech: [], management: [] });
-  const [showAllTech, setShowAllTech] = useState(false);
-  const [showAllManagement, setShowAllManagement] = useState(false);
-  const [loadingImages, setLoadingImages] = useState(false);
-  const [imageError, setImageError] = useState('');
   const [users, setUsers] = useState<any[]>([]);
   const [usedImages, setUsedImages] = useState<string[]>([]); // images used by other jobs in the same account
   const [selectedHiringManager, setSelectedHiringManager] = useState('');
@@ -93,66 +94,30 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
   const [showNewStageInput, setShowNewStageInput] = useState(false);
   const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
   const [teamAssignments, setTeamAssignments] = useState<{ [userId: string]: string[] }>({});
-
-  const jobImages = [
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop'
-  ];
-
-  const fluidJobsImages = {
-    tech: [
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/ai-technology-microchip-background-digital-transformation-concept.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/annie-spratt-QckxruozjRg-unsplash.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/Custom%20Education%20&%20Training%20Systems%20with%20Python%20Development.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/Frontend%20vs%20Backend%20What%20Happens%20Behind%20a%20Website.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/nubelson-fernandes--Xqckh_XVU4-unsplash.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/patrick-tomasso-fMntI8HAAB8-unsplash.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/person-front-computer-working-html.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/representation-user-experience-interface-design.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/roman-synkevych-E-V6EMtGSUU-unsplash.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/software-development-6523979_1280.jpg')
-    ],
-    management: [
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/business-meeting-office.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/business-people-board-room-meeting.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/close-up-woman-working-laptop.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/closeup-job-applicant-giving-his-resume-job-interview-office.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/Data%20Science%20Meeting.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/hunters-race-MYbhN8KaaEc-unsplash.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/lukas-blazek-mcSDtbWXUZU-unsplash.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/portrait-smiling-woman-startup-office-coding.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/smiley-man-work-holding-laptop-posing.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/woman-retoucher-looking-camera-smiling-sitting-creative-design-media-agency.jpg')
-    ]
-  };
+  const [titleWarning, setTitleWarning] = useState('');
+  const [isCheckingTitle, setIsCheckingTitle] = useState(false);
+  const titleCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const experienceOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
   const jobTypeOptions = ['Full-time', 'Part-time', 'Contract', 'Internship'];
   const openingsOptions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
   const modeOptions = ['Work From Home', 'Hybrid', 'On-site'];
   const domainSuggestions = [
-    'Software Development',
-    'Data Science',
-    'Machine Learning',
-    'Web Development',
-    'Mobile Development',
-    'DevOps',
-    'Quality Assurance',
-    'UI/UX Design',
-    'Product Management',
-    'Digital Marketing',
-    'Sales',
-    'Human Resources',
-    'Finance',
-    'Operations'
+    // Tech & Engineering
+    'Software Engineering', 'Frontend Development', 'Backend Development', 'Full Stack Development',
+    'Mobile Development', 'DevOps & SRE', 'Cloud Computing', 'Data Science', 'Machine Learning',
+    'Artificial Intelligence', 'Data Engineering', 'Cybersecurity', 'IT & Systems',
+    'Quality Assurance (QA)', 'Blockchain & Web3', 'Game Development', 'AR/VR/XR',
+    'Embedded Systems', 'Network Engineering', 'Database Administration',
+
+    // Product & Design
+    'Product Management', 'Project Management', 'UI/UX Design', 'Product Design',
+    'Graphic Design', 'Technical Writing', 'Scrum & Agile',
+
+    // Business & Operations
+    'Digital Marketing', 'Sales & Business Development', 'Human Resources (HR)',
+    'Talent Acquisition', 'Finance & Accounting', 'Operations', 'Customer Success',
+    'Legal & Compliance', 'Strategy & Consulting', 'Supply Chain & Logistics'
   ];
 
   const skillsSuggestions = [
@@ -197,16 +162,6 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     'Offer Extended',
   ];
 
-  // Helper to check if an image is used, ignoring dynamic presigned URL query parameters like AWS signatures
-  const checkIsAlreadyUsed = (imgUrl: string) => {
-    if (!imgUrl) return false;
-    // If we've just selected it, it's not "already used by another job"
-    if (imgUrl === selectedImage) return false;
-
-    const baseUrl = imgUrl.split('?')[0];
-    return usedImages.some(usedUrl => usedUrl && usedUrl.split('?')[0] === baseUrl);
-  };
-
   useEffect(() => {
     const hasOpenDropdown = showDomainSuggestions || showMinExpSuggestions || showMaxExpSuggestions ||
       showJobTypeSuggestions || showLocationSuggestions || showModeSuggestions || showSkillsSuggestions;
@@ -222,15 +177,54 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     };
   }, [showDomainSuggestions, showMinExpSuggestions, showMaxExpSuggestions, showJobTypeSuggestions, showLocationSuggestions, showModeSuggestions, showSkillsSuggestions]);
 
-  // Fetch images already used by other jobs in this account (to mark them as unavailable)
+  // Filter local tech domains based on user input
   useEffect(() => {
-    if (activeSection !== 'image') return;
-    if (!selectedAccount) return;
-    fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/account-used-images?account_id=${selectedAccount}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.usedImages) setUsedImages(data.usedImages); })
-      .catch(() => { });
-  }, [activeSection, selectedAccount]);
+    const term = formData.job_domain.trim().toLowerCase();
+    if (!term) {
+      setApiDomainSuggestions([]); // Remove default dropdown on empty click
+      return;
+    }
+
+    const matched = domainSuggestions.filter(domain =>
+      domain.toLowerCase().includes(term)
+    );
+
+    setApiDomainSuggestions(matched.slice(0, 8));
+  }, [formData.job_domain]);
+
+  // Debounced job title duplicate check (useRef timer — avoids stale closure / StrictMode issues)
+  useEffect(() => {
+    if (titleCheckTimerRef.current) clearTimeout(titleCheckTimerRef.current);
+
+    if (!formData.job_title.trim()) {
+      setTitleWarning('');
+      setIsCheckingTitle(false);
+      return;
+    }
+
+    setIsCheckingTitle(true);
+    titleCheckTimerRef.current = setTimeout(async () => {
+      try {
+        const baseUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+        let url = `${baseUrl}/api/jobs-enhanced/check-title?title=${encodeURIComponent(formData.job_title.trim())}`;
+        if (selectedAccount) url += `&account_id=${selectedAccount}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.success && data.exists) {
+          setTitleWarning('⚠️ A job with this title already exists. Using a unique title is strongly recommended.');
+        } else {
+          setTitleWarning('');
+        }
+      } catch (err) {
+        console.warn('[check-title] Failed:', err);
+        setTitleWarning('');
+      } finally {
+        setIsCheckingTitle(false);
+      }
+    }, 800);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.job_title, selectedAccount]);
 
   useEffect(() => {
     const fetchAccounts = async () => {
@@ -325,40 +319,6 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     }
   }, [selectedAccount, isSuperAdmin]);
 
-  // Fetch MinIO images when modal opens
-  useEffect(() => {
-    const fetchMinioImages = async () => {
-      if (!showImageModal) return;
-
-      setLoadingImages(true);
-      setImageError('');
-
-      try {
-        const response = await fetch('http://localhost:8000/api/job-images/list');
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch images from server');
-        }
-
-        const data = await response.json();
-
-        if (data.success && data.images) {
-          setMinioImages(data.images);
-          console.log(`✅ Loaded ${data.totalCount} images from MinIO`);
-        } else {
-          throw new Error('Invalid response format');
-        }
-      } catch (error) {
-        console.error('Error fetching MinIO images:', error);
-        setImageError('Failed to load images. Using fallback images.');
-        // Keep the hardcoded fallback images
-      } finally {
-        setLoadingImages(false);
-      }
-    };
-
-    fetchMinioImages();
-  }, [showImageModal]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -408,6 +368,9 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     const { name, value, type } = e.target;
     if (type === 'checkbox') {
       setFormData(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }));
+    } else if (name === 'job_title') {
+      // Auto-format: title-case + preserve known abbreviations (AI, ML, UI, etc.)
+      setFormData(prev => ({ ...prev, job_title: formatJobTitle(value) }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -484,6 +447,7 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
         break;
       case 'basic':
         if (!formData.job_title.trim()) newErrors.job_title = 'Job title is required';
+        else if (titleWarning) newErrors.job_title = getDuplicateTitleError(titleWarning);
         if (!formData.job_domain.trim()) newErrors.job_domain = 'Job domain is required';
         if (!formData.min_experience.trim()) newErrors.min_experience = 'Min experience is required';
         if (!formData.max_experience.trim()) newErrors.max_experience = 'Max experience is required';
@@ -529,7 +493,10 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
   };
 
   const handleSectionChange = (sectionId: string) => {
-    if (validateSection(activeSection)) {
+    // Allow going back to any completed section OR current section without validation
+    if (completedSections.has(sectionId) || sectionId === activeSection) {
+      setActiveSection(sectionId);
+    } else if (validateSection(activeSection)) {
       setActiveSection(sectionId);
     }
   };
@@ -540,6 +507,13 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
       if (currentIndex < sections.length - 1) {
         setActiveSection(sections[currentIndex + 1].id);
       }
+    }
+  };
+
+  const handlePrevSection = () => {
+    const currentIndex = sections.findIndex(s => s.id === activeSection);
+    if (currentIndex > 0) {
+      setActiveSection(sections[currentIndex - 1].id);
     }
   };
 
@@ -576,6 +550,11 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Block submission if a duplicate title exists
+    if (titleWarning) {
+      setErrors(prev => ({ ...prev, job_title: getDuplicateTitleError(titleWarning) }));
+      return;
+    }
     if (validateForm()) {
       try {
         let closingDate = formData.registration_closing_date;
@@ -599,20 +578,21 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
           show_salary_to_candidate: formData.show_salary_to_candidate,
           job_description: formData.job_description,
           selected_image: selectedImage,
+          cover_image_id: selectedImageId,
           jd_attachment_name: uploadedPdfUrl,
           registration_opening_date: formData.registration_opening_date,
           registration_closing_date: closingDate,
           job_close_days: 30,
-          no_of_openings: parseInt(formData.no_of_openings),
-          account_id: parseInt(selectedAccount),
+          no_of_openings: parseInt(formData.no_of_openings) || 1,
+          account_id: parseInt(selectedAccount) || null,
           created_by_user_id: currentAdmin?.id || null,
           primary_recruiter_id: formData.primary_recruiter_id,
           interview_stages: hiringStages // Add interview stages to payload
         };
 
         const endpoint = isSuperAdmin
-          ? 'http://localhost:8000/api/superadmin/create-job'
-          : 'http://localhost:8000/api/jobs-enhanced/create';
+          ? `${process.env.REACT_APP_BACKEND_URL}/api/superadmin/create-job`
+          : `${process.env.REACT_APP_BACKEND_URL}/api/jobs-enhanced/create`;
 
         const response = await fetch(endpoint, {
           method: 'POST',
@@ -780,7 +760,8 @@ What We Offer:
                         </div>
                         {errors.selectedAccount && <p className="text-red-500 text-sm mt-1">{errors.selectedAccount}</p>}
                       </div>
-                      <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between mt-4 pt-4 border-t border-gray-200">
+                        <div />
                         <button
                           type="button"
                           onClick={handleNextSection}
@@ -809,6 +790,20 @@ What We Offer:
                             }`}
                         />
                         {errors.job_title && <p className="text-red-500 text-sm mt-1">{errors.job_title}</p>}
+                        {isCheckingTitle && (
+                          <p className="text-gray-400 text-xs mt-1">Checking title availability...</p>
+                        )}
+                        {titleWarning && (
+                          <div className="mt-2 p-2 bg-red-50 border border-red-400 rounded-md flex items-start gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <span className="text-red-600 text-sm font-medium">⚠️ This job title already exists. Please choose another name.</span>
+                          </div>
+                        )}
+                        {!titleWarning && !isCheckingTitle && formData.job_title.trim() && !errors.job_title && (
+                          <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <Check className="w-4 h-4 text-green-600" />
+                            <span className="text-green-700 text-sm font-medium">This job title is available!</span>
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -816,24 +811,24 @@ What We Offer:
                           Job Domain <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
-                          <button
-                            type="button"
-                            onClick={() => setShowDomainSuggestions(!showDomainSuggestions)}
-                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 flex items-center justify-between ${errors.job_domain ? 'border-red-500' : 'border-gray-300'
-                              }`}
-                          >
-                            <span>{formData.job_domain || 'Select Domain'}</span>
-                            <svg className={`w-4 h-4 transition-transform ${showDomainSuggestions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
+                          <input
+                            type="text"
+                            name="job_domain"
+                            value={formData.job_domain}
+                            onChange={handleInputChange}
+                            onFocus={() => setShowDomainSuggestions(true)}
+                            onBlur={() => setTimeout(() => setShowDomainSuggestions(false), 200)}
+                            placeholder="Ex. Software Development"
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 ${errors.job_domain ? 'border-red-500' : 'border-gray-300'}`}
+                            autoComplete="off"
+                          />
                           {errors.job_domain && <p className="text-red-500 text-sm mt-1">{errors.job_domain}</p>}
-                          {showDomainSuggestions && (
+                          {showDomainSuggestions && apiDomainSuggestions.length > 0 && (
                             <div className="dropdown-content absolute top-full mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto z-50 transition-all duration-300 ease-in-out">
                               <div className="p-2">
-                                {domainSuggestions.map(domain => (
+                                {apiDomainSuggestions.map((domain, index) => (
                                   <div
-                                    key={domain}
+                                    key={index}
                                     onClick={() => {
                                       setFormData(prev => ({ ...prev, job_domain: domain }));
                                       setShowDomainSuggestions(false);
@@ -855,77 +850,33 @@ What We Offer:
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Min Experience (in Yrs) <span className="text-red-500">*</span>
                           </label>
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() => setShowMinExpSuggestions(!showMinExpSuggestions)}
-                              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 flex items-center justify-between ${errors.min_experience ? 'border-red-500' : 'border-gray-300'
-                                }`}
-                            >
-                              <span>{formData.min_experience || 'Select Experience'}</span>
-                              <svg className={`w-4 h-4 transition-transform ${showMinExpSuggestions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                            {errors.min_experience && <p className="text-red-500 text-sm mt-1">{errors.min_experience}</p>}
-                            {showMinExpSuggestions && (
-                              <div className="dropdown-content absolute top-full mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto z-50 transition-all duration-300 ease-in-out">
-                                <div className="p-2">
-                                  {experienceOptions.map(exp => (
-                                    <div
-                                      key={exp}
-                                      onClick={() => {
-                                        setFormData(prev => ({ ...prev, min_experience: exp }));
-                                        setShowMinExpSuggestions(false);
-                                        setErrors(prev => ({ ...prev, min_experience: '' }));
-                                      }}
-                                      className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
-                                    >
-                                      {exp}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                          <input
+                            type="number"
+                            name="min_experience"
+                            min="0"
+                            max="50"
+                            value={formData.min_experience}
+                            onChange={handleInputChange}
+                            placeholder="e.g. 2"
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 ${errors.min_experience ? 'border-red-500' : 'border-gray-300'}`}
+                          />
+                          {errors.min_experience && <p className="text-red-500 text-sm mt-1">{errors.min_experience}</p>}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Max Experience (in Yrs) <span className="text-red-500">*</span>
                           </label>
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() => setShowMaxExpSuggestions(!showMaxExpSuggestions)}
-                              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 flex items-center justify-between ${errors.max_experience ? 'border-red-500' : 'border-gray-300'
-                                }`}
-                            >
-                              <span>{formData.max_experience || 'Select Experience'}</span>
-                              <svg className={`w-4 h-4 transition-transform ${showMaxExpSuggestions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                            {errors.max_experience && <p className="text-red-500 text-sm mt-1">{errors.max_experience}</p>}
-                            {showMaxExpSuggestions && (
-                              <div className="dropdown-content absolute top-full mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto z-50 transition-all duration-300 ease-in-out">
-                                <div className="p-2">
-                                  {experienceOptions.map(exp => (
-                                    <div
-                                      key={exp}
-                                      onClick={() => {
-                                        setFormData(prev => ({ ...prev, max_experience: exp }));
-                                        setShowMaxExpSuggestions(false);
-                                        setErrors(prev => ({ ...prev, max_experience: '' }));
-                                      }}
-                                      className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
-                                    >
-                                      {exp}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                          <input
+                            type="number"
+                            name="max_experience"
+                            min="0"
+                            max="50"
+                            value={formData.max_experience}
+                            onChange={handleInputChange}
+                            placeholder="e.g. 5"
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 ${errors.max_experience ? 'border-red-500' : 'border-gray-300'}`}
+                          />
+                          {errors.max_experience && <p className="text-red-500 text-sm mt-1">{errors.max_experience}</p>}
                         </div>
                       </div>
 
@@ -984,7 +935,14 @@ What We Offer:
                         />
                         {errors.no_of_openings && <p className="text-red-500 text-sm mt-1">{errors.no_of_openings}</p>}
                       </div>
-                      <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={handlePrevSection}
+                          className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
+                        >
+                          ← Previous
+                        </button>
                         <button
                           type="button"
                           onClick={handleNextSection}
@@ -1003,69 +961,44 @@ What We Offer:
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Job Posting Image <span className="text-red-500">*</span>
                         </label>
-                        <div className="grid grid-cols-5 gap-3">
-                          {jobImages.map((image, index) => {
-                            const isAlreadyUsed = checkIsAlreadyUsed(image);
-                            const isSelected = selectedImage === image;
-                            return (
-                              <div
-                                key={index}
-                                onClick={() => {
-                                  if (isAlreadyUsed) return; // prevent selecting used images
-                                  setSelectedImage(image);
-                                  setErrors(prev => ({ ...prev, selectedImage: '' }));
-                                  setCompletedSections(prev => { const s = new Set(prev); s.add('image'); return s; });
-                                }}
-                                title={isAlreadyUsed ? 'Already used in another job for this account' : ''}
-                                className={`relative rounded-lg overflow-hidden border-2 transition-all ${isAlreadyUsed
-                                  ? 'border-green-400 cursor-not-allowed opacity-75'
-                                  : isSelected
-                                    ? 'border-indigo-600 ring-2 ring-indigo-200 cursor-pointer'
-                                    : 'border-gray-200 hover:border-indigo-300 cursor-pointer'
-                                  }`}
+                        {selectedImage ? (
+                          <div className="relative rounded-lg overflow-hidden border-2 border-indigo-600 w-64 h-40">
+                            <img
+                              src={selectedImage}
+                              alt="Selected Cover"
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-x-0 bottom-0 bg-black bg-opacity-50 p-2 flex justify-center">
+                              <button
+                                type="button"
+                                onClick={() => setShowImageModal(true)}
+                                className="text-white text-sm hover:underline font-medium"
                               >
-                                <img
-                                  src={image}
-                                  alt={`Job image ${index + 1}`}
-                                  className="w-full h-24 object-cover"
-                                />
-                                {/* Selected badge */}
-                                {isSelected && (
-                                  <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
-                                    <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center">
-                                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                      </svg>
-                                    </div>
-                                  </div>
-                                )}
-                                {/* Already-used badge */}
-                                {isAlreadyUsed && (
-                                  <div className="absolute inset-0 bg-green-600 bg-opacity-30 flex flex-col items-center justify-center">
-                                    <div className="w-7 h-7 bg-green-600 rounded-full flex items-center justify-center shadow">
-                                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                      </svg>
-                                    </div>
-                                    <span className="text-white text-[9px] font-semibold mt-0.5 drop-shadow">In Use</span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="flex justify-end mt-3">
-                          <button
-                            type="button"
+                                Change Image
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div
                             onClick={() => setShowImageModal(true)}
-                            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                            className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 hover:border-indigo-400 transition-colors"
                           >
-                            More Images
-                          </button>
-                        </div>
+                            <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span className="text-sm font-medium text-gray-600">Click to Select Job Image</span>
+                          </div>
+                        )}
                         {errors.selectedImage && <p className="text-red-500 text-sm mt-1">{errors.selectedImage}</p>}
                       </div>
-                      <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={handlePrevSection}
+                          className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
+                        >
+                          ← Previous
+                        </button>
                         <button
                           type="button"
                           onClick={handleNextSection}
@@ -1424,7 +1357,14 @@ What We Offer:
                           </div>
                         )}
                       </div>
-                      <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={handlePrevSection}
+                          className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
+                        >
+                          ← Previous
+                        </button>
                         <button
                           type="button"
                           onClick={handleNextSection}
@@ -1489,7 +1429,14 @@ What We Offer:
                           </label>
                         </div>
                       </div>
-                      <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={handlePrevSection}
+                          className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
+                        >
+                          ← Previous
+                        </button>
                         <button
                           type="button"
                           onClick={handleNextSection}
@@ -1734,7 +1681,14 @@ What We Offer:
                           </div>
                         </div>
                       )}
-                      <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={handlePrevSection}
+                          className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
+                        >
+                          ← Previous
+                        </button>
                         <button
                           type="button"
                           onClick={handleNextSection}
@@ -1936,7 +1890,8 @@ What We Offer:
                       <div className="flex justify-end mt-6 pt-6 border-t border-gray-200">
                         <button
                           type="submit"
-                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                          disabled={!!titleWarning || isCheckingTitle}
+                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Create Job Opening
                         </button>
@@ -1996,289 +1951,18 @@ What We Offer:
           title="Success!"
           message="✅ Job description generated from PDF successfully!"
         />
-
-        {
-          showImageModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto mx-4">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-semibold text-gray-900">Select Job Posting Image</h2>
-                  <button
-                    onClick={() => setShowImageModal(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-
-                {loadingImages && (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-                    <span className="ml-3 text-gray-600">Loading images...</span>
-                  </div>
-                )}
-
-                {imageError && (
-                  <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-yellow-800 text-sm">{imageError}</p>
-                  </div>
-                )}
-
-                {!loadingImages && (
-                  <>
-                    {/* Technology & Development Section */}
-                    <div className="mb-8">
-                      <h3 className="text-lg font-medium text-gray-800 mb-4">
-                        Technology & Development
-                        {minioImages.tech.length > 8 && (
-                          <span className="ml-2 text-sm text-gray-500">({minioImages.tech.length} images)</span>
-                        )}
-                      </h3>
-                      {minioImages.tech.length > 0 ? (
-                        <>
-                          <div className="grid grid-cols-4 gap-4">
-                            {(showAllTech ? minioImages.tech : minioImages.tech.slice(0, 8)).map((image, index) => {
-                              const isAlreadyUsed = checkIsAlreadyUsed(image.url);
-                              const isSelected = selectedImage === image.url;
-                              return (
-                                <div
-                                  key={`tech-${index}`}
-                                  onClick={() => {
-                                    if (isAlreadyUsed) return;
-                                    setSelectedImage(image.url);
-                                    setErrors(prev => ({ ...prev, selectedImage: '' }));
-                                    setShowImageModal(false);
-                                    setCompletedSections(prev => { const s = new Set(prev); s.add('image'); return s; });
-                                  }}
-                                  title={isAlreadyUsed ? 'Already used in another job for this account' : ''}
-                                  className={`relative rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${isAlreadyUsed
-                                    ? 'border-green-400 cursor-not-allowed opacity-75'
-                                    : isSelected
-                                      ? 'border-indigo-600 ring-2 ring-indigo-200 cursor-pointer'
-                                      : 'border-gray-200 hover:border-indigo-300 cursor-pointer'
-                                    }`}
-                                >
-                                  <img
-                                    src={image.url}
-                                    alt={image.name}
-                                    loading="lazy"
-                                    className="w-full h-32 object-cover bg-gray-100"
-                                    style={{ contentVisibility: 'auto' }}
-                                    onError={(e) => {
-                                      console.log('Image failed to load:', image.name);
-                                      e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12"%3EImage unavailable%3C/text%3E%3C/svg%3E';
-                                    }}
-                                  />
-                                  {isSelected && (
-                                    <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
-                                      <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                        </svg>
-                                      </div>
-                                    </div>
-                                  )}
-                                  {isAlreadyUsed && (
-                                    <div className="absolute inset-0 bg-green-600 bg-opacity-30 flex flex-col items-center justify-center">
-                                      <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center shadow">
-                                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                        </svg>
-                                      </div>
-                                      <span className="text-white text-xs font-semibold mt-1 drop-shadow">In Use</span>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                          {!showAllTech && minioImages.tech.length > 8 && (
-                            <button
-                              onClick={() => setShowAllTech(true)}
-                              className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                            >
-                              <span>Show {minioImages.tech.length - 8} more images</span>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          )}
-                          {showAllTech && minioImages.tech.length > 8 && (
-                            <button
-                              onClick={() => setShowAllTech(false)}
-                              className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                            >
-                              <span>Show less</span>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          <p>No technology images available</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Management & Business Section */}
-                    <div className="mb-6">
-                      <h3 className="text-lg font-medium text-gray-800 mb-4">
-                        Management & Business
-                        {minioImages.management.length > 8 && (
-                          <span className="ml-2 text-sm text-gray-500">({minioImages.management.length} images)</span>
-                        )}
-                      </h3>
-                      {minioImages.management.length > 0 ? (
-                        <>
-                          <div className="grid grid-cols-4 gap-4">
-                            {(showAllManagement ? minioImages.management : minioImages.management.slice(0, 8)).map((image, index) => {
-                              const isAlreadyUsed = checkIsAlreadyUsed(image.url);
-                              const isSelected = selectedImage === image.url;
-                              return (
-                                <div
-                                  key={`mgmt-${index}`}
-                                  onClick={() => {
-                                    if (isAlreadyUsed) return;
-                                    setSelectedImage(image.url);
-                                    setErrors(prev => ({ ...prev, selectedImage: '' }));
-                                    setShowImageModal(false);
-                                    setCompletedSections(prev => { const s = new Set(prev); s.add('image'); return s; });
-                                  }}
-                                  title={isAlreadyUsed ? 'Already used in another job for this account' : ''}
-                                  className={`relative rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${isAlreadyUsed
-                                    ? 'border-green-400 cursor-not-allowed opacity-75'
-                                    : isSelected
-                                      ? 'border-indigo-600 ring-2 ring-indigo-200 cursor-pointer'
-                                      : 'border-gray-200 hover:border-indigo-300 cursor-pointer'
-                                    }`}
-                                >
-                                  <img
-                                    src={image.url}
-                                    alt={image.name}
-                                    loading="lazy"
-                                    className="w-full h-32 object-cover bg-gray-100"
-                                    style={{ contentVisibility: 'auto' }}
-                                    onError={(e) => {
-                                      console.log('Image failed to load:', image.name);
-                                      e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12"%3EImage unavailable%3C/text%3E%3C/svg%3E';
-                                    }}
-                                  />
-                                  {isSelected && (
-                                    <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
-                                      <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                        </svg>
-                                      </div>
-                                    </div>
-                                  )}
-                                  {isAlreadyUsed && (
-                                    <div className="absolute inset-0 bg-green-600 bg-opacity-30 flex flex-col items-center justify-center">
-                                      <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center shadow">
-                                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                        </svg>
-                                      </div>
-                                      <span className="text-white text-xs font-semibold mt-1 drop-shadow">In Use</span>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                          {!showAllManagement && minioImages.management.length > 8 && (
-                            <button
-                              onClick={() => setShowAllManagement(true)}
-                              className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                            >
-                              <span>Show {minioImages.management.length - 8} more images</span>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          )}
-                          {showAllManagement && minioImages.management.length > 8 && (
-                            <button
-                              onClick={() => setShowAllManagement(false)}
-                              className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                            >
-                              <span>Show less</span>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          <p>No management images available</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* General Professional Section (Unsplash fallback) */}
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-800 mb-4">General Professional</h3>
-                      <div className="grid grid-cols-4 gap-4">
-                        {jobImages.map((image, index) => {
-                          const isAlreadyUsed = checkIsAlreadyUsed(image);
-                          const isSelected = selectedImage === image;
-                          return (
-                            <div
-                              key={`original-${index}`}
-                              onClick={() => {
-                                if (isAlreadyUsed) return;
-                                setSelectedImage(image);
-                                setErrors(prev => ({ ...prev, selectedImage: '' }));
-                                setShowImageModal(false);
-                                setCompletedSections(prev => { const s = new Set(prev); s.add('image'); return s; });
-                              }}
-                              title={isAlreadyUsed ? 'Already used in another job for this account' : ''}
-                              className={`relative rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${isAlreadyUsed
-                                ? 'border-green-400 cursor-not-allowed opacity-75'
-                                : isSelected
-                                  ? 'border-indigo-600 ring-2 ring-indigo-200 cursor-pointer'
-                                  : 'border-gray-200 hover:border-indigo-300 cursor-pointer'
-                                }`}
-                            >
-                              <img
-                                src={image}
-                                alt={`Professional image ${index + 1}`}
-                                className="w-full h-32 object-cover"
-                              />
-                              {isSelected && (
-                                <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
-                                  <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                  </div>
-                                </div>
-                              )}
-                              {isAlreadyUsed && (
-                                <div className="absolute inset-0 bg-green-600 bg-opacity-30 flex flex-col items-center justify-center">
-                                  <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center shadow">
-                                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                  </div>
-                                  <span className="text-white text-xs font-semibold mt-1 drop-shadow">In Use</span>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
+        <ImagePickerModal
+          isOpen={showImageModal}
+          onClose={() => setShowImageModal(false)}
+          currentImageId={selectedImageId}
+          onSelect={(imageUrl, imageId) => {
+            setSelectedImage(imageUrl);
+            setSelectedImageId(imageId);
+            setErrors(prev => ({ ...prev, selectedImage: '' }));
+            setShowImageModal(false);
+            setCompletedSections(prev => { const s = new Set(prev); s.add('image'); return s; });
+          }}
+        />
       </div>
     </div>
   );

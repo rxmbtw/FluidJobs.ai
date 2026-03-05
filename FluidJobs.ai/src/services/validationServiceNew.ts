@@ -16,11 +16,13 @@ export interface PermissionResult {
 
 export class ValidationService {
   static validateStageTransition(
-    candidate: Candidate,
+    candidate: Candidate & { stage?: string },
     newStage: string,
     _user: User
   ): ValidationResult {
-    if (candidate.currentStage === newStage) {
+    // PipelineBoard uses `stage`, Candidate interface uses `currentStage`
+    const currentStage = (candidate as any).stage || candidate.currentStage;
+    if (currentStage && currentStage === newStage) {
       return {
         valid: false,
         reason: 'Candidate is already in this stage'

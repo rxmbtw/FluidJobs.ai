@@ -104,6 +104,11 @@ app.use('/api/recruiters', require('./routes/recruiter-assignments'));
 app.use('/api/candidate-assignments', require('./routes/candidateAssignments'));
 app.use('/api/pipeline-stages', require('./routes/pipelineStages'));
 
+// Stub notification endpoint - silences 404 until notification system is implemented
+app.post('/api/notifications/stage-update', (req, res) => {
+  res.json({ success: true, message: 'Notification queued (stub)' });
+});
+
 // Serve uploaded files with proper headers
 const uploadsPath = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');
 app.use('/uploads', express.static(uploadsPath, {

@@ -228,7 +228,7 @@ export class CandidateService {
               expected_ctc: app.expected_ctc,
               current_ctc: app.current_ctc
             }),
-            id: app.id.toString(),
+            id: app.candidate_id || app.id.toString(),
             name: app.name,
             email: app.email,
             jobId: app.job_id ? app.job_id.toString() : '',
@@ -459,6 +459,9 @@ export class CandidateService {
         status: this.getStatusFromStage(request.newStage),
         reason: request.reason,
         feedback: request.reason,
+        movedByName: user.name,
+        movedByRole: this.safeGetRole(user),
+        movedByUserId: user.id,
       };
 
       let updatedCandidate: Candidate;
@@ -750,10 +753,21 @@ export class CandidateService {
   // Get stage history for candidate
   static async getStageHistory(candidateId: string): Promise<StageTransition[]> {
     try {
-      const response = await this.apiCall<{ history: StageTransition[] }>(
+      const response = await this.apiCall<{ success: boolean; data: any[] }>(
         `/api/candidates/${candidateId}/history`
       );
-      return response.history;
+      if (!response.data || !Array.isArray(response.data)) return [];
+      // Map backend snake_case columns to frontend StageTransition interface
+      return response.data.map((row: any) => ({
+        id: row.id?.toString() || row.history_id?.toString() || '',
+        candidateId: row.candidate_id || candidateId,
+        fromStage: row.from_stage || '',
+        toStage: row.to_stage || '',
+        timestamp: new Date(row.moved_at || Date.now()),
+        userId: row.moved_by_id || 'system',
+        userName: row.moved_by_name || 'System',
+        reason: row.reason || row.feedback || '',
+      }));
     } catch (error) {
       console.error('Failed to fetch stage history:', error);
       return [];
@@ -837,9 +851,16 @@ export class CandidateService {
     candidate: Candidate,
     transition: StageTransition
   ): Promise<void> {
+    // Fire-and-forget — notifications are non-critical. Never throw, never block stage moves.
     try {
-      await this.apiCall('/api/notifications/stage-update', {
+      const url = `${this.baseUrl}/api/notifications/stage-update`;
+      const token = this.getAuthToken();
+      fetch(url, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           candidateId: candidate.id,
           candidateName: candidate.name,
@@ -848,10 +869,11 @@ export class CandidateService {
           hiringManagerId: candidate.hiringManagerId,
           timestamp: transition.timestamp
         })
+      }).catch(() => {
+        // Silently ignore — endpoint may not exist yet
       });
-    } catch (error) {
-      console.error('Failed to send notifications:', error);
-      // Don't throw - notifications are not critical
+    } catch {
+      // Notifications are best-effort. Never block the main flow.
     }
   }
 

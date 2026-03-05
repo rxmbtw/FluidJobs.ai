@@ -272,58 +272,112 @@ router.put('/:id', async (req, res) => {
 });
 
 
-// Update candidate pipeline stage
+// Update candidate pipeline stage (with chronological history stacking)
 router.put('/:id/stage', async (req, res) => {
   try {
     const { id } = req.params;
-    const { currentStage, status, reason, feedback, jobId } = req.body;
+    const { currentStage, status, reason, feedback, jobId, movedByName, movedByRole, movedByUserId } = req.body;
 
-    if (!currentStage) {
-      return res.status(400).json({ status: 'error', message: 'currentStage is required' });
+    const newStage = currentStage || status;
+    if (!newStage) {
+      return res.status(400).json({ status: 'error', message: 'currentStage or status is required' });
     }
 
-    // Update current_stage on the candidates table (migration 020 added this column)
+    const feedbackText = feedback || reason || null;
+    const jobIdVal = jobId ? parseInt(jobId) : 0;
+    const userName = movedByName || 'System';
+    const userRole = movedByRole || 'Admin';
+    const userId = movedByUserId ? parseInt(movedByUserId) : null;
+
+    // 1. Update current_stage on the candidates table
     const updateResult = await pool.query(
       `UPDATE candidates
        SET current_stage = $1,
            current_stage_since = NOW(),
            last_stage_change_at = NOW(),
+           last_stage_change_by = $3,
            updated_at = NOW()
        WHERE candidate_id = $2
        RETURNING *`,
-      [currentStage, id]
+      [newStage, id, userName]
     );
 
     if (updateResult.rows.length === 0) {
       return res.status(404).json({ status: 'error', message: 'Candidate not found' });
     }
 
-    // Optionally log to candidate_stage_history (migration 020 table)
+    // 2. Map frontend stage names to DB status values for job_applications
+    const stageMap = {
+      'Applied': 'submitted',
+      'Screening': 'screening',
+      'CV Shortlist': 'cv_shortlisted',
+      'CV Shortlisted': 'cv_shortlisted',
+      'HM Review': 'hm_review',
+      'Assignment': 'assignment',
+      'L1 Technical': 'l1_technical',
+      'L2 Technical': 'l2_technical',
+      'HR Round': 'hr_round',
+      'Selected': 'selected',
+      'Rejected': 'rejected',
+      'Dropped': 'dropped',
+      'No Show': 'no_show',
+      'On Hold': 'on_hold',
+    };
+    const dbStatus = stageMap[newStage] || newStage.toLowerCase().replace(/\s+/g, '_');
+
+    // 3. Update the most recent job_application for this candidate
+    await pool.query(
+      `UPDATE job_applications 
+       SET status = $1
+       WHERE candidate_id = $2 
+       AND application_id = (
+         SELECT application_id FROM job_applications 
+         WHERE candidate_id = $2 
+         ORDER BY applied_at DESC 
+         LIMIT 1
+       )`,
+      [dbStatus, id]
+    );
+
+    // 3b. Also update candidate_pipeline_stages (what the pipeline board reads on load)
     try {
-      const feedbackText = reason || feedback || null;
-      const jobIdVal = jobId ? parseInt(jobId) : 0;
+      await pool.query(
+        `UPDATE candidate_pipeline_stages
+         SET current_stage = $1,
+             updated_at    = NOW(),
+             updated_by    = $2
+         WHERE candidate_id = $3`,
+        [newStage, userName, id]
+      );
+    } catch (psErr) {
+      // Non-fatal – table may not exist in all envs
+      console.warn('Could not update candidate_pipeline_stages (non-fatal):', psErr.message);
+    }
+
+    // 4. Log the chronological stage history (Stacked Feedback)
+    try {
       await pool.query(
         `INSERT INTO candidate_stage_history 
-         (candidate_id, job_id, from_stage, to_stage, stage_index, moved_by_name, moved_at, feedback, reason)
-         VALUES ($1, $2, NULL, $3, 0, 'System', NOW(), $4, $5)`,
-        [id, jobIdVal, currentStage, feedbackText, feedbackText]
+         (candidate_id, job_id, from_stage, to_stage, stage_index, moved_by_user_id, moved_by_name, moved_by_role, moved_at, feedback, reason)
+         VALUES ($1, $2, NULL, $3, 0, $4, $5, $6, NOW(), $7, $8)`,
+        [id, jobIdVal, newStage, userId, userName, userRole, feedbackText, feedbackText]
       );
     } catch (historyErr) {
       console.warn('Could not log stage history (non-fatal):', historyErr.message);
     }
 
     try {
-      await logAudit(null, 'System', 'STAGE_UPDATED',
-        `Candidate ${id} moved to stage: ${currentStage}${reason ? ` | Reason: ${reason}` : ''}`,
+      await logAudit(null, userName, 'STAGE_UPDATED',
+        `Candidate ${id} moved to stage: ${newStage}${feedbackText ? ` | Feedback: ${feedbackText}` : ''}`,
         'candidate', id, req);
-    } catch (auditErr) {
-      console.warn('Audit log failed (non-fatal):', auditErr.message);
-    }
+    } catch (auditErr) { }
 
     res.json({
       success: true,
       data: updateResult.rows[0],
-      message: `Stage updated to ${currentStage}`
+      candidateId: id,
+      stage: newStage,
+      message: `Stage updated to ${newStage}`
     });
 
   } catch (error) {
@@ -335,6 +389,7 @@ router.put('/:id/stage', async (req, res) => {
     });
   }
 });
+
 
 
 
@@ -540,90 +595,6 @@ router.get('/stats/overview', async (req, res) => {
       status: 'error',
       message: 'Failed to fetch statistics'
     });
-  }
-});
-// Update candidate stage (for pipeline board drag/drop and stage movement)
-router.put('/:id/stage', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { currentStage, status } = req.body;
-
-    const newStage = currentStage || status;
-    if (!newStage) {
-      return res.status(400).json({ success: false, error: 'Stage/status is required' });
-    }
-
-    // Map frontend stage names to DB status values
-    const stageMap = {
-      'Applied': 'submitted',
-      'Screening': 'screening',
-      'CV Shortlist': 'cv_shortlisted',
-      'CV Shortlisted': 'cv_shortlisted',
-      'HM Review': 'hm_review',
-      'Assignment': 'assignment',
-      'L1 Technical': 'l1_technical',
-      'L2 Technical': 'l2_technical',
-      'HR Round': 'hr_round',
-      'Selected': 'selected',
-      'Rejected': 'rejected',
-      'On Hold': 'on_hold',
-      // Also accept the raw DB values directly
-      'submitted': 'submitted',
-      'screening': 'screening',
-      'cv_shortlisted': 'cv_shortlisted',
-      'hm_review': 'hm_review',
-      'assignment': 'assignment',
-      'l1_technical': 'l1_technical',
-      'l2_technical': 'l2_technical',
-      'hr_round': 'hr_round',
-      'selected': 'selected',
-      'rejected': 'rejected',
-      'on_hold': 'on_hold',
-    };
-
-    const dbStatus = stageMap[newStage] || newStage.toLowerCase().replace(/\s+/g, '_');
-
-    // Update the most recent job_application for this candidate
-    const result = await pool.query(
-      `UPDATE job_applications 
-       SET status = $1
-       WHERE candidate_id = $2 
-       AND application_id = (
-         SELECT application_id FROM job_applications 
-         WHERE candidate_id = $2 
-         ORDER BY applied_at DESC 
-         LIMIT 1
-       )
-       RETURNING *`,
-      [dbStatus, id]
-    );
-
-    if (result.rows.length === 0) {
-      // No existing application — update the candidate record's pipeline_stage if that column exists
-      // Or just return success (stage stored in frontend state for demo)
-      return res.json({
-        success: true,
-        message: 'Stage noted (no application record to update)',
-        candidateId: id,
-        stage: newStage
-      });
-    }
-
-    // Log the stage change in audit trail
-    try {
-      await logAudit(id, 'system', 'STAGE_CHANGE', `Candidate ${id} moved to ${newStage}`, 'candidate', id, req);
-    } catch (e) { /* ignore audit errors */ }
-
-    res.json({
-      success: true,
-      candidateId: id,
-      stage: newStage,
-      application: result.rows[0]
-    });
-
-  } catch (error) {
-    console.error('Error updating candidate stage:', error);
-    res.status(500).json({ success: false, error: error.message });
   }
 });
 

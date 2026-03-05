@@ -267,7 +267,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
   // Stage jump modal states
   const [showStageJumpModal, setShowStageJumpModal] = useState(false);
-  const [selectedCandidateForJump, setSelectedCandidateForJump] = useState<PipelineCandidate | null>(null);
+  const [selectedCandidatesForJump, setSelectedCandidatesForJump] = useState<PipelineCandidate[]>([]);
   const [jumpDirection, setJumpDirection] = useState<'forward' | 'backward'>('forward');
   const [targetJumpStage, setTargetJumpStage] = useState<string | null>(null);
   const [jumpFeedback, setJumpFeedback] = useState('');
@@ -987,7 +987,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
   // Handle opening stage jump modal
   const handleStageJump = (candidate: PipelineCandidate, direction: 'forward' | 'backward', targetStage?: InterviewStage) => {
-    setSelectedCandidateForJump(candidate);
+    setSelectedCandidatesForJump([candidate]);
     setJumpDirection(direction);
     setTargetJumpStage(targetStage || null);
     setJumpFeedback('');
@@ -996,23 +996,19 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
   // Execute stage jump with validation
   const executeStageJump = async () => {
-    if (!selectedCandidateForJump || !targetJumpStage) {
+    if (selectedCandidatesForJump.length === 0 || !targetJumpStage) {
       alert('Please select a target stage.');
       return;
     }
 
-    // Auto-fill feedback if empty (demo mode)
     const feedbackToUse = jumpFeedback.trim() || `Moved to ${targetJumpStage} by admin`;
 
     try {
-      // Use guest user for demo if not logged in
       const effectiveUser = currentUser || { id: 'admin', name: 'Admin', role: 'superadmin', email: 'admin@fluidjobs.ai' };
 
-      console.log('PipelineBoard - Executing stage jump with user:', effectiveUser);
-
-      // Validate the transition
+      // Validate the transition (We validate the first candidate as rep for bulk for now)
       const validationResult = ValidationService.validateStageTransition(
-        selectedCandidateForJump,
+        selectedCandidatesForJump[0],
         targetJumpStage,
         toValidationUser(effectiveUser)
       );
@@ -1023,62 +1019,59 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
       }
 
       // Rejection Cooldown Check
-      if (targetJumpStage === InterviewStage.APPLIED && checkRejectionCooldown(selectedCandidateForJump)) {
-        setCooldownCandidate(selectedCandidateForJump);
-        setShowCooldownModal(true);
-        return;
+      if (targetJumpStage === InterviewStage.APPLIED) {
+        const triggeredCooldown = selectedCandidatesForJump.find(c => checkRejectionCooldown(c));
+        if (triggeredCooldown) {
+          setCooldownCandidate(triggeredCooldown);
+          setShowCooldownModal(true);
+          return;
+        }
       }
 
-      // Determine which stages are being skipped
-      const currentIndex = activeStages.indexOf(selectedCandidateForJump.stage);
+      // Determine skip info from first candidate
+      const currentIndex = activeStages.indexOf(selectedCandidatesForJump[0].stage);
       const targetIndex = activeStages.indexOf(targetJumpStage);
       const skippedStages: string[] = [];
 
       if (jumpDirection === 'forward' && targetIndex > currentIndex + 1) {
-        // Skipping stages forward
         for (let i = currentIndex + 1; i < targetIndex; i++) {
           skippedStages.push(activeStages[i]);
         }
       }
 
-      // Update candidate stage with skip metadata
-      const skipInfo = skippedStages.length > 0
-        ? ` [Skipped: ${skippedStages.join(', ')}]`
-        : '';
+      const skipInfo = skippedStages.length > 0 ? ` [Skipped: ${skippedStages.join(', ')}]` : '';
+      const finalReason = `${feedbackToUse}${skipInfo ? ' ' + skipInfo : ''}`;
 
-      const result = await CandidateService.updateCandidateStage({
-        candidateId: selectedCandidateForJump.id,
-        newStage: targetJumpStage,
-        userId: effectiveUser.id,
-        reason: `${jumpDirection === 'forward' ? 'Skipped forward' : 'Moved backward'}: ${feedbackToUse}${skipInfo}`
-      });
+      const candidateIds = selectedCandidatesForJump.map(c => c.id);
 
-      if (result.success && result.candidate) {
-        // Update local state
+      const result = await CandidateService.bulkUpdateCandidateStages(
+        candidateIds,
+        targetJumpStage,
+        finalReason
+      );
+
+      if (result.success) {
+        const successfulIds = result.results.filter(r => r.success).map(r => r.candidateId);
+
         setCandidates(prev => prev.map(c =>
-          c.id === selectedCandidateForJump.id ? {
-            ...result.candidate!,
-            stage: result.candidate!.currentStage,
-            aging: c.aging,
-            interviewer: c.interviewer,
-            interviewNote: c.interviewNote
-          } : c
+          successfulIds.includes(c.id) ? { ...c, stage: targetJumpStage } : c
         ));
 
-        // Close modal and reset
+        // Clear selection for those successfully moved
+        const newSelection = new Set(selectedCandidates);
+        successfulIds.forEach(id => newSelection.delete(id));
+        setSelectedCandidates(newSelection);
+
         setShowStageJumpModal(false);
-        setSelectedCandidateForJump(null);
+        setSelectedCandidatesForJump([]);
         setTargetJumpStage(null);
         setJumpFeedback('');
-
-        // Show success message
-        console.log(`Stage ${jumpDirection === 'forward' ? 'skip' : 'rollback'} successful. Audit log created.`);
       } else {
-        alert(`Failed to update stage: ${result.error || 'Unknown error'}`);
+        alert('Failed to update one or more candidates.');
       }
     } catch (error) {
-      console.error('Stage jump failed:', error);
-      alert('Failed to update candidate stage. Please try again.');
+      console.error('Stage jump error:', error);
+      alert('An error occurred while moving candidates.');
     }
   };
 
@@ -1087,65 +1080,14 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   // Modal handlers
 
 
-  const handleBulkMove = async () => {
+  const handleBulkMove = () => {
     const selectedCandidatesList = candidates.filter(c => selectedCandidates.has(c.id));
-
-    try {
-      const candidateIds = selectedCandidatesList.map(c => c.id);
-      const targetStage = getNextStage(selectedCandidatesList[0].stage);
-
-      // Check if moving to Applied (unlikely for bulk, but safe to add)
-      if (targetStage === InterviewStage.APPLIED) {
-        const triggeredCooldown = selectedCandidatesList.find(c => checkRejectionCooldown(c));
-        if (triggeredCooldown) {
-          setCooldownCandidate(triggeredCooldown);
-          setShowCooldownModal(true);
-          return;
-        }
-      }
-
-      const result = await CandidateService.bulkUpdateCandidateStages(
-        candidateIds,
-        targetStage,
-        'Bulk stage progression via pipeline board'
-      );
-
-      if (result.success) {
-        // Update local state for successful updates
-        const successfulIds = result.results
-          .filter(r => r.success)
-          .map(r => r.candidateId);
-
-        setCandidates(prev => prev.map(c =>
-          successfulIds.includes(c.id)
-            ? { ...c, stage: targetStage, lastUpdateDate: new Date().toISOString().split('T')[0] }
-            : c
-        ));
-
-        // Show comprehensive summary
-        const successCount = result.results.filter(r => r.success).length;
-        const failCount = result.results.filter(r => !r.success).length;
-
-        if (failCount > 0) {
-          const failedReasons = result.results
-            .filter(r => !r.success)
-            .map(r => r.error)
-            .filter((reason, index, arr) => arr.indexOf(reason) === index) // Unique reasons
-            .slice(0, 3) // Show max 3 unique reasons
-            .join(', ');
-
-          alert(`${successCount} candidates updated successfully. ${failCount} failed due to: ${failedReasons}${failCount > 3 ? '...' : ''}`);
-        } else {
-          console.log(`All ${successCount} candidates updated successfully. Audit logs created:`, result.auditLogs.length);
-        }
-      }
-    } catch (error) {
-      console.error('Bulk update failed:', error);
-      alert('Failed to update candidates. Please try again.');
-    }
-
-    setShowBulkMoveModal(false);
-    clearSelection();
+    if (selectedCandidatesList.length === 0) return;
+    setSelectedCandidatesForJump(selectedCandidatesList);
+    setJumpDirection('forward');
+    setTargetJumpStage(null);
+    setJumpFeedback('');
+    setShowStageJumpModal(true);
   };
 
   // Get bulk action button text and check if action is allowed
@@ -1363,7 +1305,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowBulkMoveModal(true)}
+              onClick={handleBulkMove}
               disabled={getBulkActionInfo().disabled}
               className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               title={getBulkActionInfo().reason}
@@ -3542,68 +3484,6 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
 
       {/* Bulk Move Confirmation Modal */}
-      {showBulkMoveModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden animate-in slide-in-from-bottom duration-500">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900">Confirm Stage Update</h3>
-            </div>
-
-            <div className="p-6">
-              <div className="space-y-4">
-                <p className="text-sm text-gray-700">
-                  You are about to move <span className="font-semibold">{selectedCandidates.size} candidate{selectedCandidates.size > 1 ? 's' : ''}</span> to the next stage.
-                  Please confirm after reviewing all selections.
-                </p>
-
-                {/* Show selected candidates */}
-                <div className="max-h-32 overflow-y-auto bg-gray-50 rounded-lg p-3">
-                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Selected Candidates:</div>
-                  <div className="space-y-1">
-                    {candidates
-                      .filter(c => selectedCandidates.has(c.id))
-                      .map(candidate => (
-                        <div key={candidate.id} className="flex items-center justify-between text-sm">
-                          <span className="font-medium text-gray-900">{candidate.name}</span>
-                          <span className="text-gray-500">{candidate.stage} â†’ {getNextStage(candidate.stage)}</span>
-                        </div>
-                      ))
-                    }
-                  </div>
-                </div>
-
-                {/* Feedback textarea */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Stage Notes / Feedback <span className="text-gray-400 font-normal">(optional)</span></label>
-                  <textarea
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-                    rows={3}
-                    placeholder="Add notes or feedback for this stage move..."
-                    value={bulkMoveFeedback}
-                    onChange={(e) => setBulkMoveFeedback(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-              <button
-                onClick={() => setShowBulkMoveModal(false)}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleBulkMove}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
-              >
-                <Check className="w-4 h-4" />
-                Confirm & Move
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* HM Review Modal - REPLACED WITH NEW COMPONENT */}
       <HMReviewModal
@@ -3969,20 +3849,20 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
       {/* ==================== STAGE JUMP MODAL ==================== */}
       <StageJumpModal
         show={showStageJumpModal}
-        candidate={selectedCandidateForJump}
+        candidates={selectedCandidatesForJump}
         direction={jumpDirection}
         targetStage={targetJumpStage}
         feedback={jumpFeedback}
         availableStages={
-          selectedCandidateForJump
+          selectedCandidatesForJump.length > 0
             ? jumpDirection === 'forward'
-              ? getAvailableForwardStages(selectedCandidateForJump)
-              : getAvailableBackwardStages(selectedCandidateForJump)
+              ? getAvailableForwardStages(selectedCandidatesForJump[0])
+              : getAvailableBackwardStages(selectedCandidatesForJump[0])
             : []
         }
         onClose={() => {
           setShowStageJumpModal(false);
-          setSelectedCandidateForJump(null);
+          setSelectedCandidatesForJump([]);
           setTargetJumpStage(null);
           setJumpFeedback('');
         }}

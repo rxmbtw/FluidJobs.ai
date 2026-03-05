@@ -100,7 +100,7 @@ const CustomStageDropdown: React.FC<CustomStageDropdownProps> = ({
 
 interface StageJumpModalProps {
     show: boolean;
-    candidate: PipelineCandidate | null;
+    candidates: PipelineCandidate[];
     direction: 'forward' | 'backward';
     targetStage: string | null;
     feedback: string;
@@ -113,7 +113,7 @@ interface StageJumpModalProps {
 
 export const StageJumpModal: React.FC<StageJumpModalProps> = ({
     show,
-    candidate,
+    candidates,
     direction,
     targetStage,
     feedback,
@@ -123,7 +123,7 @@ export const StageJumpModal: React.FC<StageJumpModalProps> = ({
     onFeedbackChange,
     onExecute
 }) => {
-    if (!show || !candidate) return null;
+    if (!show || !candidates || candidates.length === 0) return null;
 
     const isForward = direction === 'forward';
     const headerColor = isForward
@@ -147,9 +147,11 @@ export const StageJumpModal: React.FC<StageJumpModalProps> = ({
                         )}
                         <div>
                             <h3 className="text-lg font-semibold text-white">
-                                {isForward ? 'Skip Forward' : 'Move Backward'}
+                                {isForward ? 'Move Candidate' : 'Move Backward'}
                             </h3>
-                            <p className="text-sm text-white/80">{candidate.name}</p>
+                            <p className="text-sm text-white/80">
+                                {candidates.length === 1 ? candidates[0].name : `${candidates.length} candidates selected`}
+                            </p>
                         </div>
                     </div>
                     <button
@@ -164,14 +166,20 @@ export const StageJumpModal: React.FC<StageJumpModalProps> = ({
                 <div className="p-6 space-y-4">
                     {/* Current Stage Info */}
                     <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <div className="text-xs font-medium text-gray-500 mb-1">Current Stage</div>
-                        <div className="text-sm font-semibold text-gray-900">{candidate.stage}</div>
+                        <div className="text-xs font-medium text-gray-500 mb-1">
+                            {candidates.length === 1 ? 'Current Stage' : 'Moving From'}
+                        </div>
+                        <div className="text-sm font-semibold text-gray-900">
+                            {candidates.length === 1
+                                ? candidates[0].stage
+                                : Array.from(new Set(candidates.map(c => c.stage))).join(', ')}
+                        </div>
                     </div>
 
                     {/* Stage Selection */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            {isForward ? 'Skip to Stage' : 'Return to Stage'}
+                            {isForward ? 'Move to Stage' : 'Return to Stage'}
                             <span className="text-red-500 ml-1">*</span>
                         </label>
                         <CustomStageDropdown
@@ -186,7 +194,7 @@ export const StageJumpModal: React.FC<StageJumpModalProps> = ({
                     {/* Reason/Feedback */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            {isForward ? 'Reason for Skipping' : 'Reason for Moving Back'}
+                            {isForward ? 'Reason for Moving' : 'Reason for Moving Back'}
                             <span className="text-red-500 ml-1">*</span>
                         </label>
                         <textarea
@@ -194,7 +202,7 @@ export const StageJumpModal: React.FC<StageJumpModalProps> = ({
                             onChange={(e) => onFeedbackChange(e.target.value)}
                             rows={4}
                             placeholder={isForward
-                                ? 'Explain why this stage is being skipped...'
+                                ? 'Explain why this candidate is being moved...'
                                 : 'Explain why returning to this stage...'
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all"
@@ -204,12 +212,12 @@ export const StageJumpModal: React.FC<StageJumpModalProps> = ({
                         </p>
                     </div>
 
-                    {/* Warning for forward skip */}
+                    {/* Warning for forward movement */}
                     {isForward && (
                         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
                             <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                             <p className="text-xs text-amber-800">
-                                Skipping stages will be flagged in audit reports. Ensure proper justification is provided.
+                                This movement will be flagged in audit reports. Ensure proper justification is provided.
                             </p>
                         </div>
                     )}
@@ -233,7 +241,7 @@ export const StageJumpModal: React.FC<StageJumpModalProps> = ({
                                 : 'bg-amber-600 text-white hover:bg-amber-700 shadow-sm hover:shadow-md'
                             }`}
                     >
-                        {isForward ? 'Skip Forward' : 'Move Back'}
+                        {isForward ? 'Move Candidate' : 'Move Back'}
                     </button>
                 </div>
             </div>

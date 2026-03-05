@@ -4,6 +4,26 @@ import { useDashboardHeader } from './NewDashboardContainer';
 import { JobStage } from './types';
 import { Info, FileText, CheckSquare, DollarSign, Users, ClipboardList, Trash2, Calendar, MapPin, Briefcase, Upload, Sparkles, X, Plus, ChevronUp, ChevronDown, Edit3, GripVertical, Image, AlertCircle, Check, Bold, Italic, Underline, Strikethrough } from 'lucide-react';
 import SuccessModal from '../SuccessModal';
+import ImagePickerModal from '../common/ImagePickerModal';
+import { formatJobTitle, getDuplicateTitleError } from '../../utils/jobTitleUtils';
+
+const domainSuggestions = [
+  // Tech & Engineering
+  'Software Engineering', 'Frontend Development', 'Backend Development', 'Full Stack Development',
+  'Mobile Development', 'DevOps & SRE', 'Cloud Computing', 'Data Science', 'Machine Learning',
+  'Artificial Intelligence', 'Data Engineering', 'Cybersecurity', 'IT & Systems',
+  'Quality Assurance (QA)', 'Blockchain & Web3', 'Game Development', 'AR/VR/XR',
+  'Embedded Systems', 'Network Engineering', 'Database Administration',
+
+  // Product & Design
+  'Product Management', 'Project Management', 'UI/UX Design', 'Product Design',
+  'Graphic Design', 'Technical Writing', 'Scrum & Agile',
+
+  // Business & Operations
+  'Digital Marketing', 'Sales & Business Development', 'Human Resources (HR)',
+  'Talent Acquisition', 'Finance & Accounting', 'Operations', 'Customer Success',
+  'Legal & Compliance', 'Strategy & Consulting', 'Supply Chain & Logistics'
+];
 
 const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSaveSuccess?: () => void }> = ({ onDirtyChange, onSaveSuccess }) => {
   const { setHeaderActions } = useDashboardHeader();
@@ -51,14 +71,17 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
   const [currentStageType, setCurrentStageType] = useState<'standard' | 'custom'>('standard');
   const [showNewStageInput, setShowNewStageInput] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
-  const [showAllTech, setShowAllTech] = useState(false);
-  const [showAllManagement, setShowAllManagement] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImageId, setSelectedImageId] = useState<number | undefined>(undefined);
   const [users, setUsers] = useState<any[]>([]);
   const [teamAssignments, setTeamAssignments] = useState<{ [userId: string]: string[] }>({});
   // occupiedStages: stage name -> count of candidates currently in that stage
   const [occupiedStages, setOccupiedStages] = useState<Record<string, number>>({});
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [titleWarning, setTitleWarning] = useState('');
+  const [isCheckingTitle, setIsCheckingTitle] = useState(false);
+  const [showDomainSuggestions, setShowDomainSuggestions] = useState(false);
+  const [apiDomainSuggestions, setApiDomainSuggestions] = useState<string[]>([]);
 
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [statusAction, setStatusAction] = useState<'Paused' | 'Closed' | null>(null);
@@ -81,6 +104,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
     switch (sectionId) {
       case 'basic':
         if (!jobDetails.title.trim()) newErrors.title = 'Job title is required';
+        else if (titleWarning) newErrors.title = getDuplicateTitleError(titleWarning);
         if (!jobDetails.domain) newErrors.domain = 'Job domain is required';
         if (!jobDetails.minExperience) newErrors.minExperience = 'Min experience is required';
         if (!jobDetails.maxExperience) newErrors.maxExperience = 'Max experience is required';
@@ -116,70 +140,6 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
     return Object.keys(newErrors).length === 0;
   };
   const [blockedStageName, setBlockedStageName] = useState<string | null>(null); // for locked-stage tooltip modal
-  const [usedImages, setUsedImages] = useState<string[]>([]);
-
-  const jobImages = [
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&h=250&fit=crop',
-    'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop'
-  ];
-
-  const checkIsAlreadyUsed = (imageUrl: string) => {
-    if (!imageUrl) return false;
-    // Base URL match (ignore queries like MinIO signature)
-    const getBaseUrl = (url: string) => {
-      try {
-        const urlObj = new URL(url);
-        return urlObj.origin + urlObj.pathname;
-      } catch (e) {
-        return url.split('?')[0];
-      }
-    };
-
-    const targetBase = getBaseUrl(imageUrl);
-    // Ignore if the targetBase matches the original job cover (allow keeping current image)
-    if (originalCoverImage.current && getBaseUrl(originalCoverImage.current) === targetBase) {
-      return false;
-    }
-
-    return usedImages.some(usedUrl => getBaseUrl(usedUrl) === targetBase);
-  };
-
-  const IMG_PROXY = (url: string) => `http://localhost:8000/api/image-proxy?url=${encodeURIComponent(url)}`;
-
-  const fluidJobsImages = {
-    tech: [
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/ai-technology-microchip-background-digital-transformation-concept.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/annie-spratt-QckxruozjRg-unsplash.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/Custom%20Education%20&%20Training%20Systems%20with%20Python%20Development.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/Frontend%20vs%20Backend%20What%20Happens%20Behind%20a%20Website.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/nubelson-fernandes--Xqckh_XVU4-unsplash.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/patrick-tomasso-fMntI8HAAB8-unsplash.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/person-front-computer-working-html.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/representation-user-experience-interface-design.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/roman-synkevych-E-V6EMtGSUU-unsplash.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Tech/software-development-6523979_1280.jpg')
-    ],
-    management: [
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/business-meeting-office.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/business-people-board-room-meeting.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/close-up-woman-working-laptop.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/closeup-job-applicant-giving-his-resume-job-interview-office.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/Data%20Science%20Meeting.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/hunters-race-MYbhN8KaaEc-unsplash.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/lukas-blazek-mcSDtbWXUZU-unsplash.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/portrait-smiling-woman-startup-office-coding.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/smiley-man-work-holding-laptop-posing.jpg'),
-      IMG_PROXY('https://72.60.103.151:9100/fluidai-bucket/FLuidJobs%20AI%20-%20Image%20Deck/Management/woman-retoucher-looking-camera-smiling-sitting-creative-design-media-agency.jpg')
-    ]
-  };
 
   // --- Confirmation popup states ---
   const [showDiscardModal, setShowDiscardModal] = useState(false);
@@ -297,7 +257,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
         });
         if (res.ok) {
           const uData = await res.json();
-          setUsedImages(uData.usedImages || []);
+          // setUsedImages(uData.usedImages || []); // REMOVED unused state variable from previous image selector logic
         }
       } catch (e) {
         console.error('[JobSettings] Error fetching used images:', e);
@@ -324,6 +284,51 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   });
+
+  // Filter local tech domains based on user input
+  useEffect(() => {
+    const term = jobDetails.domain?.trim().toLowerCase() || '';
+    if (!term) {
+      setApiDomainSuggestions([]);
+      return;
+    }
+
+    const matched = domainSuggestions.filter(domain =>
+      domain.toLowerCase().includes(term)
+    );
+
+    setApiDomainSuggestions(matched.slice(0, 8));
+  }, [jobDetails.domain]);
+
+  // Debounced job title duplicate check
+  useEffect(() => {
+    if (!jobDetails.title?.trim()) {
+      setTitleWarning('');
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsCheckingTitle(true);
+      try {
+        const baseUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+        let url = `${baseUrl}/api/jobs-enhanced/check-title?title=${encodeURIComponent(jobDetails.title)}`;
+        if (jobId) url += `&exclude_job_id=${jobId}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.success && data.exists) {
+          setTitleWarning('⚠️ A different job with this title already exists. Using a unique title is strongly recommended to avoid confusion on the Jobs and Careers pages.');
+        } else {
+          setTitleWarning('');
+        }
+      } catch (err) {
+        console.warn('[check-title] Failed:', err);
+        setTitleWarning('');
+      } finally {
+        setIsCheckingTitle(false);
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [jobDetails.title, jobId]);
 
   const handleCancelClick = () => {
     if (isDirty()) {
@@ -440,8 +445,31 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
     setPendingSectionId(null);
   };
 
+  const SECTION_ORDER = ['basic', 'image', 'timeline', 'location', 'requirements', 'compensation', 'team', 'description', 'process'];
+
+  const handleNextSection = () => {
+    const currentIndex = SECTION_ORDER.indexOf(activeSection);
+    if (currentIndex < SECTION_ORDER.length - 1) {
+      setActiveSection(SECTION_ORDER[currentIndex + 1]);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handlePrevSection = () => {
+    const currentIndex = SECTION_ORDER.indexOf(activeSection);
+    if (currentIndex > 0) {
+      setActiveSection(SECTION_ORDER[currentIndex - 1]);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const handleSaveClick = () => {
+    if (titleWarning) {
+      // Don't allow saving when a duplicate title exists
+      setErrors(prev => ({ ...prev, title: getDuplicateTitleError(titleWarning) }));
+      return;
+    }
     if (isDirty()) {
       if (isRecruiterRole) {
         setShowApprovalModal(true);
@@ -522,7 +550,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
             {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-              body: JSON.stringify({ selected_image: selectedImage })
+              body: JSON.stringify({ selected_image: selectedImage, cover_image_id: selectedImageId })
             }
           ).catch(() => { }); // non-blocking
         }
@@ -586,10 +614,18 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
   ];
 
   const handleInputChange = (field: string, value: any) => {
-    setJobDetails(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    if (field === 'title' && typeof value === 'string') {
+      // Auto-format: title-case + preserve known abbreviations (AI, ML, UI, etc.)
+      setJobDetails(prev => ({
+        ...prev,
+        title: formatJobTitle(value)
+      }));
+    } else {
+      setJobDetails(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
   };
 
   const execEditorCommand = (command: string, value?: string) => {
@@ -876,7 +912,8 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
         </button>
         <button
           onClick={handleSaveClick}
-          className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-all"
+          disabled={!!titleWarning || isCheckingTitle}
+          className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Save Changes
         </button>
@@ -1086,25 +1123,63 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.title ? 'border-red-500' : 'border-gray-300'}`}
                     />
                     {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
+                    {isCheckingTitle && !errors.title && (
+                      <p className="text-gray-400 text-xs mt-1">Checking title availability...</p>
+                    )}
+                    {titleWarning && !errors.title && (
+                      <div className="mt-2 p-2 bg-red-50 border border-red-400 rounded-md flex items-start gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <span className="text-red-600 text-sm font-medium">⚠️ This job title already exists. Please choose another name.</span>
+                      </div>
+                    )}
+                    {!titleWarning && !isCheckingTitle && jobDetails.title.trim() && !errors.title && (
+                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <Check className="w-4 h-4 text-green-600" />
+                        <span className="text-green-700 text-sm font-medium">This job title is available!</span>
+                      </div>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Job Domain <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      value={jobDetails.domain}
-                      onChange={(e) => {
-                        handleInputChange('domain', e.target.value);
-                        if (errors.domain) setErrors(prev => ({ ...prev, domain: '' }));
-                      }}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.domain ? 'border-red-500' : 'border-gray-300'}`}
-                    >
-                      {domainOptions.map(domain => (
-                        <option key={domain} value={domain}>{domain}</option>
-                      ))}
-                    </select>
-                    {errors.domain && <p className="text-red-500 text-sm mt-1">{errors.domain}</p>}
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={jobDetails.domain}
+                        onChange={(e) => {
+                          handleInputChange('domain', e.target.value);
+                          if (errors.domain) setErrors(prev => ({ ...prev, domain: '' }));
+                        }}
+                        onFocus={() => setShowDomainSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowDomainSuggestions(false), 200)}
+                        placeholder="Ex. Software Development"
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.domain ? 'border-red-500' : 'border-gray-300'}`}
+                        autoComplete="off"
+                      />
+                      {errors.domain && <p className="text-red-500 text-sm mt-1">{errors.domain}</p>}
+                      {showDomainSuggestions && apiDomainSuggestions.length > 0 && (
+                        <div className="dropdown-content absolute top-full mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto z-50 transition-all duration-300 ease-in-out">
+                          <div className="p-2">
+                            {apiDomainSuggestions.map((domain, index) => (
+                              <div
+                                key={index}
+                                onClick={() => {
+                                  // Update domain
+                                  // Can't directly call handleInputChange since we pass the value manually instead of event
+                                  setJobDetails(prev => ({ ...prev, domain }));
+                                  setShowDomainSuggestions(false);
+                                  if (errors.domain) setErrors(prev => ({ ...prev, domain: '' }));
+                                }}
+                                className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
+                              >
+                                {domain}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div>
@@ -1125,18 +1200,18 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Min Experience (Years) <span className="text-red-500">*</span>
                     </label>
-                    <select
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
                       value={jobDetails.minExperience}
                       onChange={(e) => {
                         handleInputChange('minExperience', e.target.value);
                         if (errors.minExperience) setErrors(prev => ({ ...prev, minExperience: '' }));
                       }}
+                      placeholder="e.g. 2"
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.minExperience ? 'border-red-500' : 'border-gray-300'}`}
-                    >
-                      {experienceOptions.map(exp => (
-                        <option key={exp} value={exp}>{exp}</option>
-                      ))}
-                    </select>
+                    />
                     {errors.minExperience && <p className="text-red-500 text-sm mt-1">{errors.minExperience}</p>}
                   </div>
 
@@ -1144,18 +1219,18 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Max Experience (Years) <span className="text-red-500">*</span>
                     </label>
-                    <select
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
                       value={jobDetails.maxExperience}
                       onChange={(e) => {
                         handleInputChange('maxExperience', e.target.value);
                         if (errors.maxExperience) setErrors(prev => ({ ...prev, maxExperience: '' }));
                       }}
+                      placeholder="e.g. 5"
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.maxExperience ? 'border-red-500' : 'border-gray-300'}`}
-                    >
-                      {experienceOptions.map(exp => (
-                        <option key={exp} value={exp}>{exp}</option>
-                      ))}
-                    </select>
+                    />
                     {errors.maxExperience && <p className="text-red-500 text-sm mt-1">{errors.maxExperience}</p>}
                   </div>
 
@@ -1178,6 +1253,16 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                   </div>
                 </div>
 
+
+                <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handleNextSection}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                  >
+                    Next →
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1234,6 +1319,23 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                     </ul>
                   </div>
                 </div>
+
+                <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handlePrevSection}
+                    className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
+                  >
+                    ← Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextSection}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                  >
+                    Next →
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1273,6 +1375,23 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                     />
                     {errors.registrationClosingDate && <p className="text-red-500 text-sm mt-1">{errors.registrationClosingDate}</p>}
                   </div>
+                </div>
+
+                <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handlePrevSection}
+                    className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
+                  >
+                    ← Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextSection}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                  >
+                    Next →
+                  </button>
                 </div>
               </div>
             )}
@@ -1355,6 +1474,23 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                     )}
                   </div>
                   {errors.locations && <p className="text-red-500 text-sm mt-2">{errors.locations}</p>}
+                </div>
+
+                <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handlePrevSection}
+                    className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
+                  >
+                    ← Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextSection}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                  >
+                    Next →
+                  </button>
                 </div>
               </div>
             )}
@@ -1597,6 +1733,23 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                   </div>
                   {errors.skills && <p className="text-red-500 text-sm mt-2">{errors.skills}</p>}
                 </div>
+
+                <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handlePrevSection}
+                    className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
+                  >
+                    ← Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextSection}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                  >
+                    Next →
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1658,6 +1811,23 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                     />
                     <span className="text-sm text-gray-700">Show salary to candidates</span>
                   </label>
+                </div>
+
+                <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handlePrevSection}
+                    className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
+                  >
+                    ← Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextSection}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                  >
+                    Next →
+                  </button>
                 </div>
               </div>
             )}
@@ -1911,6 +2081,23 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                     </div>
                   </div>
                 )}
+
+                <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handlePrevSection}
+                    className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
+                  >
+                    ← Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextSection}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                  >
+                    Next →
+                  </button>
+                </div>
               </div>
             )}
 
@@ -2075,6 +2262,23 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                     </div>
                   </div>
                 </div>
+
+                <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handlePrevSection}
+                    className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
+                  >
+                    ← Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextSection}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                  >
+                    Next →
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -2082,169 +2286,19 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
       </div>
 
       {/* Image Selection Modal */}
-      {
-        showImageModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <h2 className="text-2xl font-bold text-gray-900">Select Job Opening Image</h2>
-                <button
-                  onClick={() => setShowImageModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-                {/* Image Categories */}
-                <div className="space-y-8">
-                  {/* Technology Images */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Briefcase className="w-5 h-5 text-blue-600" />
-                      Technology & Engineering
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {fluidJobsImages.tech.map((imagePath, index) => (
-                        <div
-                          key={index}
-                          onClick={() => {
-                            setSelectedImage(imagePath);
-                            setShowImageModal(false);
-                          }}
-                          className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:border-blue-500 hover:shadow-lg ${selectedImage === imagePath ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
-                            }`}
-                        >
-                          <img
-                            src={imagePath}
-                            alt={`Tech option ${index + 1}`}
-                            className="w-full h-32 object-cover"
-                            onError={(e) => {
-                              // Fallback to a placeholder if image doesn't load
-                              (e.target as HTMLImageElement).src = `https://picsum.photos/seed/tech${index}/400/200`;
-                            }}
-                          />
-                          {selectedImage === imagePath && (
-                            <div className="absolute inset-0 bg-blue-500 bg-opacity-20 flex items-center justify-center">
-                              <div className="bg-blue-500 text-white rounded-full p-1">
-                                <CheckSquare className="w-4 h-4" />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Management & Business Images */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Users className="w-5 h-5 text-green-600" />
-                      Management & Business
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {fluidJobsImages.management.map((imagePath, index) => (
-                        <div
-                          key={index}
-                          onClick={() => {
-                            setSelectedImage(imagePath);
-                            setShowImageModal(false);
-                          }}
-                          className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:border-green-500 hover:shadow-lg ${selectedImage === imagePath ? 'border-green-500 ring-2 ring-green-200' : 'border-gray-200'
-                            }`}
-                        >
-                          <img
-                            src={imagePath}
-                            alt={`Management option ${index + 1}`}
-                            className="w-full h-32 object-cover"
-                            onError={(e) => {
-                              // Fallback to a placeholder if image doesn't load
-                              (e.target as HTMLImageElement).src = `https://picsum.photos/seed/mgmt${index}/400/200`;
-                            }}
-                          />
-                          {selectedImage === imagePath && (
-                            <div className="absolute inset-0 bg-green-500 bg-opacity-20 flex items-center justify-center">
-                              <div className="bg-green-500 text-white rounded-full p-1">
-                                <CheckSquare className="w-4 h-4" />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Generic Professional Images */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-purple-600" />
-                      Professional & Generic
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {[
-                        'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=200&fit=crop',
-                        'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=400&h=200&fit=crop',
-                        'https://images.unsplash.com/photo-1486312338219-ce68e2c6b696?w=400&h=200&fit=crop',
-                        'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=400&h=200&fit=crop',
-                        'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=400&h=200&fit=crop',
-                        'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400&h=200&fit=crop',
-                        'https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=400&h=200&fit=crop',
-                        'https://images.unsplash.com/photo-1515378791036-0648a814c963?w=400&h=200&fit=crop'
-                      ].map((imagePath, index) => (
-                        <div
-                          key={index}
-                          onClick={() => {
-                            setSelectedImage(imagePath);
-                            setShowImageModal(false);
-                          }}
-                          className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:border-purple-500 hover:shadow-lg ${selectedImage === imagePath ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
-                            }`}
-                        >
-                          <img
-                            src={imagePath}
-                            alt={`Professional option ${index + 1}`}
-                            className="w-full h-32 object-cover"
-                          />
-                          {selectedImage === imagePath && (
-                            <div className="absolute inset-0 bg-purple-500 bg-opacity-20 flex items-center justify-center">
-                              <div className="bg-purple-500 text-white rounded-full p-1">
-                                <CheckSquare className="w-4 h-4" />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
-                <div className="text-sm text-gray-600">
-                  {selectedImage ? 'Image selected! Click "Select Image" again to change.' : 'Click on any image to select it for your job opening.'}
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowImageModal(false)}
-                    className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  {selectedImage && (
-                    <button
-                      onClick={() => setShowImageModal(false)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Use Selected Image
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      }
+      <ImagePickerModal
+        isOpen={showImageModal}
+        onClose={() => setShowImageModal(false)}
+        currentImageId={selectedImageId}
+        onSelect={(imageUrl, imageId) => {
+          setSelectedImage(imageUrl);
+          setSelectedImageId(imageId);
+          setShowImageModal(false);
+          if (errors.selectedImage) {
+            setErrors(prev => ({ ...prev, selectedImage: '' }));
+          }
+        }}
+      />
 
       {/* Discard Changes Modal */}
       {showDiscardModal && (
@@ -2420,269 +2474,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
           </div>
         </div>
       )}
-      {
-        showImageModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto mx-4">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-semibold text-gray-900">Select Job Posting Image</h2>
-                <button
-                  onClick={() => setShowImageModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
 
-              {/* Technology & Development Section */}
-              <div className="mb-8">
-                <h3 className="text-lg font-medium text-gray-800 mb-4">
-                  Technology & Development
-                  {fluidJobsImages.tech.length > 8 && (
-                    <span className="ml-2 text-sm text-gray-500">({fluidJobsImages.tech.length} images)</span>
-                  )}
-                </h3>
-                {fluidJobsImages.tech.length > 0 ? (
-                  <>
-                    <div className="grid grid-cols-4 gap-4">
-                      {(showAllTech ? fluidJobsImages.tech : fluidJobsImages.tech.slice(0, 8)).map((image, index) => {
-                        const url = image;
-                        const isAlreadyUsed = checkIsAlreadyUsed(url);
-                        const isSelected = selectedImage === url;
-                        return (
-                          <div
-                            key={`tech-${index}`}
-                            onClick={() => {
-                              if (isAlreadyUsed) return;
-                              setSelectedImage(url);
-                              if (errors.selectedImage) setErrors(prev => ({ ...prev, selectedImage: '' }));
-                              setShowImageModal(false);
-                            }}
-                            title={isAlreadyUsed ? 'Already used in another job for this account' : ''}
-                            className={`relative rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${isAlreadyUsed
-                              ? 'border-green-400 cursor-not-allowed opacity-75'
-                              : isSelected
-                                ? 'border-indigo-600 ring-2 ring-indigo-200 cursor-pointer'
-                                : 'border-gray-200 hover:border-indigo-300 cursor-pointer'
-                              }`}
-                          >
-                            <img
-                              src={url}
-                              alt="Tech"
-                              loading="lazy"
-                              className="w-full h-32 object-cover bg-gray-100"
-                              style={{ contentVisibility: 'auto' }}
-                              onError={(e) => {
-                                e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12"%3EImage unavailable%3C/text%3E%3C/svg%3E';
-                              }}
-                            />
-                            {isSelected && (
-                              <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
-                                <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                </div>
-                              </div>
-                            )}
-                            {isAlreadyUsed && (
-                              <div className="absolute inset-0 bg-green-600 bg-opacity-30 flex flex-col items-center justify-center">
-                                <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center shadow">
-                                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                </div>
-                                <span className="text-white text-xs font-semibold mt-1 drop-shadow">In Use</span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {!showAllTech && fluidJobsImages.tech.length > 8 && (
-                      <button
-                        onClick={() => setShowAllTech(true)}
-                        className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                      >
-                        <span>Show {fluidJobsImages.tech.length - 8} more images</span>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                    )}
-                    {showAllTech && fluidJobsImages.tech.length > 8 && (
-                      <button
-                        onClick={() => setShowAllTech(false)}
-                        className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                      >
-                        <span>Show less</span>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                        </svg>
-                      </button>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No technology images available</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Management & Business Section */}
-              <div className="mb-6">
-                <h3 className="text-lg font-medium text-gray-800 mb-4">
-                  Management & Business
-                  {fluidJobsImages.management.length > 8 && (
-                    <span className="ml-2 text-sm text-gray-500">({fluidJobsImages.management.length} images)</span>
-                  )}
-                </h3>
-                {fluidJobsImages.management.length > 0 ? (
-                  <>
-                    <div className="grid grid-cols-4 gap-4">
-                      {(showAllManagement ? fluidJobsImages.management : fluidJobsImages.management.slice(0, 8)).map((image, index) => {
-                        const url = image;
-                        const isAlreadyUsed = checkIsAlreadyUsed(url);
-                        const isSelected = selectedImage === url;
-                        return (
-                          <div
-                            key={`mgmt-${index}`}
-                            onClick={() => {
-                              if (isAlreadyUsed) return;
-                              setSelectedImage(url);
-                              if (errors.selectedImage) setErrors(prev => ({ ...prev, selectedImage: '' }));
-                              setShowImageModal(false);
-                            }}
-                            title={isAlreadyUsed ? 'Already used in another job for this account' : ''}
-                            className={`relative rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${isAlreadyUsed
-                              ? 'border-green-400 cursor-not-allowed opacity-75'
-                              : isSelected
-                                ? 'border-indigo-600 ring-2 ring-indigo-200 cursor-pointer'
-                                : 'border-gray-200 hover:border-indigo-300 cursor-pointer'
-                              }`}
-                          >
-                            <img
-                              src={url}
-                              alt="Management"
-                              loading="lazy"
-                              className="w-full h-32 object-cover bg-gray-100"
-                              style={{ contentVisibility: 'auto' }}
-                              onError={(e) => {
-                                e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12"%3EImage unavailable%3C/text%3E%3C/svg%3E';
-                              }}
-                            />
-                            {isSelected && (
-                              <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
-                                <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                </div>
-                              </div>
-                            )}
-                            {isAlreadyUsed && (
-                              <div className="absolute inset-0 bg-green-600 bg-opacity-30 flex flex-col items-center justify-center">
-                                <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center shadow">
-                                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                </div>
-                                <span className="text-white text-xs font-semibold mt-1 drop-shadow">In Use</span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {!showAllManagement && fluidJobsImages.management.length > 8 && (
-                      <button
-                        onClick={() => setShowAllManagement(true)}
-                        className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                      >
-                        <span>Show {fluidJobsImages.management.length - 8} more images</span>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                    )}
-                    {showAllManagement && fluidJobsImages.management.length > 8 && (
-                      <button
-                        onClick={() => setShowAllManagement(false)}
-                        className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                      >
-                        <span>Show less</span>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                        </svg>
-                      </button>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No management images available</p>
-                  </div>
-                )}
-              </div>
-
-              {/* General Professional Section (Unsplash fallback) */}
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-4">General Professional</h3>
-                <div className="grid grid-cols-4 gap-4">
-                  {jobImages.map((image, index) => {
-                    const isAlreadyUsed = checkIsAlreadyUsed(image);
-                    const isSelected = selectedImage === image;
-                    return (
-                      <div
-                        key={`original-${index}`}
-                        onClick={() => {
-                          if (isAlreadyUsed) return;
-                          setSelectedImage(image);
-                          if (errors.selectedImage) setErrors(prev => ({ ...prev, selectedImage: '' }));
-                          setShowImageModal(false);
-                        }}
-                        title={isAlreadyUsed ? 'Already used in another job for this account' : ''}
-                        className={`relative rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${isAlreadyUsed
-                          ? 'border-green-400 cursor-not-allowed opacity-75'
-                          : isSelected
-                            ? 'border-indigo-600 ring-2 ring-indigo-200 cursor-pointer'
-                            : 'border-gray-200 hover:border-indigo-300 cursor-pointer'
-                          }`}
-                      >
-                        <img
-                          src={image}
-                          alt={`Professional image ${index + 1}`}
-                          className="w-full h-32 object-cover"
-                        />
-                        {isSelected && (
-                          <div className="absolute inset-0 bg-indigo-600 bg-opacity-20 flex items-center justify-center">
-                            <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          </div>
-                        )}
-                        {isAlreadyUsed && (
-                          <div className="absolute inset-0 bg-green-600 bg-opacity-30 flex flex-col items-center justify-center">
-                            <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center shadow">
-                              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                            <span className="text-white text-xs font-semibold mt-1 drop-shadow">In Use</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      }
 
       {/* Change Status Modal (Pause / Close) */}
       {showStatusModal && statusAction && (
