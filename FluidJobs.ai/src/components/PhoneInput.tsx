@@ -190,6 +190,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({ value, onChange, className, sty
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Extract height from style prop or use default
@@ -247,25 +248,27 @@ const PhoneInput: React.FC<PhoneInputProps> = ({ value, onChange, className, sty
           style={{
             height: inputHeight,
             padding: '0 6px',
-            border: `1px solid ${isOpen ? '#4285F4' : 'rgba(0, 0, 0, 0.5)'}`,
+            border: `1px solid ${isOpen || isFocused ? '#3B82F6' : '#D1D5DB'}`,
             borderRight: 'none',
-            borderRadius: '5px 0 0 5px',
+            borderRadius: '8px 0 0 8px',
             fontFamily: 'Poppins',
             fontSize: '12px',
-            color: selectedCountry ? (themeState === 'light' ? '#000000' : '#E5E7EB') : '#6E6E6E',
+            color: selectedCountry ? (themeState === 'light' ? '#000000' : '#E5E7EB') : '#6B7280',
             cursor: 'pointer',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            backgroundColor: themeState === 'light' ? '#FFFFFF' : '#374151'
+            backgroundColor: themeState === 'light' ? '#FFFFFF' : '#374151',
+            boxShadow: isOpen || isFocused ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none',
+            transition: 'border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out'
           }}
         >
           <span style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {selectedCountry ? selectedCountry.dialCode : 'Code'}
           </span>
           {isOpen ?
-            <ChevronUp style={{ width: '14px', height: '14px', color: '#6E6E6E', flexShrink: 0 }} /> :
-            <ChevronDown style={{ width: '14px', height: '14px', color: '#6E6E6E', flexShrink: 0 }} />
+            <ChevronUp style={{ width: '14px', height: '14px', color: '#6B7280', flexShrink: 0 }} /> :
+            <ChevronDown style={{ width: '14px', height: '14px', color: '#6B7280', flexShrink: 0 }} />
           }
         </div>
 
@@ -346,21 +349,23 @@ const PhoneInput: React.FC<PhoneInputProps> = ({ value, onChange, className, sty
         type="tel"
         value={phoneNumber}
         onChange={handlePhoneChange}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
         placeholder="9284xxxxxx"
         style={{
           height: inputHeight,
-          padding: '0 8px',
-          border: '1px solid rgba(0,0,0,0.5)',
-          borderRadius: '0 5px 5px 0',
-          fontSize: '12px',
+          padding: '0 16px',
+          border: `1px solid ${isFocused ? '#3B82F6' : '#D1D5DB'}`,
+          borderRadius: '0 8px 8px 0',
+          fontSize: '14px',
           fontFamily: 'Poppins',
-          fontWeight: 'medium',
+          fontWeight: 'normal',
           backgroundColor: style?.backgroundColor || (themeState === 'light' ? '#FFFFFF' : '#374151'),
           color: style?.color || (themeState === 'light' ? '#000000' : '#E5E7EB'),
-          flex: 1,
-          minWidth: 0,
+          borderLeft: 'none',
           outline: 'none',
-          borderLeft: 'none'
+          boxShadow: isFocused ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none',
+          transition: 'border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out'
         }}
       />
     </div>

@@ -10,19 +10,19 @@ const rateLimit = require('express-rate-limit');
 const { logAudit } = require('../middleware/auditLogger');
 const router = express.Router();
 
-// Rate limiter for login attempts (5 attempts per 15 minutes)
+// Rate limiter for login attempts (increased for development)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts
+  max: 50, // 50 attempts (increased from 5)
   message: 'Too many login attempts. Please try again after 15 minutes.',
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Rate limiter for signup (3 attempts per hour)
+// Rate limiter for signup (increased for development)
 const signupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3,
+  max: 20, // 20 attempts (increased from 3)
   message: 'Too many registration attempts. Please try again later.',
 });
 
@@ -69,13 +69,21 @@ router.post('/check-username', async (req, res) => {
   try {
     const { username } = req.body;
 
-    // Check if username (email or phone) exists (case-insensitive for email)
-    const result = await pool.query(
+    // Check if username (email or phone) exists in candidates table
+    const candidateResult = await pool.query(
       'SELECT candidate_id FROM candidates WHERE LOWER(email) = LOWER($1) OR phone_number = $1',
       [username]
     );
 
-    res.json({ exists: result.rows.length > 0 });
+    // Also check if email exists in users table (for admin/recruiter accounts)
+    const userResult = await pool.query(
+      'SELECT id FROM users WHERE LOWER(email) = LOWER($1)',
+      [username]
+    );
+
+    const exists = candidateResult.rows.length > 0 || userResult.rows.length > 0;
+
+    res.json({ exists });
   } catch (error) {
     console.error('Check username error:', error);
     res.status(500).json({ error: 'Server error' });

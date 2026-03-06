@@ -1,15 +1,12 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 const pool = require('../config/database');
 const { logAudit } = require('../middleware/auditLogger');
-const { sendEmail } = require('../utils/emailService');
-const { setUserPermission } = require('../middleware/permissions');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -140,7 +137,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const result = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND role = $2', [email, 'SuperAdmin']);
+    const result = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
     if (result.rows.length === 0) {
       await logAudit(null, email, 'LOGIN_FAILED', `Failed login attempt for ${email}`, null, null, req);
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -288,9 +285,9 @@ router.get('/approved-jobs', async (req, res) => {
               'candidate_restriction' as approval_type
        FROM candidate_restriction_approvals cra
        LEFT JOIN users ru ON cra.requested_by_user_id = ru.id
-       LEFT JOIN users sa_req ON cra.requested_by_user_id = sa_req.id
+       LEFT JOIN superadmins sa_req ON cra.requested_by_user_id = sa_req.id
        LEFT JOIN users au ON cra.approved_by_user_id = au.id
-       LEFT JOIN users sa_app ON cra.approved_by_user_id = sa_app.id
+       LEFT JOIN superadmins sa_app ON cra.approved_by_user_id = sa_app.id
        WHERE cra.status IN ('approved', 'unrestricted')
        ORDER BY COALESCE(cra.approved_at, cra.created_at) DESC`
     );
@@ -487,7 +484,7 @@ router.post('/approve-candidate-restriction/:id', async (req, res) => {
     const approval = approvalResult.rows[0];
 
     // Get actual SuperAdmin info from session/token
-    const superAdminResult = await pool.query('SELECT id, name FROM users WHERE role = $1 LIMIT 1', ['SuperAdmin']);
+    const superAdminResult = await pool.query('SELECT id, name FROM users LIMIT 1');
     const superAdmin = superAdminResult.rows[0] || { id: 1, name: 'D Sodhi' };
 
     // Update approval status with actual SuperAdmin info
@@ -534,7 +531,7 @@ router.post('/reject-candidate-restriction/:id', async (req, res) => {
     const approval = approvalResult.rows[0];
 
     // Get actual SuperAdmin info from session/token
-    const superAdminResult = await pool.query('SELECT id, name FROM users WHERE role = $1 LIMIT 1', ['SuperAdmin']);
+    const superAdminResult = await pool.query('SELECT id, name FROM users LIMIT 1');
     const superAdmin = superAdminResult.rows[0] || { id: 1, name: 'D Sodhi' };
 
     // Update approval status with actual SuperAdmin info
@@ -575,7 +572,9 @@ router.post('/unrestrict-candidate/:id', async (req, res) => {
     const originalApproval = approvalResult.rows[0];
 
     // Get actual user info
-    const userResult = await pool.query('SELECT id, name FROM users WHERE id = $1', [unrestricted_by_user_id]);
+    const userResult = unrestricted_by_role === 'SuperAdmin'
+      ? await pool.query('SELECT id, name FROM users WHERE id = $1', [unrestricted_by_user_id])
+      : await pool.query('SELECT id, name FROM users WHERE id = $1', [unrestricted_by_user_id]);
 
     const user = userResult.rows[0] || { id: unrestricted_by_user_id, name: unrestricted_by_name };
 
@@ -646,20 +645,6 @@ router.put('/users/:id', async (req, res) => {
 // Get AI Policies
 router.get('/policies', async (req, res) => {
   try {
-    // Check if ai_policies table exists
-    const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'ai_policies'
-      );
-    `);
-
-    if (!tableCheck.rows[0].exists) {
-      // Table doesn't exist, return empty policies
-      return res.json({});
-    }
-
     const result = await pool.query('SELECT type, file_name, uploaded_at FROM ai_policies');
     const policies = {};
     result.rows.forEach(row => {
@@ -670,7 +655,6 @@ router.get('/policies', async (req, res) => {
     });
     res.json(policies);
   } catch (error) {
-    console.error('Error fetching policies:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -849,9 +833,7 @@ router.get('/jobs/:id', async (req, res) => {
       return res.status(404).json({ error: 'Job not found' });
     }
 
-    const job = result.rows[0];
-    // Explicitly handle interview_stages if needed or just return rows[0]
-    res.json(job);
+    res.json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1026,400 +1008,72 @@ router.post('/accounts', async (req, res) => {
   }
 });
 
-// Get role permissions for SuperAdmin - ALL PERMISSIONS VISIBLE
+// Get role permissions for SuperAdmin
 router.get('/roles/:role/permissions', async (req, res) => {
   try {
     const { role } = req.params;
 
-    // Master list of ALL 47 permissions
-    const allPermissions = [
-      {
-            "name": "view_users",
-            "description": "View Users",
-            "category": "user_management"
-      },
-      {
-            "name": "create_users",
-            "description": "Create Users",
-            "category": "user_management"
-      },
-      {
-            "name": "edit_users",
-            "description": "Edit Users",
-            "category": "user_management"
-      },
-      {
-            "name": "delete_users",
-            "description": "Delete Users",
-            "category": "user_management"
-      },
-      {
-            "name": "manage_permissions",
-            "description": "Manage Permissions",
-            "category": "user_management"
-      },
-      {
-            "name": "assign_accounts",
-            "description": "Assign Accounts to Users",
-            "category": "user_management"
-      },
-      {
-            "name": "view_jobs",
-            "description": "View Jobs",
-            "category": "job_management"
-      },
-      {
-            "name": "create_jobs",
-            "description": "Create Jobs",
-            "category": "job_management"
-      },
-      {
-            "name": "edit_jobs",
-            "description": "Edit Jobs",
-            "category": "job_management"
-      },
-      {
-            "name": "delete_jobs",
-            "description": "Delete Jobs",
-            "category": "job_management"
-      },
-      {
-            "name": "approve_jobs",
-            "description": "Approve/Reject Jobs",
-            "category": "job_management"
-      },
-      {
-            "name": "publish_jobs",
-            "description": "Publish Jobs",
-            "category": "job_management"
-      },
-      {
-            "name": "view_job_analytics",
-            "description": "View Job Analytics",
-            "category": "job_management"
-      },
-      {
-            "name": "view_candidates",
-            "description": "View Candidates",
-            "category": "candidate_management"
-      },
-      {
-            "name": "create_candidates",
-            "description": "Create Candidates",
-            "category": "candidate_management"
-      },
-      {
-            "name": "edit_candidates",
-            "description": "Edit Candidates",
-            "category": "candidate_management"
-      },
-      {
-            "name": "delete_candidates",
-            "description": "Delete Candidates",
-            "category": "candidate_management"
-      },
-      {
-            "name": "manage_candidates",
-            "description": "Manage Candidate Lifecycle",
-            "category": "candidate_management"
-      },
-      {
-            "name": "send_invites",
-            "description": "Send Candidate Invitations",
-            "category": "candidate_management"
-      },
-      {
-            "name": "bulk_import",
-            "description": "Bulk Import Candidates",
-            "category": "candidate_management"
-      },
-      {
-            "name": "restrict_candidates",
-            "description": "Restrict/Block Candidates",
-            "category": "candidate_management"
-      },
-      {
-            "name": "export_candidates",
-            "description": "Export Candidate Data",
-            "category": "candidate_management"
-      },
-      {
-            "name": "view_pipeline",
-            "description": "View Hiring Pipeline",
-            "category": "pipeline_management"
-      },
-      {
-            "name": "edit_pipeline",
-            "description": "Move Candidates Through Pipeline",
-            "category": "pipeline_management"
-      },
-      {
-            "name": "edit_job_settings",
-            "description": "Edit Job Settings",
-            "category": "pipeline_management"
-      },
-      {
-            "name": "manage_interviews",
-            "description": "Schedule & Manage Interviews",
-            "category": "pipeline_management"
-      },
-      {
-            "name": "add_interview_feedback",
-            "description": "Add Interview Feedback",
-            "category": "pipeline_management"
-      },
-      {
-            "name": "view_accounts",
-            "description": "View Accounts",
-            "category": "account_management"
-      },
-      {
-            "name": "create_accounts",
-            "description": "Create Accounts",
-            "category": "account_management"
-      },
-      {
-            "name": "edit_accounts",
-            "description": "Edit Accounts",
-            "category": "account_management"
-      },
-      {
-            "name": "delete_accounts",
-            "description": "Delete Accounts",
-            "category": "account_management"
-      },
-      {
-            "name": "manage_account_users",
-            "description": "Assign Users to Accounts",
-            "category": "account_management"
-      },
-      {
-            "name": "view_approvals",
-            "description": "View Approval Requests",
-            "category": "approvals"
-      },
-      {
-            "name": "approve_requests",
-            "description": "Approve/Reject Requests",
-            "category": "approvals"
-      },
-      {
-            "name": "track_own_approvals",
-            "description": "Track Own Approval Status",
-            "category": "approvals"
-      },
-      {
-            "name": "view_reports",
-            "description": "View Reports",
-            "category": "reporting"
-      },
-      {
-            "name": "view_analytics",
-            "description": "View Analytics Dashboards",
-            "category": "reporting"
-      },
-      {
-            "name": "view_recruiter_analytics",
-            "description": "View Recruiter Analytics",
-            "category": "reporting"
-      },
-      {
-            "name": "export_reports",
-            "description": "Export Reports",
-            "category": "reporting"
-      },
-      {
-            "name": "system_settings",
-            "description": "Access System Settings",
-            "category": "administration"
-      },
-      {
-            "name": "manage_policies",
-            "description": "Manage AI Policies",
-            "category": "administration"
-      },
-      {
-            "name": "view_audit_logs",
-            "description": "View Audit Logs",
-            "category": "administration"
-      },
-      {
-            "name": "manage_integrations",
-            "description": "Manage Integrations",
-            "category": "administration"
-      }
-];
-
-    // Get default permissions for this role
-    const roleDefaults = {
-      "SuperAdmin": [
-            "view_users",
-            "create_users",
-            "edit_users",
-            "delete_users",
-            "manage_permissions",
-            "assign_accounts",
-            "view_jobs",
-            "create_jobs",
-            "edit_jobs",
-            "delete_jobs",
-            "approve_jobs",
-            "publish_jobs",
-            "view_job_analytics",
-            "view_candidates",
-            "create_candidates",
-            "edit_candidates",
-            "delete_candidates",
-            "manage_candidates",
-            "send_invites",
-            "bulk_import",
-            "restrict_candidates",
-            "export_candidates",
-            "view_pipeline",
-            "edit_pipeline",
-            "edit_job_settings",
-            "manage_interviews",
-            "add_interview_feedback",
-            "view_accounts",
-            "create_accounts",
-            "edit_accounts",
-            "delete_accounts",
-            "manage_account_users",
-            "view_approvals",
-            "approve_requests",
-            "track_own_approvals",
-            "view_reports",
-            "view_analytics",
-            "view_recruiter_analytics",
-            "export_reports",
-            "system_settings",
-            "manage_policies",
-            "view_audit_logs",
-            "manage_integrations"
+    // Define role-based permissions
+    const rolePermissions = {
+      'SuperAdmin': [
+        { name: 'view_users', description: 'View Users', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'create_users', description: 'Create Users', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'edit_users', description: 'Edit Users', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'delete_users', description: 'Delete Users', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'manage_permissions', description: 'Manage Permissions', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'view_jobs', description: 'View Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'create_jobs', description: 'Create Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'edit_jobs', description: 'Edit Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'delete_jobs', description: 'Delete Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'approve_jobs', description: 'Approve Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'view_candidates', description: 'View Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'manage_candidates', description: 'Manage Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'restrict_candidates', description: 'Restrict Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'view_reports', description: 'View Reports', category: 'reporting', has_permission: true, source: 'role' },
+        { name: 'system_settings', description: 'System Settings', category: 'administration', has_permission: true, source: 'role' }
       ],
-      "Admin": [
-            "view_users",
-            "create_users",
-            "edit_users",
-            "delete_users",
-            "assign_accounts",
-            "view_jobs",
-            "create_jobs",
-            "edit_jobs",
-            "delete_jobs",
-            "approve_jobs",
-            "publish_jobs",
-            "view_job_analytics",
-            "view_candidates",
-            "create_candidates",
-            "edit_candidates",
-            "delete_candidates",
-            "manage_candidates",
-            "send_invites",
-            "bulk_import",
-            "restrict_candidates",
-            "export_candidates",
-            "view_pipeline",
-            "edit_pipeline",
-            "edit_job_settings",
-            "manage_interviews",
-            "add_interview_feedback",
-            "view_accounts",
-            "create_accounts",
-            "edit_accounts",
-            "delete_accounts",
-            "manage_account_users",
-            "view_approvals",
-            "approve_requests",
-            "view_reports",
-            "view_analytics",
-            "view_recruiter_analytics",
-            "export_reports",
-            "system_settings",
-            "manage_policies",
-            "view_audit_logs"
+      'Admin': [
+        { name: 'view_users', description: 'View Users', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'create_users', description: 'Create Users', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'edit_users', description: 'Edit Users', category: 'user_management', has_permission: true, source: 'role' },
+        { name: 'manage_permissions', description: 'Manage Permissions', category: 'user_management', has_permission: false, source: 'role' },
+        { name: 'view_jobs', description: 'View Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'create_jobs', description: 'Create Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'edit_jobs', description: 'Edit Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'delete_jobs', description: 'Delete Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'view_candidates', description: 'View Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'manage_candidates', description: 'Manage Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'restrict_candidates', description: 'Restrict Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'view_reports', description: 'View Reports', category: 'reporting', has_permission: true, source: 'role' }
       ],
-      "Recruiter": [
-            "view_jobs",
-            "create_jobs",
-            "edit_jobs",
-            "view_job_analytics",
-            "view_candidates",
-            "create_candidates",
-            "edit_candidates",
-            "manage_candidates",
-            "send_invites",
-            "restrict_candidates",
-            "export_candidates",
-            "view_pipeline",
-            "edit_pipeline",
-            "edit_job_settings",
-            "manage_interviews",
-            "add_interview_feedback",
-            "view_accounts",
-            "view_approvals",
-            "track_own_approvals",
-            "view_reports",
-            "view_analytics",
-            "export_reports"
+      'Recruiter': [
+        { name: 'view_jobs', description: 'View Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'create_jobs', description: 'Create Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'edit_jobs', description: 'Edit Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'view_candidates', description: 'View Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'manage_candidates', description: 'Manage Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'restrict_candidates', description: 'Restrict Candidates', category: 'candidate_management', has_permission: true, source: 'role' }
       ],
-      "HR": [
-            "view_jobs",
-            "view_job_analytics",
-            "view_candidates",
-            "create_candidates",
-            "edit_candidates",
-            "manage_candidates",
-            "send_invites",
-            "bulk_import",
-            "restrict_candidates",
-            "export_candidates",
-            "view_pipeline",
-            "edit_pipeline",
-            "edit_job_settings",
-            "manage_interviews",
-            "add_interview_feedback",
-            "view_accounts",
-            "view_approvals",
-            "view_reports",
-            "view_analytics",
-            "export_reports"
+      'HR': [
+        { name: 'view_jobs', description: 'View Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'view_candidates', description: 'View Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'manage_candidates', description: 'Manage Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'view_reports', description: 'View Reports', category: 'reporting', has_permission: true, source: 'role' }
       ],
-      "Sales": [
-            "view_jobs",
-            "create_jobs",
-            "edit_jobs",
-            "view_job_analytics",
-            "view_candidates",
-            "view_pipeline",
-            "view_accounts",
-            "view_approvals",
-            "track_own_approvals",
-            "view_reports",
-            "view_analytics"
+      'Sales': [
+        { name: 'view_jobs', description: 'View Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'create_jobs', description: 'Create Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'view_candidates', description: 'View Candidates', category: 'candidate_management', has_permission: true, source: 'role' }
       ],
-      "Interviewer": [
-            "view_jobs",
-            "view_job_analytics",
-            "view_candidates",
-            "edit_candidates",
-            "view_pipeline",
-            "edit_pipeline",
-            "manage_interviews",
-            "add_interview_feedback",
-            "view_accounts",
-            "view_reports"
+      'Interviewer': [
+        { name: 'view_jobs', description: 'View Jobs', category: 'job_management', has_permission: true, source: 'role' },
+        { name: 'view_candidates', description: 'View Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'manage_candidates', description: 'Manage Candidates', category: 'candidate_management', has_permission: true, source: 'role' },
+        { name: 'conduct_interviews', description: 'Conduct Interviews', category: 'interview_management', has_permission: true, source: 'role' }
       ]
-};
+    };
 
-    const defaultPerms = roleDefaults[role] || [];
-
-    // Return ALL permissions with has_permission flag
-    const permissions = allPermissions.map(perm => ({
-      ...perm,
-      has_permission: defaultPerms.includes(perm.name),
-      source: 'role'
-    }));
+    const permissions = rolePermissions[role] || [];
 
     res.json({
       role: role,
@@ -1435,25 +1089,18 @@ router.get('/roles/:role/permissions', async (req, res) => {
 router.post('/create-user', async (req, res) => {
   try {
     const { name, email, role, phone, customPermissions } = req.body;
-    const superAdminId = req.user?.id || 7; // Get from authenticated user, fallback to first SuperAdmin
 
     if (!name || !email || !role) {
       return res.status(400).json({ error: 'Name, email, and role are required' });
     }
 
-    // Check if email already exists
-    const emailCheck = await pool.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
-    if (emailCheck.rows.length > 0) {
-      return res.status(400).json({ error: 'Email already exists' });
-    }
-
-    // Create user with secure temporary password (will be replaced when they accept invite)
-    const tempPassword = crypto.randomBytes(16).toString('hex');
+    // Use standard password for all admin users
+    const tempPassword = 'Fluid@123';
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
     const result = await pool.query(
-      'INSERT INTO users (name, email, role, password_hash, phone, created_at) VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING id',
-      [name, email, role, hashedPassword, phone]
+      'INSERT INTO users (name, email, role, password_hash, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING id',
+      [name, email, role, hashedPassword]
     );
 
     const userId = result.rows[0].id;
@@ -1462,58 +1109,20 @@ router.post('/create-user', async (req, res) => {
     if (customPermissions && Array.isArray(customPermissions)) {
       for (const perm of customPermissions) {
         if (perm.granted) {
-          await setUserPermission(userId, perm.name, true, superAdminId);
+          await pool.query(
+            'INSERT INTO user_permissions (user_id, permission_name, granted, granted_by, granted_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id, permission_name) DO UPDATE SET granted = $3, granted_by = $4, granted_at = NOW()',
+            [userId, perm.name, true, 1] // 1 is SuperAdmin ID
+          );
         }
       }
     }
 
-    // Generate and store invite token
-    const inviteToken = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 48); // 48 hour expiration
-
-    try {
-      await pool.query(
-        'INSERT INTO user_invites (email, token, role, invited_by, expires_at) VALUES ($1, $2, $3, $4, $5)',
-        [email, inviteToken, role, superAdminId, expiresAt]
-      );
-
-      const inviteLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/accept-invite?token=${inviteToken}`;
-
-      await sendEmail('noreply', {
-        to: email,
-        subject: `You've been invited to join FluidJobs.ai as a ${role}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #2563eb;">Welcome to FluidJobs!</h2>
-            <p>Hello ${name},</p>
-            <p>A <strong>SuperAdmin</strong> has invited you to join FluidJobs.ai as a <strong>${role}</strong>.</p>
-            <p>Please click the button below to accept the invitation and set up your account password:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${inviteLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Accept Invitation</a>
-            </div>
-            <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; color: #6b7280; font-size: 14px;">${inviteLink}</p>
-            <p style="margin-top: 40px; font-size: 12px; color: #9ca3af;">This invitation link will expire in 48 hours.</p>
-          </div>
-        `
-      });
-
-      console.log(`✅ Invitation email sent to ${email}`);
-    } catch (inviteErr) {
-      console.error('Failed to generate invite or send email:', inviteErr);
-      // Continue even if email fails - user is still created
-    }
-
-    await logAudit(superAdminId, 'SuperAdmin', 'USER_CREATED', `Created user: ${name} (${email}) with role ${role}`, 'user', userId, req);
-    
+    await logAudit(null, 'SuperAdmin', 'USER_CREATED', `Created user: ${name} (${email}) with role ${role}`, 'user', result.rows[0].id, req);
     res.json({
       message: 'User created successfully',
-      userId: userId,
-      tempPassword: tempPassword // Return for backup, but user should use invite link
+      tempPassword: tempPassword
     });
   } catch (error) {
-    console.error('Error creating user:', error);
     if (error.code === '23505') {
       res.status(400).json({ error: 'Email already exists' });
     } else {
@@ -1571,11 +1180,11 @@ router.post('/create-job', async (req, res) => {
         locations, selected_image, jd_attachment_name,
         registration_opening_date, registration_closing_date,
         no_of_openings, account_id, created_by_user_id,
-        status, approved_at, created_at, posted_date, hiring_process
+        status, approved_at, created_at, posted_date
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-        $21, $22, $23, $24, 'Published', NOW(), NOW(), NOW(), $25
+        $21, $22, $23, $24, 'Published', NOW(), NOW(), NOW()
       ) RETURNING id`,
       [
         job_title, company, Array.isArray(locations) ? locations[0] : locations,
@@ -1585,9 +1194,7 @@ router.post('/create-job', async (req, res) => {
         show_salary_to_candidate, locations, selected_image,
         jd_attachment_name, registration_opening_date,
         registration_closing_date, no_of_openings, account_id,
-        finalUserId,
-        JSON.stringify(req.body.interview_stages || req.body.hiringStages || [])
-
+        finalUserId
       ]
     );
 
@@ -1761,7 +1368,7 @@ router.get('/edit-requests', async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT er.id, er.job_id, er.requested_by, er.changes_json, er.original_values_json, er.status, er.created_at, er.resolved_at,
+      SELECT er.id, er.job_id, er.requested_by, er.changes_json, er.status, er.created_at, er.resolved_at,
              j.title as job_title, j.account_id,
              u.name as requested_by_name, u.email as requested_by_email,
              row_to_json(j) as original_job

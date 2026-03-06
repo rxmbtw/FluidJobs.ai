@@ -117,10 +117,13 @@ interface PipelineBoardProps {
   candidates: PipelineCandidate[];
   users?: any[];
   stages?: JobStage[]; // JobStage[]
+  isReadOnly?: boolean;
 }
 
-const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates: propCandidates, users = [], stages: jobStages }) => {
+const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates: propCandidates, users = [], stages: jobStages, isReadOnly = false }) => {
   const { setHeaderActions } = useDashboardHeader();
+  const currentUserData = JSON.parse(sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('superadmin') || '{}');
+  const isSalesRole = currentUserData.role?.toLowerCase() === 'sales';
   // Use candidates from props instead of hardcoded ones
   const [candidates, setCandidates] = useState<PipelineCandidate[]>(propCandidates || []);
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
@@ -1287,11 +1290,29 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   };
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col gap-6 animate-in fade-in duration-500">
-
+    <div className={`h-[calc(100vh-140px)] flex flex-col gap-6 animate-in fade-in duration-500 ${(isReadOnly || isSalesRole) ? 'pipeline-readonly' : ''}`}>
+      {/* View Only Banner for Sales */}
+      {(isReadOnly || isSalesRole) && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-yellow-600" />
+          <span className="text-sm text-yellow-800 font-medium">View Only Mode - You cannot move candidates or edit pipeline</span>
+        </div>
+      )}
+      
+      <style>{`
+        .pipeline-readonly input[type="checkbox"] {
+          display: none;
+        }
+        .pipeline-readonly {
+          pointer-events: auto;
+        }
+        .pipeline-readonly .draggable-card {
+          cursor: default !important;
+        }
+      `}</style>
 
       {/* Bulk Action Bar */}
-      {selectedCandidates.size > 0 && (
+      {selectedCandidates.size > 0 && !isReadOnly && !isSalesRole && (
         <div className="sticky top-0 z-10 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center justify-between animate-in slide-in-from-top duration-200">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-blue-900">
@@ -1304,20 +1325,24 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleBulkMove}
-              disabled={getBulkActionInfo().disabled}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              title={getBulkActionInfo().reason}
-            >
-              {getBulkActionInfo().text}
-            </button>
-            <button
-              onClick={clearSelection}
-              className="px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-all"
-            >
-              Clear Selection
-            </button>
+            {!isReadOnly && !isSalesRole && (
+              <>
+                <button
+                  onClick={handleBulkMove}
+                  disabled={getBulkActionInfo().disabled}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  title={getBulkActionInfo().reason}
+                >
+                  {getBulkActionInfo().text}
+                </button>
+                <button
+                  onClick={clearSelection}
+                  className="px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-all"
+                >
+                  Clear Selection
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -1357,14 +1382,16 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
                       {/* Actions (Checkbox + Menu) */}
                       <div className="flex items-center gap-1">
-                        <label className="flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 cursor-pointer transition-colors duration-200 group" title="Select all in column">
-                          <input
-                            type="checkbox"
-                            checked={isStageFullySelected}
-                            onChange={(e) => handleStageSelectAll(stage, e.target.checked)}
-                            className="w-3.5 h-3.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                        </label>
+                        {!isReadOnly && !isSalesRole && (
+                          <label className="flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 cursor-pointer transition-colors duration-200 group" title="Select all in column">
+                            <input
+                              type="checkbox"
+                              checked={isStageFullySelected}
+                              onChange={(e) => handleStageSelectAll(stage, e.target.checked)}
+                              className="w-3.5 h-3.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                          </label>
+                        )}
                         <button
                           onClick={() => setOpenStageMenu(openStageMenu === stage ? null : stage)}
                           className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors duration-200"

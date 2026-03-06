@@ -10,7 +10,6 @@ import ErrorModal from '../../components/ErrorModal';
 import SuperAdminDashboardView from '../../components/dashboard/SuperAdminDashboardView';
 import ThemedBulkImport from '../../components/admin/ThemedBulkImport';
 import { ThemeProvider } from '../../components/candidate/ThemeContext';
-import PhoneInput from '../../components/PhoneInput';
 import JobCreationForm from '../../components/admin/JobCreationForm';
 import Loader from '../../components/Loader';
 import { DateFilterDropdown } from '../../components/DateFilterDropdown';
@@ -146,6 +145,8 @@ const SuperAdminDefaultView: React.FC = () => {
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [availablePermissions, setAvailablePermissions] = useState<any[]>([]);
   const [selectedPermissions, setSelectedPermissions] = useState<{ [key: string]: boolean }>({});
+  const [showCountryCodeDropdown, setShowCountryCodeDropdown] = useState(false);
+  const [selectedCountryCode, setSelectedCountryCode] = useState('+91');
   const [showEditAccountModal, setShowEditAccountModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
@@ -165,7 +166,7 @@ const SuperAdminDefaultView: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState({ title: '', message: '' });
   const [deletingUser, setDeletingUser] = useState(false);
   const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
-  const [newAccount, setNewAccount] = useState({ name: '', status: 'Active', locations: [] as string[], assignedUsers: [admin?.id].filter(Boolean) as number[] });
+  const [newAccount, setNewAccount] = useState({ name: '', status: 'Active', locations: [] as string[], assignedUsers: [] as number[] });
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [locationSearch, setLocationSearch] = useState('');
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
@@ -224,13 +225,16 @@ const SuperAdminDefaultView: React.FC = () => {
       if (showRoleDropdown && !safeClosest(target, '.role-dropdown-container')) {
         setShowRoleDropdown(false);
       }
+      if (showCountryCodeDropdown && !safeClosest(target, '.country-code-dropdown-container')) {
+        setShowCountryCodeDropdown(false);
+      }
       if (showJobDropdown && !safeClosest(target, '.job-dropdown-container')) {
         setShowJobDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isNewDropdownOpen, isProfileOpen, isSettingsOpen, showJobDropdown]);
+  }, [isNewDropdownOpen, isProfileOpen, isSettingsOpen, showRoleDropdown, showCountryCodeDropdown, showJobDropdown]);
 
   React.useEffect(() => {
     if (showInviteModal || activeTab === 'send-invitation') {
@@ -240,7 +244,10 @@ const SuperAdminDefaultView: React.FC = () => {
 
   const fetchJobs = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/list`);
+      const token = sessionStorage.getItem('fluidjobs_token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/list`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.jobs) {
@@ -254,7 +261,10 @@ const SuperAdminDefaultView: React.FC = () => {
 
   const fetchActiveJobs = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/active`);
+      const token = sessionStorage.getItem('fluidjobs_token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/active`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.jobs) {
@@ -1791,17 +1801,77 @@ const SuperAdminDefaultView: React.FC = () => {
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                            <div className="w-full">
-                              <PhoneInput
-                                value={newUser.phone}
-                                onChange={(value) => setNewUser({ ...newUser, phone: value })}
-                                className="w-full"
-                                style={{
-                                  backgroundColor: '#FFFFFF',
-                                  color: '#000000',
-                                  height: '48px'
+                            <div className="flex gap-2">
+                              {/* Country Code Dropdown */}
+                              <div className="relative country-code-dropdown-container" style={{ width: '120px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowCountryCodeDropdown(!showCountryCodeDropdown)}
+                                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between"
+                                >
+                                  <span className="text-sm">{selectedCountryCode}</span>
+                                  <svg className={`w-4 h-4 transition-transform ${showCountryCodeDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </button>
+                                {showCountryCodeDropdown && (
+                                  <div className="absolute top-full mt-1 w-64 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                                    <div className="p-2">
+                                      {[
+                                        { code: '+91', country: 'India' },
+                                        { code: '+1', country: 'USA/Canada' },
+                                        { code: '+44', country: 'UK' },
+                                        { code: '+61', country: 'Australia' },
+                                        { code: '+971', country: 'UAE' },
+                                        { code: '+65', country: 'Singapore' },
+                                        { code: '+49', country: 'Germany' },
+                                        { code: '+33', country: 'France' },
+                                        { code: '+81', country: 'Japan' },
+                                        { code: '+86', country: 'China' },
+                                        { code: '+82', country: 'South Korea' },
+                                        { code: '+7', country: 'Russia' },
+                                        { code: '+55', country: 'Brazil' },
+                                        { code: '+27', country: 'South Africa' },
+                                        { code: '+234', country: 'Nigeria' },
+                                        { code: '+92', country: 'Pakistan' },
+                                        { code: '+880', country: 'Bangladesh' },
+                                        { code: '+62', country: 'Indonesia' },
+                                        { code: '+63', country: 'Philippines' },
+                                        { code: '+60', country: 'Malaysia' },
+                                        { code: '+66', country: 'Thailand' },
+                                        { code: '+84', country: 'Vietnam' },
+                                        { code: '+94', country: 'Sri Lanka' },
+                                        { code: '+977', country: 'Nepal' }
+                                      ].map(({ code, country }) => (
+                                        <div
+                                          key={code}
+                                          onClick={() => {
+                                            setSelectedCountryCode(code);
+                                            setShowCountryCodeDropdown(false);
+                                            const phoneWithoutCode = newUser.phone.replace(/^\+\d+/, '');
+                                            setNewUser({ ...newUser, phone: code + phoneWithoutCode });
+                                          }}
+                                          className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
+                                        >
+                                          {code} - {country}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Phone Number Input */}
+                              <input
+                                type="tel"
+                                value={newUser.phone.replace(/^\+\d+/, '')}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/\D/g, '');
+                                  setNewUser({ ...newUser, phone: selectedCountryCode + value });
                                 }}
-                                themeState="light"
+                                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="9876543210"
+                                maxLength={15}
                               />
                             </div>
                           </div>
@@ -2040,7 +2110,7 @@ const SuperAdminDefaultView: React.FC = () => {
                         <button
                           onClick={() => {
                             setActiveTab('dashboard');
-                            setNewAccount({ name: '', status: 'Active', locations: [], assignedUsers: [admin?.id].filter(Boolean) as number[] });
+                            setNewAccount({ name: '', status: 'Active', locations: [], assignedUsers: [] as number[] });
                           }}
                           className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition"
                         >
@@ -2058,11 +2128,15 @@ const SuperAdminDefaultView: React.FC = () => {
                             }
                             setCreatingAccount(true);
                             try {
+                              console.log('Creating account with data:', {
+                                ...newAccount,
+                                locations: newAccount.locations.length > 0 ? newAccount.locations[0] : null
+                              });
                               await axios.post('http://localhost:8000/api/superadmin/accounts', {
                                 ...newAccount,
                                 locations: newAccount.locations.length > 0 ? newAccount.locations[0] : null
                               });
-                              setNewAccount({ name: '', status: 'Active', locations: [], assignedUsers: [admin?.id].filter(Boolean) as number[] });
+                              setNewAccount({ name: '', status: 'Active', locations: [], assignedUsers: [] as number[] });
                               fetchAccounts();
                               setSuccessMessage({
                                 title: 'Success!',
@@ -2070,11 +2144,12 @@ const SuperAdminDefaultView: React.FC = () => {
                               });
                               setShowSuccessModal(true);
                               setActiveTab('accounts');
-                            } catch (error) {
+                            } catch (error: any) {
                               console.error('Error creating account:', error);
+                              console.error('Error response:', error.response?.data);
                               setErrorMessage({
                                 title: 'Error',
-                                message: 'Error creating account'
+                                message: error.response?.data?.error || error.response?.data?.detail || 'Error creating account'
                               });
                               setShowErrorModal(true);
                             } finally {
@@ -2285,7 +2360,9 @@ const SuperAdminDefaultView: React.FC = () => {
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="Admin">Admin</option>
+                        <option value="Recruiter">Recruiter</option>
                         <option value="HR">HR</option>
+                        <option value="Interviewer">Interviewer</option>
                         <option value="Sales">Sales</option>
                       </select>
                     </div>

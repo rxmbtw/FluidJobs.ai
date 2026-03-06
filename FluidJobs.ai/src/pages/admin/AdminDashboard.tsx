@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Users, FileText, Settings, LogOut, Check, Plus, Briefcase, Mail, User, Building2, BarChart3 } from 'lucide-react';
+import { Users, FileText, Settings, LogOut, Check, Plus, Briefcase, Mail, User, Building2, BarChart3, CheckCircle } from 'lucide-react';
 import AdminBreadcrumbs from '../../components/admin/AdminBreadcrumbs';
 import { DateFilterDropdown } from '../../components/DateFilterDropdown';
 import SuccessModal from '../../components/SuccessModal';
@@ -27,14 +27,26 @@ const AdminDashboard: React.FC = () => {
 
   // Role-based access control
   const userRole = admin.role || 'User';
-  const canCreateJobs = ['Admin', 'Recruiter'].includes(userRole);
-  const canManageUsers = ['Admin'].includes(userRole);
-  const canViewPermissions = ['HR', 'Interviewer', 'Sales'].includes(userRole);
-  const canViewAccounts = ['Admin', 'Recruiter', 'HR'].includes(userRole);
-  const canManageCandidates = ['Admin', 'HR', 'Recruiter'].includes(userRole);
-  const canViewJobs = ['Admin', 'Recruiter', 'HR', 'Interviewer', 'Sales'].includes(userRole);
-  const canSendInvites = ['Admin', 'HR', 'Recruiter'].includes(userRole);
-  const canBulkImport = ['Admin', 'HR'].includes(userRole);
+  
+  // Normalize role - handle special cases like HR (all caps)
+  const normalizeRole = (role: string): string => {
+    const upperRole = role.toUpperCase();
+    // Special cases that should remain all caps
+    if (upperRole === 'HR') return 'HR';
+    // Standard capitalization for other roles
+    return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+  };
+  
+  const normalizedRole = normalizeRole(userRole);
+  
+  const canCreateJobs = ['Admin', 'Recruiter', 'Sales'].includes(normalizedRole);
+  const canManageUsers = ['Admin'].includes(normalizedRole);
+  const canViewPermissions = ['HR', 'Interviewer', 'Sales', 'Recruiter'].includes(normalizedRole);
+  const canViewAccounts = ['Admin', 'Recruiter', 'HR', 'Sales', 'Interviewer'].includes(normalizedRole);
+  const canManageCandidates = ['Admin', 'HR', 'Recruiter'].includes(normalizedRole);
+  const canViewJobs = ['Admin', 'Recruiter', 'HR', 'Interviewer', 'Sales'].includes(normalizedRole);
+  const canSendInvites = ['Admin', 'HR', 'Recruiter'].includes(normalizedRole);
+  const canBulkImport = ['Admin', 'HR'].includes(normalizedRole);
 
   const handleStatsUpdate = (updatedStats: any) => {
     setStats(updatedStats);
@@ -63,11 +75,11 @@ const AdminDashboard: React.FC = () => {
   const fetchJobs = async () => {
     try {
       const token = sessionStorage.getItem('fluidjobs_token');
-      const response = await axios.get<{ success: boolean, data: any[] }>('http://localhost:8000/api/jobs-enhanced', {
+      const response = await axios.get<{ success: boolean, jobs: any[] }>('http://localhost:8000/api/jobs-enhanced/list', {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (response.data.success) {
-        setJobs(response.data.data);
+        setJobs(response.data.jobs);
       }
     } catch (error) {
       console.error('Error fetching jobs:', error);
@@ -77,11 +89,15 @@ const AdminDashboard: React.FC = () => {
   const fetchActiveJobs = async () => {
     try {
       const token = sessionStorage.getItem('fluidjobs_token');
-      const response = await axios.get<{ success: boolean, data: any[] }>('http://localhost:8000/api/jobs-enhanced?status=Active', {
+      const response = await axios.get<{ success: boolean, jobs: any[] }>('http://localhost:8000/api/jobs-enhanced/list', {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (response.data.success) {
-        setActiveJobs(response.data.data);
+        // Filter for active/published jobs only
+        const activeJobsList = response.data.jobs.filter((job: any) => 
+          job.status === 'Published' || job.status === 'active'
+        );
+        setActiveJobs(activeJobsList);
       }
     } catch (error) {
       console.error('Error fetching active jobs:', error);
@@ -163,50 +179,54 @@ const AdminDashboard: React.FC = () => {
           </div>
 
           <nav className="flex-1 px-4 overflow-hidden mt-4">
-            {/* New Button with Dropdown */}
-            <div className="relative mb-3 new-dropdown-container">
-              <button
-                onClick={() => setIsNewDropdownOpen(!isNewDropdownOpen)}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200"
-              >
-                <Plus size={20} className="flex-shrink-0" />
-                {isSidebarExpanded && <span className="text-sm font-semibold whitespace-nowrap">Create</span>}
-              </button>
+            {/* New Button with Dropdown - Only show if user has any create permissions */}
+            {(canCreateJobs || canSendInvites || canBulkImport) && (
+              <div className="relative mb-3 new-dropdown-container">
+                <button
+                  onClick={() => setIsNewDropdownOpen(!isNewDropdownOpen)}
+                  className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200"
+                >
+                  <Plus size={20} className="flex-shrink-0" />
+                  {isSidebarExpanded && <span className="text-sm font-semibold whitespace-nowrap">Create</span>}
+                </button>
 
-              {isSidebarExpanded && isNewDropdownOpen && (
-                <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-lg shadow-2xl overflow-hidden z-20 border border-gray-200">
-                  <nav className="p-2">
-                    {canCreateJobs && (
-                      <button
-                        onClick={() => {
-                          navigate('/admin-dashboard/create-job');
-                          setIsNewDropdownOpen(false);
-                        }}
-                        className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
-                      >
-                        <Briefcase size={18} />
-                        <span className="text-sm font-medium">Create Job</span>
-                      </button>
-                    )}
-                    {(canSendInvites || canBulkImport) && (
-                      <button
-                        onClick={() => {
-                          navigate('/admin-dashboard/create-candidate');
-                          setIsNewDropdownOpen(false);
-                        }}
-                        className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
-                      >
-                        <User size={18} />
-                        <span className="text-sm font-medium">Create Candidate</span>
-                      </button>
-                    )}
-                  </nav>
-                </div>
-              )}
-            </div>
+                {isSidebarExpanded && isNewDropdownOpen && (
+                  <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-lg shadow-2xl overflow-hidden z-20 border border-gray-200">
+                    <nav className="p-2">
+                      {canCreateJobs && (
+                        <button
+                          onClick={() => {
+                            navigate('/admin-dashboard/create-job');
+                            setIsNewDropdownOpen(false);
+                          }}
+                          className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
+                        >
+                          <Briefcase size={18} />
+                          <span className="text-sm font-medium">Create Job</span>
+                        </button>
+                      )}
+                      {(canSendInvites || canBulkImport) && (
+                        <button
+                          onClick={() => {
+                            navigate('/admin-dashboard/create-candidate');
+                            setIsNewDropdownOpen(false);
+                          }}
+                          className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
+                        >
+                          <User size={18} />
+                          <span className="text-sm font-medium">Create Candidate</span>
+                        </button>
+                      )}
+                    </nav>
+                  </div>
+                )}
+              </div>
+            )}
 
-            {/* Separator line */}
-            <div className="-mx-4 mb-3" style={{ borderTop: '1px solid rgba(229, 231, 235, 0.8)', paddingTop: '16px', boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.05)' }}></div>
+            {/* Separator line - Only show if Create button is visible */}
+            {(canCreateJobs || canSendInvites || canBulkImport) && (
+              <div className="-mx-4 mb-3" style={{ borderTop: '1px solid rgba(229, 231, 235, 0.8)', paddingTop: '16px', boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.05)' }}></div>
+            )}
 
             <button
               onClick={() => navigate('/admin-dashboard/overview')}
@@ -256,8 +276,20 @@ const AdminDashboard: React.FC = () => {
               </button>
             )}
 
+            {/* Approvals - For Recruiters, Admins, HR, and Sales */}
+            {(['Recruiter', 'Admin', 'HR', 'Sales'].includes(normalizedRole)) && (
+              <button
+                onClick={() => navigate('/admin-dashboard/approvals')}
+                className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${isActive('/approvals') ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+              >
+                <CheckCircle size={20} className="flex-shrink-0" />
+                {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Approvals</span>}
+              </button>
+            )}
+
             {/* Recruiters Analytics */}
-            {(userRole === 'Admin' || userRole === 'SuperAdmin') && (
+            {(['Admin', 'Superadmin'].includes(normalizedRole)) && (
               <button
                 onClick={() => navigate('/admin-dashboard/recruiters')}
                 className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${isActive('/recruiters') ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'

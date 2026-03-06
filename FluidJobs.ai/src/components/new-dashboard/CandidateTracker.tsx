@@ -3,7 +3,7 @@ import { Candidate, InterviewStage, CandidateStatus } from './types';
 import { STATUS_COLORS } from './constants';
 import { useDashboardHeader } from './NewDashboardContainer';
 import { CandidateService } from '../../services/candidateService';
-import { Search, FileText, Eye, Sparkles, X, Briefcase, User, ChevronLeft, ChevronRight, Clock, UserCheck, Loader2, CheckSquare, Square, Users } from 'lucide-react';
+import { Search, FileText, Eye, Sparkles, X, Briefcase, User, ChevronLeft, ChevronRight, Clock, UserCheck, Loader2, CheckSquare, Square, Users, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
@@ -20,6 +20,7 @@ interface TrackerProps {
   onAddCandidate: () => void;
   onViewProfile: (id: string) => void;
   jobId?: string;
+  isReadOnly?: boolean;
 }
 
 interface PaginationInfo {
@@ -31,8 +32,10 @@ interface PaginationInfo {
   endItem: number;
 }
 
-const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfile, jobId }) => {
+const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfile, jobId, isReadOnly = false }) => {
   const { setHeaderActions } = useDashboardHeader();
+  const currentUser = JSON.parse(sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('superadmin') || '{}');
+  const isSalesRole = currentUser.role?.toLowerCase() === 'sales';
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilters, setActiveFilters] = useState<any>({});
@@ -62,10 +65,7 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
   const [claimBusy, setClaimBusy] = useState(false);
   const [claimToast, setClaimToast] = useState('');
 
-  // Current user session
-  const currentUser = JSON.parse(
-    sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('superadmin') || '{}'
-  );
+  // Current user session - use the currentUser already declared above
   const userRole: string = currentUser.role || '';
   const isRecruiter = userRole === 'Recruiter';
   const isAdminLike = ['Admin', 'SuperAdmin'].includes(userRole);
@@ -280,6 +280,12 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
   }, [activeJobId, fetchAssignments]);
 
   useEffect(() => {
+    // Don't show Add Candidate button for Sales role (read-only)
+    if (isReadOnly || isSalesRole) {
+      setHeaderActions(null);
+      return;
+    }
+    
     setHeaderActions(
       <button
         onClick={onAddCandidate}
@@ -289,7 +295,7 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
       </button>
     );
     return () => setHeaderActions(null);
-  }, [setHeaderActions, onAddCandidate]);
+  }, [setHeaderActions, onAddCandidate, isReadOnly, isSalesRole]);
 
   const reviewResume = async (candidateId: string) => {
     console.log('AI Resume Review for candidate:', candidateId);
@@ -413,8 +419,20 @@ const CandidateTracker: React.FC<TrackerProps> = ({ onAddCandidate, onViewProfil
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
-
+    <div className={`space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 ${(isReadOnly || isSalesRole) ? 'tracker-readonly' : ''}`}>
+      {/* View Only Banner for Sales */}
+      {(isReadOnly || isSalesRole) && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-yellow-600" />
+          <span className="text-sm text-yellow-800 font-medium">View Only Mode - You cannot add or edit candidates</span>
+        </div>
+      )}
+      
+      <style>{`
+        .tracker-readonly input[type="checkbox"] {
+          display: none;
+        }
+      `}</style>
 
       {/* Unified Filter Bar */}
       <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col lg:flex-row items-start lg:items-center gap-3">

@@ -108,7 +108,10 @@ const SuperAdminDashboardView: React.FC<SuperAdminDashboardViewProps> = ({ onTab
 
   const fetchActiveJobs = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/jobs-enhanced/active');
+      const token = localStorage.getItem('superadmin_token') || sessionStorage.getItem('fluidjobs_token');
+      const response = await axios.get('http://localhost:8000/api/jobs-enhanced/active', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       const data = response.data as { success: boolean; jobs: ActiveJob[] };
       if (data.success) {
         setActiveJobs(data.jobs || []);
@@ -120,7 +123,10 @@ const SuperAdminDashboardView: React.FC<SuperAdminDashboardViewProps> = ({ onTab
 
   const fetchClosedJobs = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/jobs-enhanced/closed');
+      const token = localStorage.getItem('superadmin_token') || sessionStorage.getItem('fluidjobs_token');
+      const response = await axios.get('http://localhost:8000/api/jobs-enhanced/closed', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       const data = response.data as { success: boolean; jobs: ActiveJob[] };
       if (data.success) {
         setClosedJobs(data.jobs || []);

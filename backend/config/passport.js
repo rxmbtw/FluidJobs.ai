@@ -2,12 +2,14 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const pool = require('./database');
 
-// Google OAuth Strategy
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/auth/google/callback`
-}, async (accessToken, refreshToken, profile, done) => {
+// Google OAuth Strategy - only initialize if credentials are provided
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && 
+    process.env.GOOGLE_CLIENT_ID !== 'placeholder_client_id') {
+  passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/auth/google/callback`
+  }, async (accessToken, refreshToken, profile, done) => {
   try {
     const email = profile.emails[0].value;
     const name = profile.displayName;
@@ -73,7 +75,10 @@ passport.use(new GoogleStrategy({
     console.error('❌ Google OAuth error:', error.message);
     return done(error, null);
   }
-}));
+  }));
+} else {
+  console.log('⚠️  Google OAuth not configured - skipping strategy initialization');
+}
 
 
 

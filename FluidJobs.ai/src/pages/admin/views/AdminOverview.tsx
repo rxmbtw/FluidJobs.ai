@@ -28,7 +28,7 @@ const AdminOverview: React.FC = () => {
             <div className="flex-shrink-0 bg-white px-8 py-6 border-b border-gray-200 shadow-sm">
                 <div className="flex justify-between items-center">
                     <div>
-                        <h1 className="text-3xl font-semibold text-gray-900">Admin Dashboard</h1>
+                        <h1 className="text-3xl font-semibold text-gray-900">{admin.role || 'Admin'} Dashboard</h1>
                         <p className="text-gray-600">Welcome back {admin.name || 'Admin'}!</p>
                     </div>
                     <DateFilterDropdown onDateRangeChange={(start, end) => setDashboardDateRange({ start, end })} />

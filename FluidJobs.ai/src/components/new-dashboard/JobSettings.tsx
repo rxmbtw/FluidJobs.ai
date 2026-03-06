@@ -25,7 +25,7 @@ const domainSuggestions = [
   'Legal & Compliance', 'Strategy & Consulting', 'Supply Chain & Logistics'
 ];
 
-const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSaveSuccess?: () => void }> = ({ onDirtyChange, onSaveSuccess }) => {
+const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSaveSuccess?: () => void; isReadOnly?: boolean }> = ({ onDirtyChange, onSaveSuccess, isReadOnly }) => {
   const { setHeaderActions } = useDashboardHeader();
   const currentUser = JSON.parse(sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('superadmin') || '{}');
   const isRecruiterRole = currentUser.role?.toLowerCase() === 'recruiter';
@@ -902,25 +902,28 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
   }, []);
 
   useEffect(() => {
-    setHeaderActions(
-      <div className="flex gap-2">
-        <button
-          onClick={handleCancelClick}
-          className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition-all"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSaveClick}
-          disabled={!!titleWarning || isCheckingTitle}
-          className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Save Changes
-        </button>
-      </div>
-    );
+    // Don't show save/cancel buttons in read-only mode
+    if (!isReadOnly) {
+      setHeaderActions(
+        <div className="flex gap-2">
+          <button
+            onClick={handleCancelClick}
+            className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSaveClick}
+            disabled={!!titleWarning || isCheckingTitle}
+            className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Save Changes
+          </button>
+        </div>
+      );
+    }
     return () => setHeaderActions(null);
-  }, [setHeaderActions, jobDetails, selectedLocations]);
+  }, [setHeaderActions, jobDetails, selectedLocations, isReadOnly]);
 
   const sections = [
     { id: 'basic', label: 'Basic Information', icon: Info },
@@ -936,6 +939,19 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+      {/* Read-Only Mode Banner */}
+      {isReadOnly && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start space-x-3">
+          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h4 className="text-sm font-semibold text-yellow-900">View-Only Mode</h4>
+            <p className="text-sm text-yellow-700 mt-1">
+              You have read-only access to this job's settings. Contact an Admin or HR to make changes.
+            </p>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
 
 
@@ -1102,7 +1118,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
         </div>
 
         {/* Settings Content */}
-        <div className="lg:col-span-3">
+        <div className={`lg:col-span-3 ${isReadOnly ? 'pointer-events-none opacity-60' : ''}`}>
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             {activeSection === 'basic' && (
               <div className="space-y-6">

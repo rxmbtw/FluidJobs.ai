@@ -21,6 +21,8 @@ import AdminAccounts from './pages/admin/views/AdminAccounts';
 import AdminSettings from './pages/admin/views/AdminSettings';
 import AdminProfileSettings from './pages/admin/views/AdminProfileSettings';
 import AdminCreateUser from './pages/admin/views/AdminCreateUser';
+import AdminApprovals from './pages/admin/views/AdminApprovals';
+import AdminJobDashboard from './pages/admin/AdminJobDashboard';
 import RecruitersDashboard from './pages/admin/RecruitersDashboard';
 import PrivateRoute from './components/PrivateRoute';
 import RoleRoute from './components/RoleRoute';
@@ -190,6 +192,15 @@ const router = createBrowserRouter(
 
         <Route path="accounts" element={<AdminAccounts />} />
         <Route path="recruiters" element={<RecruitersDashboard />} />
+        
+        {/* Approvals Routes */}
+        <Route path="approvals" element={<AdminApprovals />} />
+        <Route path="approvals/:status" element={<AdminApprovals />} />
+        
+        {/* Job Dashboard Routes for Admin/Recruiter */}
+        <Route path="jobs/job-dashboard/:jobSlug" element={<AdminJobDashboard />} />
+        <Route path="jobs/job-dashboard/:jobSlug/:view" element={<AdminJobDashboard />} />
+        
         <Route path="settings" element={<AdminSettings />} />
         <Route path="profile-settings" element={<AdminProfileSettings />} />
         <Route path="create-user" element={<AdminCreateUser />} />

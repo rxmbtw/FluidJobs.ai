@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { DateFilterDropdown } from '../../../components/DateFilterDropdown';
-import { Check, X, Eye, MapPin, Briefcase, DollarSign, Calendar, User, Building, Clock, AlertCircle, Edit3 } from 'lucide-react';
+import { Check, X, Eye, MapPin, Briefcase, DollarSign, Calendar, User, Building, Clock, AlertCircle, Edit3, Filter, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 
@@ -18,12 +18,13 @@ const SuperAdminApprovals: React.FC = () => {
     const { status } = useParams();
     const approvalTab = status || 'pending';
 
+    // Get filter from URL or default to 'all'
+    const approvalFilter = searchParams.get('filter') || 'all';
+    
     const setApprovalTab = (tab: string) => {
         navigate(`/superadmin-dashboard/approvals/${tab}?filter=${approvalFilter}`);
     };
 
-    // Get filter from URL or default to 'all'
-    const approvalFilter = searchParams.get('filter') || 'all';
     const setApprovalFilter = (filter: string) => {
         setSearchParams({ filter });
     };
@@ -33,8 +34,16 @@ const SuperAdminApprovals: React.FC = () => {
     const [jobToReject, setJobToReject] = useState<any>(null);
     const [rejectionReason, setRejectionReason] = useState('');
     const [submittingRejection, setSubmittingRejection] = useState(false);
+    const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
     const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+
+    // Ensure filter parameter is set in URL on initial load
+    useEffect(() => {
+        if (!searchParams.get('filter')) {
+            setSearchParams({ filter: 'all' }, { replace: true });
+        }
+    }, []);
 
     useEffect(() => {
         if (approvalTab === 'all') {
@@ -67,11 +76,22 @@ const SuperAdminApprovals: React.FC = () => {
                 url += `?startDate=${approvalsDateRange.start}&endDate=${approvalsDateRange.end}`;
             }
             const response = await axios.get<any[]>(url);
+            console.log('📥 Pending approvals fetched:', response.data);
 
-            const editResponse = await axios.get<any[]>(`${BACKEND_URL}/api/superadmin/edit-requests?status=pending`);
-            const mappedEdits = editResponse.data.map(e => ({ ...e, approval_type: 'job_edit' }));
+            // Try to fetch edit requests, but don't fail if it errors
+            let mappedEdits: any[] = [];
+            try {
+                const editResponse = await axios.get<any[]>(`${BACKEND_URL}/api/superadmin/edit-requests?status=pending`);
+                mappedEdits = editResponse.data.map(e => ({ ...e, approval_type: 'job_edit' }));
+            } catch (editError) {
+                console.warn('Could not fetch edit requests:', editError);
+                // Continue without edit requests
+            }
 
             const combined = [...response.data, ...mappedEdits].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            console.log('📊 Combined pending approvals:', combined);
+            console.log('🔍 Current filter:', approvalFilter);
+            console.log('🔍 Filtered result:', filterApprovals(combined));
             setPendingApprovals(combined);
         } catch (error) {
             console.error('Error fetching approvals:', error);
@@ -86,13 +106,18 @@ const SuperAdminApprovals: React.FC = () => {
             }
             const response = await axios.get<any[]>(url);
 
-            const editResponse = await axios.get<any[]>(`${BACKEND_URL}/api/superadmin/edit-requests?status=approved`);
-            const mappedEdits = editResponse.data.map(e => ({
-                ...e,
-                approval_type: 'job_edit',
-                approved_at: e.resolved_at,
-                approved_by_name: 'SuperAdmin'
-            }));
+            let mappedEdits: any[] = [];
+            try {
+                const editResponse = await axios.get<any[]>(`${BACKEND_URL}/api/superadmin/edit-requests?status=approved`);
+                mappedEdits = editResponse.data.map(e => ({
+                    ...e,
+                    approval_type: 'job_edit',
+                    approved_at: e.resolved_at,
+                    approved_by_name: 'SuperAdmin'
+                }));
+            } catch (editError) {
+                console.warn('Could not fetch approved edit requests:', editError);
+            }
 
             const combined = [...response.data, ...mappedEdits].sort((a, b) => {
                 const dateA = new Date(a.approved_at || a.created_at).getTime();
@@ -113,12 +138,17 @@ const SuperAdminApprovals: React.FC = () => {
             }
             const response = await axios.get<any[]>(url);
 
-            const editResponse = await axios.get<any[]>(`${BACKEND_URL}/api/superadmin/edit-requests?status=rejected`);
-            const mappedEdits = editResponse.data.map(e => ({
-                ...e,
-                approval_type: 'job_edit',
-                approved_at: e.resolved_at
-            }));
+            let mappedEdits: any[] = [];
+            try {
+                const editResponse = await axios.get<any[]>(`${BACKEND_URL}/api/superadmin/edit-requests?status=rejected`);
+                mappedEdits = editResponse.data.map(e => ({
+                    ...e,
+                    approval_type: 'job_edit',
+                    approved_at: e.resolved_at
+                }));
+            } catch (editError) {
+                console.warn('Could not fetch rejected edit requests:', editError);
+            }
 
             const combined = [...response.data, ...mappedEdits].sort((a, b) => {
                 const dateA = new Date(a.approved_at || a.created_at).getTime();
@@ -414,31 +444,6 @@ const SuperAdminApprovals: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full bg-gray-50 overflow-hidden relative">
-            {/* Dynamic Island Sub-Filters - Absolute Centered at Top */}
-            <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30">
-                <div className="bg-white/90 backdrop-blur-md p-1.5 rounded-full shadow-xl flex items-center gap-1 border border-gray-200 ring-1 ring-black/5">
-                    {['all', 'jobs', 'candidates', 'edits'].map((filter) => (
-                        <button
-                            key={filter}
-                            onClick={() => setApprovalFilter(filter)}
-                            className={`relative px-4 py-1.5 rounded-full text-xs font-semibold transition-colors duration-200 ${approvalFilter === filter ? 'text-blue-700' : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                        >
-                            {approvalFilter === filter && (
-                                <motion.div
-                                    layoutId="notch-glow"
-                                    className="absolute inset-0 bg-blue-50 rounded-full shadow-sm border border-blue-100"
-                                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                                />
-                            )}
-                            <span className="relative z-10 capitalize">
-                                {filter === 'all' ? 'All Items' : filter}
-                            </span>
-                        </button>
-                    ))}
-                </div>
-            </div>
-
             <div className="flex-shrink-0 bg-white border-b border-gray-200 shadow-sm z-10 pt-6 pb-0">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-start mb-6">
@@ -449,20 +454,71 @@ const SuperAdminApprovals: React.FC = () => {
                         <DateFilterDropdown onDateRangeChange={(start, end) => setApprovalsDateRange({ start, end })} />
                     </div>
 
-                    {/* Left-Aligned Tab Navigation */}
-                    <div className="flex space-x-6">
-                        {['pending', 'approved', 'declined'].map((tab) => (
+                    {/* Tab Navigation with Filter Dropdown */}
+                    <div className="flex justify-between items-center">
+                        <div className="flex space-x-6">
+                            {['pending', 'approved', 'declined'].map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setApprovalTab(tab)}
+                                    className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors duration-200 ${approvalTab === tab
+                                        ? 'border-blue-600 text-blue-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        }`}
+                                >
+                                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Filter Dropdown */}
+                        <div className="relative pb-3">
                             <button
-                                key={tab}
-                                onClick={() => setApprovalTab(tab)}
-                                className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors duration-200 ${approvalTab === tab
-                                    ? 'border-blue-600 text-blue-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                    }`}
+                                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                             >
-                                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                <Filter className="w-4 h-4" />
+                                <span className="capitalize">
+                                    {approvalFilter === 'all' ? 'All Items' : approvalFilter}
+                                </span>
+                                <ChevronDown className={`w-4 h-4 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
                             </button>
-                        ))}
+
+                            {showFilterDropdown && (
+                                <>
+                                    {/* Backdrop to close dropdown */}
+                                    <div 
+                                        className="fixed inset-0 z-10" 
+                                        onClick={() => setShowFilterDropdown(false)}
+                                    />
+                                    
+                                    {/* Dropdown Menu */}
+                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                                        {[
+                                            { value: 'all', label: 'All Items' },
+                                            { value: 'jobs', label: 'Jobs' },
+                                            { value: 'candidates', label: 'Candidates' },
+                                            { value: 'edits', label: 'Edits' }
+                                        ].map((filter) => (
+                                            <button
+                                                key={filter.value}
+                                                onClick={() => {
+                                                    setApprovalFilter(filter.value);
+                                                    setShowFilterDropdown(false);
+                                                }}
+                                                className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                                                    approvalFilter === filter.value
+                                                        ? 'bg-blue-50 text-blue-700 font-medium'
+                                                        : 'text-gray-700 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                {filter.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

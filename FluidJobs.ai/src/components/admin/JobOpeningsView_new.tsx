@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import NewDashboardContainer from '../../components/new-dashboard/NewDashboardContainer';
 import Loader from '../../components/Loader';
@@ -42,6 +43,11 @@ interface JobOpeningsViewNewProps {
 }
 
 const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = false, searchQuery: externalSearchQuery, showFilters: externalShowFilters, jobTab = 'all', onJobTabChange }) => {
+  const navigate = useNavigate();
+  const currentUser = JSON.parse(sessionStorage.getItem('fluidjobs_user') || '{}');
+  const userRole = currentUser.role || 'User';
+  const isInterviewer = userRole.toLowerCase() === 'interviewer';
+  
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleJobs, setVisibleJobs] = useState(10);
@@ -680,12 +686,18 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                 key={job.jobId}
                 className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5 cursor-pointer"
                 onClick={() => {
-                  setDashboardLoading(true);
-                  setTimeout(() => {
-                    setSelectedJobForDashboard(job);
-                    setShowJobDashboard(true);
-                    setDashboardLoading(false);
-                  }, 500);
+                  if (isInterviewer) {
+                    // Navigate to job dashboard route for Interviewer
+                    navigate(`/admin-dashboard/jobs/job-dashboard/${job.jobId}`);
+                  } else {
+                    // Show modal for other roles
+                    setDashboardLoading(true);
+                    setTimeout(() => {
+                      setSelectedJobForDashboard(job);
+                      setShowJobDashboard(true);
+                      setDashboardLoading(false);
+                    }, 500);
+                  }
                 }}
               >
                 {/* Job Image */}

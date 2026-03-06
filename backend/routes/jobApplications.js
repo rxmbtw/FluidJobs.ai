@@ -172,18 +172,6 @@ router.get('/admin/list', authenticateToken, async (req, res) => {
     // Check SuperAdmin status first (this is a separate fast query)
     let isSuperAdmin = req.user.role === 'SuperAdmin' || req.user.role === 'superadmin';
 
-    const { jobId } = req.query;
-
-    if (!isSuperAdmin && req.user.email) {
-      try {
-        const saCheck = await pool.query('SELECT 1 FROM superadmins WHERE LOWER(email) = LOWER($1)', [req.user.email]);
-        if (saCheck.rows.length > 0) isSuperAdmin = true;
-      } catch (e) {
-        // superadmins table might not exist, ignore
-        console.warn('superadmins check failed:', e.message);
-      }
-    }
-
     // Build query using ONLY verified database columns
     // job_applications: application_id, job_id, candidate_id, user_id, status, applied_at, cover_letter, resume_path
     // candidates: candidate_id, full_name, email, phone_number, created_at, experience_years, current_company, notice_period, expected_ctc, current_ctc, etc.
@@ -217,10 +205,8 @@ router.get('/admin/list', authenticateToken, async (req, res) => {
         LEFT JOIN job_applications ja ON ja.candidate_id = c.candidate_id
         LEFT JOIN jobs_enhanced j ON ja.job_id = j.id
         LEFT JOIN accounts a ON j.account_id = a.account_id
-        ${jobId ? ' WHERE j.id = $1' : ''}
         ORDER BY c.candidate_id, COALESCE(ja.applied_at, c.created_at) DESC
       `;
-      if (jobId) params.push(jobId);
     } else {
       // Regular admin: filter by account
       const userId = req.user.id || req.user.adminId;
@@ -249,11 +235,9 @@ router.get('/admin/list', authenticateToken, async (req, res) => {
         LEFT JOIN jobs_enhanced j ON ja.job_id = j.id
         LEFT JOIN accounts a ON j.account_id = a.account_id
         WHERE (j.account_id IN (SELECT account_id FROM account_users WHERE user_id = $1) OR j.account_id IS NULL)
-        ${jobId ? ' AND j.id = $2' : ''}
         ORDER BY date DESC
       `;
       params.push(userId);
-      if (jobId) params.push(jobId);
     }
 
     const result = await pool.query(query, params);

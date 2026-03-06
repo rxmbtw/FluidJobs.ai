@@ -47,10 +47,10 @@ const SuperAdminBreadcrumbs: React.FC = () => {
 
     return (
         <nav className="flex items-center text-sm text-gray-500 mb-6 bg-white px-4 py-3 rounded-lg border border-gray-100 shadow-sm" aria-label="Breadcrumb">
-            <div className="flex items-center hover:text-blue-600 transition-colors">
+            <Link to="/superadmin-dashboard/overview" className="flex items-center hover:text-blue-600 transition-colors cursor-pointer">
                 <Home size={16} className="mr-1" />
                 <span className="sr-only">Home</span>
-            </div>
+            </Link>
 
             {pathnames.map((value, index) => {
                 const last = index === pathnames.length - 1;

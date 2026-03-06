@@ -11,10 +11,10 @@ const AdminSettings: React.FC = () => {
 
     // Role-based access control (re-derived from admin)
     const userRole = admin.role || 'User';
-    const canCreateJobs = ['Admin', 'Recruiter'].includes(userRole);
+    const canCreateJobs = ['Admin', 'Recruiter', 'Sales'].includes(userRole);
     const canManageUsers = ['Admin'].includes(userRole);
-    const canViewPermissions = ['HR', 'Interviewer', 'Sales'].includes(userRole);
-    const canViewAccounts = ['Admin', 'Recruiter', 'HR'].includes(userRole);
+    const canViewPermissions = ['HR', 'Interviewer', 'Sales', 'Recruiter'].includes(userRole);
+    const canViewAccounts = ['Admin', 'Recruiter', 'HR', 'Sales', 'Interviewer'].includes(userRole);
     const canManageCandidates = ['Admin', 'HR', 'Recruiter'].includes(userRole);
     const canViewJobs = ['Admin', 'Recruiter', 'HR', 'Interviewer', 'Sales'].includes(userRole);
     const canSendInvites = ['Admin', 'HR', 'Recruiter'].includes(userRole);
