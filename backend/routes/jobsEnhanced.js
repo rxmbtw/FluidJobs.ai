@@ -637,7 +637,10 @@ router.get('/:id', async (req, res) => {
       attachments: attachmentsResult.rows,
       interview_stages: job.hiring_process || [],
       hiring_process: job.hiring_process || [],
-      stages: job.hiring_process || []
+      stages: job.hiring_process || [],
+      // Team & Recruiters
+      team_assignments: job.team_assignments || {},
+      primary_recruiter_id: job.primary_recruiter_id || null
     });
   } catch (error) {
     console.error('Error fetching job:', error);
@@ -661,6 +664,44 @@ router.patch('/update-stages/:id', async (req, res) => {
   } catch (error) {
     console.error('Error updating stages:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Save team assignments for a job (called from JobSettings)
+router.patch('/:id/team', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { team_assignments, primary_recruiter_id } = req.body;
+
+    if (team_assignments !== undefined && typeof team_assignments !== 'object') {
+      return res.status(400).json({ success: false, error: 'team_assignments must be an object' });
+    }
+
+    // Validate primaryRecruiterId if provided
+    if (primary_recruiter_id) {
+      const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [primary_recruiter_id]);
+      if (userCheck.rows.length === 0) {
+        return res.status(400).json({ success: false, error: 'primary_recruiter_id references unknown user' });
+      }
+    }
+
+    await pool.query(
+      `UPDATE jobs_enhanced
+         SET team_assignments       = $1,
+             primary_recruiter_id   = $2,
+             updated_at             = NOW()
+       WHERE id = $3`,
+      [
+        JSON.stringify(team_assignments || {}),
+        primary_recruiter_id || null,
+        id
+      ]
+    );
+
+    res.json({ success: true, message: 'Team assignments saved' });
+  } catch (error) {
+    console.error('[team patch] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

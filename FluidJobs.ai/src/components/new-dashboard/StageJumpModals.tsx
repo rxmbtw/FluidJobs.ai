@@ -108,6 +108,8 @@ interface StageJumpModalProps {
     onClose: () => void;
     onTargetStageChange: (stage: string) => void;
     onFeedbackChange: (feedback: string) => void;
+    assignmentScore?: string;
+    onAssignmentScoreChange?: (score: string) => void;
     onExecute: () => void;
 }
 
@@ -121,6 +123,8 @@ export const StageJumpModal: React.FC<StageJumpModalProps> = ({
     onClose,
     onTargetStageChange,
     onFeedbackChange,
+    assignmentScore,
+    onAssignmentScoreChange,
     onExecute
 }) => {
     if (!show || !candidates || candidates.length === 0) return null;
@@ -190,6 +194,24 @@ export const StageJumpModal: React.FC<StageJumpModalProps> = ({
                             direction={direction}
                         />
                     </div>
+
+                    {/* Assignment Score Input (Conditional) */}
+                    {isForward && targetStage && (targetStage.includes('Assignment') || targetStage === 'Assignment Result') && onAssignmentScoreChange && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Assignment Score (%)
+                            </label>
+                            <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={assignmentScore || ''}
+                                onChange={(e) => onAssignmentScoreChange(e.target.value)}
+                                placeholder="Enter score (0-100)"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                            />
+                        </div>
+                    )}
 
                     {/* Reason/Feedback */}
                     <div>
@@ -406,7 +428,16 @@ export const FeedbackReviewModal: React.FC<FeedbackReviewModalProps> = ({
                                 {/* Row 3: feedback message */}
                                 {entry.feedback ? (
                                     <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap bg-white rounded-lg p-3 border border-gray-100">
-                                        {entry.feedback}
+                                        {entry.feedback.split(/(\[Skipped:\s*[^\]]+\])/gi).map((part: string, i: number) => {
+                                            if (part.toLowerCase().startsWith('[skipped:')) {
+                                                return (
+                                                    <span key={i} className="mx-1 inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-100 text-amber-700 border border-amber-200 align-middle">
+                                                        {part.replace(/[\[\]]/g, '')}
+                                                    </span>
+                                                );
+                                            }
+                                            return <span key={i}>{part}</span>;
+                                        })}
                                     </p>
                                 ) : (
                                     <p className="text-sm text-gray-400 italic bg-white rounded-lg p-3 border border-gray-100">
@@ -433,3 +464,105 @@ export const FeedbackReviewModal: React.FC<FeedbackReviewModalProps> = ({
     );
 };
 
+export interface StatusActionModalProps {
+    show: boolean;
+    candidate: PipelineCandidate | null;
+    action: 'Reject' | 'Drop' | 'Hold' | null;
+    reason: string;
+    onClose: () => void;
+    onReasonChange: (reason: string) => void;
+    onExecute: () => void;
+}
+
+export const StatusActionModal: React.FC<StatusActionModalProps> = ({
+    show,
+    candidate,
+    action,
+    reason,
+    onClose,
+    onReasonChange,
+    onExecute
+}) => {
+    if (!show || !candidate || !action) return null;
+
+    let headerColor = '';
+    let icon = null;
+    if (action === 'Reject') {
+        headerColor = 'bg-gradient-to-r from-red-600 to-red-700';
+        icon = <X className="w-5 h-5 text-white" />;
+    } else if (action === 'Drop') {
+        headerColor = 'bg-gradient-to-r from-gray-600 to-gray-700';
+        icon = <AlertCircle className="w-5 h-5 text-white" />;
+    } else if (action === 'Hold') {
+        headerColor = 'bg-gradient-to-r from-amber-600 to-amber-700';
+        icon = <Clock className="w-5 h-5 text-white" />;
+    }
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+                {/* Header */}
+                <div className={`px-6 py-4 flex items-center justify-between ${headerColor}`}>
+                    <div className="flex items-center gap-3">
+                        {icon}
+                        <div>
+                            <h3 className="text-lg font-semibold text-white">
+                                {action === 'Reject' ? 'Reject Candidate' : action === 'Drop' ? 'Drop Candidate' : 'Put Candidate on Hold'}
+                            </h3>
+                            <p className="text-sm text-white/80">
+                                {candidate.name}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="text-white/80 hover:text-white transition-colors"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Reason for {action === 'Reject' ? 'Rejection' : action === 'Drop' ? 'Dropping' : 'Holding'}
+                            <span className="text-red-500 ml-1">*</span>
+                        </label>
+                        <textarea
+                            value={reason}
+                            onChange={(e) => onReasonChange(e.target.value)}
+                            rows={4}
+                            placeholder={`Explain the reason for ${action === 'Reject' ? 'rejection' : action === 'Drop' ? 'dropping' : 'putting on hold'}...`}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all"
+                        />
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="bg-gray-50 px-6 py-4 flex justify-end gap-2 border-t border-gray-200">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all font-medium"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onExecute}
+                        disabled={!reason.trim()}
+                        className={`px-4 py-2 rounded-lg font-medium transition-all ${!reason.trim()
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : action === 'Reject'
+                                ? 'bg-red-600 text-white hover:bg-red-700 shadow-sm hover:shadow-md'
+                                : action === 'Drop'
+                                    ? 'bg-gray-800 text-white hover:bg-gray-900 shadow-sm hover:shadow-md'
+                                    : 'bg-amber-600 text-white hover:bg-amber-700 shadow-sm hover:shadow-md'
+                            }`}
+                    >
+                        Confirm {action}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};

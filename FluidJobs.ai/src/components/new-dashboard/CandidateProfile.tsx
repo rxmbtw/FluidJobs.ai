@@ -337,7 +337,7 @@ const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate, onBack, 
         feedback: stageFeedback.exists ? stageFeedback.feedback : 'No feedback provided',
         hasFeedback: stageFeedback.exists && !stageFeedback.isEmpty,
         score: stage.includes('Technical') || stage === InterviewStage.ASSIGNMENT_RESULT
-          ? candidate.assignmentScore || Math.floor(Math.random() * 30) + 70
+          ? candidate.assignmentScore || null
           : null,
         duration: i < currentStageIndex ? Math.floor(Math.random() * 5) + 1 : aging
       });
@@ -755,7 +755,7 @@ const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate, onBack, 
                           />
                         </div>
                       ) : (
-                        <span className="text-slate-900 font-bold">{candidate.currentSalary || `${candidate.ctc.currency} ${candidate.ctc.current.toLocaleString()}`}</span>
+                        <span className="text-slate-900 font-bold">{candidate.currentSalary || (candidate.ctc?.currency ? `${candidate.ctc.currency} ${candidate.ctc.current?.toLocaleString() ?? 0}` : 'Not specified')}</span>
                       )}
                     </div>
                     <div className="flex justify-between items-center text-sm">
@@ -771,7 +771,7 @@ const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate, onBack, 
                           />
                         </div>
                       ) : (
-                        <span className="text-slate-900 font-bold">{candidate.expectedSalary || `${candidate.ctc.currency} ${candidate.ctc.expected.toLocaleString()}`}</span>
+                        <span className="text-slate-900 font-bold">{candidate.expectedSalary || (candidate.ctc?.currency ? `${candidate.ctc.currency} ${candidate.ctc.expected?.toLocaleString() ?? 0}` : 'Not specified')}</span>
                       )}
                     </div>
                     <div className="flex justify-between items-center text-sm">

@@ -224,10 +224,18 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
           });
         }, 100);
 
-        // Load the saved cover image
+        // Load selected cover image
         if (data.selectedImage || data.selected_image) {
           setSelectedImage(data.selectedImage || data.selected_image);
           originalCoverImage.current = data.selectedImage || data.selected_image;
+        }
+
+        // ── Load team assignments ────────────────────────────────────────────
+        if (data.team_assignments && typeof data.team_assignments === 'object') {
+          setTeamAssignments(data.team_assignments);
+        }
+        if (data.primary_recruiter_id) {
+          setJobDetails(prev => ({ ...prev, primaryRecruiterId: String(data.primary_recruiter_id) }));
         }
       })
       .catch(err => { console.error('[JobSettings] Error loading stages:', err); });
@@ -445,7 +453,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
     setPendingSectionId(null);
   };
 
-  const SECTION_ORDER = ['basic', 'image', 'timeline', 'location', 'requirements', 'compensation', 'team', 'description', 'process'];
+  const SECTION_ORDER = ['basic', 'image', 'timeline', 'location', 'requirements', 'compensation', 'description', 'process', 'team'];
 
   const handleNextSection = () => {
     const currentIndex = SECTION_ORDER.indexOf(activeSection);
@@ -543,6 +551,21 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
           throw new Error(err.error || `Server error ${stagesRes.status}`);
         }
 
+        // Save team assignments
+        if (Object.keys(teamAssignments).length > 0 || jobDetails.primaryRecruiterId) {
+          await fetch(
+            `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/${jobId}/team`,
+            {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({
+                team_assignments: teamAssignments,
+                primary_recruiter_id: jobDetails.primaryRecruiterId ? Number(jobDetails.primaryRecruiterId) : null
+              })
+            }
+          ).catch(err => console.warn('[JobSettings] Team save failed (non-blocking):', err));
+        }
+
         // Save selected image if changed
         if (selectedImage) {
           await fetch(
@@ -593,6 +616,30 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
     'Reference Check',
     'Background Verification'
   ];
+
+  // Stage name → responsibility key mapping (mirrors PipelineBoard)
+  const STAGE_TO_RESPONSIBILITY: Record<string, { value: string; label: string }> = {
+    'Screening': { value: 'screening_reviewer', label: 'Screening Reviewer' },
+    'CV Shortlist': { value: 'cv_shortlist_reviewer', label: 'CV Shortlist Reviewer' },
+    'HM Review': { value: 'hiring_manager', label: 'Hiring Manager' },
+    'Assignment': { value: 'assignment_reviewer', label: 'Assignment Reviewer' },
+    'L1 Technical': { value: 'l1_technical_interviewer', label: 'L1 Technical Interviewer' },
+    'L2 Technical': { value: 'l2_technical_interviewer', label: 'L2 Technical Interviewer' },
+    'L3 Technical': { value: 'l3_technical_interviewer', label: 'L3 Technical Interviewer' },
+    'L4 Technical': { value: 'l4_technical_interviewer', label: 'L4 Technical Interviewer' },
+    'HR Round': { value: 'hr_round', label: 'HR Round' },
+    'Management Round': { value: 'management_round', label: 'Management Round' },
+  };
+
+  // Returns responsibility list derived from the currently configured interview stages
+  const getResponsibilitiesForStages = (stages: any[]) => {
+    const result: { value: string; label: string }[] = [];
+    stages.forEach(stage => {
+      const resp = STAGE_TO_RESPONSIBILITY[stage.name];
+      if (resp && !result.find(r => r.value === resp.value)) result.push(resp);
+    });
+    return result;
+  };
 
   // Options
   const domainOptions = [
@@ -929,9 +976,9 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
     { id: 'location', label: 'Location & Mode', icon: MapPin },
     { id: 'requirements', label: 'Requirements & Skills', icon: CheckSquare },
     { id: 'compensation', label: 'Compensation', icon: DollarSign },
-    { id: 'team', label: 'Team & Recruiters', icon: Users },
     { id: 'description', label: 'Job Description', icon: FileText },
     { id: 'process', label: 'Hiring Process', icon: ClipboardList },
+    { id: 'team', label: 'Team & Recruiters', icon: Users },
   ];
 
   return (
@@ -1853,7 +1900,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                     className="w-full md:w-1/2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   >
                     <option value="">-- Select Primary Recruiter --</option>
-                    {users.filter(u => u.role === 'Recruiter' || u.role === 'Admin' || u.role === 'SuperAdmin').map(user => (
+                    {users.filter(u => ['Recruiter', 'HR', 'Admin', 'Interviewer', 'Sales', 'SuperAdmin'].includes(u.role)).map(user => (
                       <option key={user.id} value={user.id}>{user.name} ({user.role})</option>
                     ))}
                   </select>
@@ -1945,17 +1992,9 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                             className="hidden"
                             id={`responsibilities-${user.id}`}
                           >
-                            <option value="hiring_manager">Hiring Manager</option>
-                            <option value="screening_reviewer">Screening Reviewer</option>
-                            <option value="cv_shortlist_reviewer">CV Shortlist Reviewer</option>
-                            <option value="assignment_reviewer">Assignment Reviewer</option>
-                            <option value="l1_technical_interviewer">L1 Technical Interviewer</option>
-                            <option value="l2_technical_interviewer">L2 Technical Interviewer</option>
-                            <option value="l3_technical_interviewer">L3 Technical Interviewer</option>
-                            <option value="l4_technical_interviewer">L4 Technical Interviewer</option>
-                            <option value="hr_round">HR Round</option>
-                            <option value="management_round">Management Round</option>
-                            <option value="final_decision_maker">Final Decision Maker</option>
+                            {getResponsibilitiesForStages(jobDetails.interviewStages).map(r => (
+                              <option key={r.value} value={r.value}>{r.label}</option>
+                            ))}
                           </select>
 
                           {/* Add Responsibility Dropdown */}
@@ -1970,19 +2009,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                               <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                                 <div className="p-1">
                                   {(() => {
-                                    const allResponsibilities = [
-                                      { value: 'hiring_manager', label: 'Hiring Manager' },
-                                      { value: 'screening_reviewer', label: 'Screening Reviewer' },
-                                      { value: 'cv_shortlist_reviewer', label: 'CV Shortlist Reviewer' },
-                                      { value: 'assignment_reviewer', label: 'Assignment Reviewer' },
-                                      { value: 'l1_technical_interviewer', label: 'L1 Technical Interviewer' },
-                                      { value: 'l2_technical_interviewer', label: 'L2 Technical Interviewer' },
-                                      { value: 'l3_technical_interviewer', label: 'L3 Technical Interviewer' },
-                                      { value: 'l4_technical_interviewer', label: 'L4 Technical Interviewer' },
-                                      { value: 'hr_round', label: 'HR Round' },
-                                      { value: 'management_round', label: 'Management Round' },
-                                      { value: 'final_decision_maker', label: 'Final Decision Maker' }
-                                    ];
+                                    const allResponsibilities = getResponsibilitiesForStages(jobDetails.interviewStages);
 
                                     const isAdminOrSuperAdmin = user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'superadmin';
                                     const allResponsibilityValues = allResponsibilities.map(r => r.value);
@@ -2081,6 +2108,31 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                     </div>
                   </div>
                 )}
+
+                {/* Stage coverage checklist */}
+                {(() => {
+                  const required = getResponsibilitiesForStages(jobDetails.interviewStages);
+                  const allAssigned = Object.values(teamAssignments).flat();
+                  const uncovered = required.filter(r => !allAssigned.includes(r.value));
+                  return (
+                    <div className={`mt-4 p-4 rounded-lg border ${uncovered.length === 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                      <p className={`text-sm font-semibold mb-2 ${uncovered.length === 0 ? 'text-green-800' : 'text-amber-800'}`}>
+                        {uncovered.length === 0 ? '✅ All stages have assigned owners' : `⚠️ ${uncovered.length} stage(s) still need an owner`}
+                      </p>
+                      <div className="space-y-1">
+                        {required.map(r => {
+                          const isCovered = allAssigned.includes(r.value);
+                          return (
+                            <div key={r.value} className="flex items-center gap-2 text-xs">
+                              <span className={isCovered ? 'text-green-600' : 'text-amber-600'}>{isCovered ? '✓' : '✗'}</span>
+                              <span className={isCovered ? 'text-green-700' : 'text-amber-700 font-medium'}>{r.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div className="flex justify-between mt-6 pt-4 border-t border-gray-200">
                   <button

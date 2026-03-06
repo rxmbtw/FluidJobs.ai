@@ -99,6 +99,9 @@ const NewDashboardContainer: React.FC<NewDashboardContainerProps> = ({ onBack, i
   });
 
   const [jobStages, setJobStages] = useState<any[]>([]);
+  // Team assignments for job — used to display assigned member on pipeline cards
+  const [jobTeamAssignments, setJobTeamAssignments] = useState<Record<string, string[]>>({});
+  const [jobPrimaryRecruiterId, setJobPrimaryRecruiterId] = useState<number | null>(null);
 
   // Fetch job details
   useEffect(() => {
@@ -154,6 +157,14 @@ const NewDashboardContainer: React.FC<NewDashboardContainerProps> = ({ onBack, i
               }));
             setJobStages(cleanedStages);
           }
+
+          // Store team assignments for pipeline card display
+          if (data.team_assignments && typeof data.team_assignments === 'object') {
+            setJobTeamAssignments(data.team_assignments);
+          }
+          if (data.primary_recruiter_id) {
+            setJobPrimaryRecruiterId(Number(data.primary_recruiter_id));
+          }
         }
       } catch (error) {
         console.error('Error fetching job details:', error);
@@ -206,7 +217,7 @@ const NewDashboardContainer: React.FC<NewDashboardContainerProps> = ({ onBack, i
       stage: mapStageToBoard(candidate.currentStage),
       status: candidate.isOnHold ? CandidateStatus.ON_HOLD : CandidateStatus.ACTIVE,
       aging: Math.max(0, Math.floor((Date.now() - new Date(candidate.appliedDate || candidate.createdAt || Date.now()).getTime()) / 86400000)),
-      assignmentScore: Math.random() > 0.5 ? Math.floor(Math.random() * 40) + 60 : undefined,
+      assignmentScore: candidate.assignmentScore,
       interviewer: Math.random() > 0.5 ? 'Mark Chen' : null,
       interviewNote: null,
       hiringManager: getRandomHiringManager(),
@@ -465,7 +476,14 @@ const NewDashboardContainer: React.FC<NewDashboardContainerProps> = ({ onBack, i
       case 'hiring-pipeline':
         return (
           <ErrorBoundary>
-            <PipelineBoard onViewProfile={handleViewProfile} candidates={pipelineCandidates} users={users} stages={jobStages} />
+            <PipelineBoard
+              onViewProfile={handleViewProfile}
+              candidates={pipelineCandidates}
+              users={users}
+              stages={jobStages}
+              teamAssignments={jobTeamAssignments}
+              primaryRecruiterId={jobPrimaryRecruiterId}
+            />
           </ErrorBoundary>
         );
       case 'candidate-tracker':

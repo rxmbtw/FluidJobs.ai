@@ -276,7 +276,7 @@ router.put('/:id', async (req, res) => {
 router.put('/:id/stage', async (req, res) => {
   try {
     const { id } = req.params;
-    const { currentStage, status, reason, feedback, jobId, movedByName, movedByRole, movedByUserId } = req.body;
+    const { currentStage, status, reason, feedback, jobId, movedByName, movedByRole, movedByUserId, assignmentScore } = req.body;
 
     const newStage = currentStage || status;
     if (!newStage) {
@@ -290,17 +290,33 @@ router.put('/:id/stage', async (req, res) => {
     const userId = movedByUserId ? parseInt(movedByUserId) : null;
 
     // 1. Update current_stage on the candidates table
-    const updateResult = await pool.query(
-      `UPDATE candidates
+    const scoreValue = assignmentScore !== undefined && assignmentScore !== '' ? parseInt(assignmentScore) : null;
+    let updateQuery, updateParams;
+
+    if (scoreValue !== null) {
+      updateQuery = `UPDATE candidates
+       SET current_stage = $1,
+           assignment_score = $3,
+           current_stage_since = NOW(),
+           last_stage_change_at = NOW(),
+           last_stage_change_by = $4,
+           updated_at = NOW()
+       WHERE candidate_id = $2
+       RETURNING *`;
+      updateParams = [newStage, id, scoreValue, userName];
+    } else {
+      updateQuery = `UPDATE candidates
        SET current_stage = $1,
            current_stage_since = NOW(),
            last_stage_change_at = NOW(),
            last_stage_change_by = $3,
            updated_at = NOW()
        WHERE candidate_id = $2
-       RETURNING *`,
-      [newStage, id, userName]
-    );
+       RETURNING *`;
+      updateParams = [newStage, id, userName];
+    }
+
+    const updateResult = await pool.query(updateQuery, updateParams);
 
     if (updateResult.rows.length === 0) {
       return res.status(404).json({ status: 'error', message: 'Candidate not found' });

@@ -7,6 +7,7 @@ export interface StageUpdateRequest {
   newStage: string;
   reason?: string;
   userId: string;
+  assignmentScore?: string;
   approvals?: any[];
 }
 
@@ -142,6 +143,7 @@ export class CandidateService {
       joiningDate: dbCandidate.joining_date,
       maritalStatus: dbCandidate.marital_status,
       resumeScore: dbCandidate.resume_score || Math.floor(Math.random() * 40) + 60, // Random score for demo
+      assignmentScore: dbCandidate.assignment_score ?? undefined,
       skills: [], // Would be populated from a separate skills table in production
 
       // Permissions (will be added by the caller if user context is available)
@@ -462,6 +464,7 @@ export class CandidateService {
         movedByName: user.name,
         movedByRole: this.safeGetRole(user),
         movedByUserId: user.id,
+        assignmentScore: request.assignmentScore
       };
 
       let updatedCandidate: Candidate;
@@ -531,7 +534,8 @@ export class CandidateService {
   static async bulkUpdateCandidateStages(
     candidateIds: string[],
     newStage: string,
-    reason?: string
+    reason?: string,
+    assignmentScore?: string
   ): Promise<{
     success: boolean;
     results: Array<{ candidateId: string; success: boolean; error?: string }>;
@@ -552,7 +556,8 @@ export class CandidateService {
           candidateId,
           newStage,
           reason,
-          userId: user.id
+          userId: user.id,
+          assignmentScore
         });
 
         results.push({

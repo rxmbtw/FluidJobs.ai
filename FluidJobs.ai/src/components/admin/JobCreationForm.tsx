@@ -77,18 +77,17 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
   const [usedImages, setUsedImages] = useState<string[]>([]); // images used by other jobs in the same account
   const [selectedHiringManager, setSelectedHiringManager] = useState('');
   const [selectedRecruiters, setSelectedRecruiters] = useState<string[]>([]);
-  const [hiringStages, setHiringStages] = useState<any[]>([
+  // Default 7 hiring stages (user can add/remove later)
+  const DEFAULT_HIRING_STAGES = [
     { id: 'screening', name: 'Screening', type: 'standard', isMandatory: true, remarksRequired: false, order: 1 },
     { id: 'cv_shortlist', name: 'CV Shortlist', type: 'standard', isMandatory: false, remarksRequired: false, order: 2 },
     { id: 'hm_review', name: 'HM Review', type: 'standard', isMandatory: false, remarksRequired: false, order: 3 },
     { id: 'assignment', name: 'Assignment', type: 'standard', isMandatory: false, remarksRequired: true, order: 4 },
     { id: 'l1_tech', name: 'L1 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 5 },
     { id: 'l2_tech', name: 'L2 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 6 },
-    { id: 'l3_tech', name: 'L3 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 7 },
-    { id: 'l4_tech', name: 'L4 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 8 },
-    { id: 'hr_round', name: 'HR Round', type: 'standard', isMandatory: true, remarksRequired: true, order: 9 },
-    { id: 'management', name: 'Management Round', type: 'standard', isMandatory: false, remarksRequired: true, order: 10 }
-  ]);
+    { id: 'hr_round', name: 'HR Round', type: 'standard', isMandatory: false, remarksRequired: true, order: 7 },
+  ];
+  const [hiringStages, setHiringStages] = useState<any[]>(DEFAULT_HIRING_STAGES);
   const [newStageInput, setNewStageInput] = useState('');
   const [currentStageType, setCurrentStageType] = useState<'standard' | 'custom'>('standard');
   const [showNewStageInput, setShowNewStageInput] = useState(false);
@@ -144,10 +143,36 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     { id: 'location', label: 'Location & Mode' },
     { id: 'requirements', label: 'Requirements & Skills' },
     { id: 'compensation', label: 'Compensation' },
-    { id: 'team', label: 'Team & Recruiters' },
     { id: 'description', label: 'Job Description' },
-    { id: 'process', label: 'Hiring Process' }
+    { id: 'process', label: 'Hiring Process' },
+    { id: 'team', label: 'Team & Recruiters' },
   ];
+
+  // Stage name → responsibility key mapping (must mirror PipelineBoard STAGE_TO_RESPONSIBILITY)
+  const STAGE_TO_RESPONSIBILITY: Record<string, { value: string; label: string }> = {
+    'Screening': { value: 'screening_reviewer', label: 'Screening Reviewer' },
+    'CV Shortlist': { value: 'cv_shortlist_reviewer', label: 'CV Shortlist Reviewer' },
+    'HM Review': { value: 'hiring_manager', label: 'Hiring Manager' },
+    'Assignment': { value: 'assignment_reviewer', label: 'Assignment Reviewer' },
+    'L1 Technical': { value: 'l1_technical_interviewer', label: 'L1 Technical Interviewer' },
+    'L2 Technical': { value: 'l2_technical_interviewer', label: 'L2 Technical Interviewer' },
+    'L3 Technical': { value: 'l3_technical_interviewer', label: 'L3 Technical Interviewer' },
+    'L4 Technical': { value: 'l4_technical_interviewer', label: 'L4 Technical Interviewer' },
+    'HR Round': { value: 'hr_round', label: 'HR Round' },
+    'Management Round': { value: 'management_round', label: 'Management Round' },
+  };
+
+  // Returns the dynamic responsibility list based on configured hiring stages
+  const getResponsibilitiesForStages = (stages: any[]) => {
+    const responsibilities: { value: string; label: string }[] = [];
+    stages.forEach(stage => {
+      const resp = STAGE_TO_RESPONSIBILITY[stage.name];
+      if (resp && !responsibilities.find(r => r.value === resp.value)) {
+        responsibilities.push(resp);
+      }
+    });
+    return responsibilities;
+  };
 
   const predefinedStages = [
     'CV Shortlist',
@@ -155,11 +180,10 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     'Assignment',
     'L1 Technical',
     'L2 Technical',
+    'HR Round',
     'L3 Technical',
     'L4 Technical',
-    'HR Round',
     'Management Round',
-    'Offer Extended',
   ];
 
   useEffect(() => {
@@ -477,6 +501,20 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
         if (!formData.min_salary.trim()) newErrors.min_salary = 'Min salary is required';
         if (!formData.max_salary.trim()) newErrors.max_salary = 'Max salary is required';
         break;
+      case 'process':
+        if (hiringStages.length === 0) newErrors.hiringStages = 'At least one hiring stage is required';
+        break;
+      case 'team': {
+        // Every stage must have at least one assigned person
+        const requiredResponsibilities = getResponsibilitiesForStages(hiringStages);
+        const allAssigned = Object.values(teamAssignments).flat();
+        const uncovered = requiredResponsibilities.filter(r => !allAssigned.includes(r.value));
+        if (uncovered.length > 0) {
+          newErrors.teamAssignments = `Assign someone for: ${uncovered.map(r => r.label).join(', ')}`;
+        }
+        if (!formData.primary_recruiter_id) newErrors.primary_recruiter_id = 'Primary recruiter is required';
+        break;
+      }
     }
 
     setErrors(prev => ({ ...prev, ...newErrors }));
@@ -587,7 +625,8 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
           account_id: parseInt(selectedAccount) || null,
           created_by_user_id: currentAdmin?.id || null,
           primary_recruiter_id: formData.primary_recruiter_id,
-          interview_stages: hiringStages // Add interview stages to payload
+          interview_stages: hiringStages, // Add interview stages to payload
+          team_assignments: teamAssignments // Add team assignments to payload
         };
 
         const endpoint = isSuperAdmin
@@ -1454,6 +1493,22 @@ What We Offer:
                         <h3 className="text-lg font-semibold text-gray-900">Assign Hiring Team</h3>
                         <p className="text-sm text-gray-500 mt-1">Select responsibilities for each team member for this specific job opening.</p>
                       </div>
+                      {/* Primary Sourcing Recruiter Selection */}
+                      <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                        <label className="block text-sm font-semibold text-gray-900 mb-2">Primary Sourcing Recruiter <span className="text-red-500">*</span></label>
+                        <p className="text-xs text-gray-500 mb-3">The main recruiter responsible for sourcing and candidate pipeline.</p>
+                        <select
+                          value={formData.primary_recruiter_id}
+                          onChange={(e) => setFormData(prev => ({ ...prev, primary_recruiter_id: e.target.value }))}
+                          className={`w-full md:w-1/2 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${errors.primary_recruiter_id ? 'border-red-500' : 'border-gray-300'}`}
+                        >
+                          <option value="">-- Select Primary Recruiter --</option>
+                          {users.filter(u => ['Recruiter', 'HR', 'Admin', 'Interviewer', 'Sales', 'SuperAdmin'].includes(u.role)).map(user => (
+                            <option key={user.id} value={user.id}>{user.name} ({user.role})</option>
+                          ))}
+                        </select>
+                        {errors.primary_recruiter_id && <p className="text-red-500 text-xs mt-1">{errors.primary_recruiter_id}</p>}
+                      </div>
 
 
 
@@ -1529,32 +1584,20 @@ What We Offer:
                                   </div>
                                 )}
 
-                                {/* Hidden Select for Form Compatibility */}
+                                {/* Hidden Select for Form Compatibility — dynamic options */}
                                 <select
                                   multiple
                                   value={userAssignments}
                                   onChange={(e) => {
                                     const selected = Array.from(e.target.selectedOptions, option => option.value);
-                                    setTeamAssignments(prev => ({
-                                      ...prev,
-                                      [user.id]: selected
-                                    }));
+                                    setTeamAssignments(prev => ({ ...prev, [user.id]: selected }));
                                   }}
                                   className="hidden"
                                   id={`responsibilities-${user.id}`}
                                 >
-                                  <option value="hiring_manager">Hiring Manager</option>
-                                  <option value="screening">Screening Interviewer</option>
-                                  <option value="cv_shortlist">CV Shortlist Reviewer</option>
-                                  <option value="hm_review">HM Review</option>
-                                  <option value="assignment">Assignment Reviewer</option>
-                                  <option value="l1_technical">L1 Technical Interviewer</option>
-                                  <option value="l2_technical">L2 Technical Interviewer</option>
-                                  <option value="l3_technical">L3 Technical Interviewer</option>
-                                  <option value="l4_technical">L4 Technical Interviewer</option>
-                                  <option value="hr_round">HR Round Interviewer</option>
-                                  <option value="management_round">Management Round Interviewer</option>
-                                  <option value="final_decision_maker">Final Decision Maker</option>
+                                  {getResponsibilitiesForStages(hiringStages).map(r => (
+                                    <option key={r.value} value={r.value}>{r.label}</option>
+                                  ))}
                                 </select>
 
                                 {/* Add Responsibility Dropdown */}
@@ -1569,21 +1612,8 @@ What We Offer:
                                     <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                                       <div className="p-1">
                                         {(() => {
-                                          const allResponsibilities = [
-                                            { value: 'hiring_manager', label: 'Hiring Manager' },
-                                            { value: 'screening', label: 'Screening Interviewer' },
-                                            { value: 'cv_shortlist', label: 'CV Shortlist Reviewer' },
-                                            { value: 'hm_review', label: 'HM Review' },
-                                            { value: 'assignment', label: 'Assignment Reviewer' },
-                                            { value: 'l1_technical', label: 'L1 Technical Interviewer' },
-                                            { value: 'l2_technical', label: 'L2 Technical Interviewer' },
-                                            { value: 'l3_technical', label: 'L3 Technical Interviewer' },
-                                            { value: 'l4_technical', label: 'L4 Technical Interviewer' },
-                                            { value: 'hr_round', label: 'HR Round Interviewer' },
-                                            { value: 'management_round', label: 'Management Round Interviewer' },
-                                            { value: 'final_decision_maker', label: 'Final Decision Maker' }
-                                          ];
-
+                                          // Dynamic: only show responsibilities for active hiring stages
+                                          const allResponsibilities = getResponsibilitiesForStages(hiringStages);
                                           const isAdminOrSuperAdmin = user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'superadmin';
                                           const allResponsibilityValues = allResponsibilities.map(r => r.value);
                                           const hasAllResponsibilities = allResponsibilityValues.every(value => userAssignments.includes(value));
@@ -1595,18 +1625,14 @@ What We Offer:
                                                   <button
                                                     type="button"
                                                     onClick={() => {
-                                                      setTeamAssignments(prev => {
-                                                        return {
-                                                          ...prev,
-                                                          [user.id]: hasAllResponsibilities ? [] : allResponsibilityValues
-                                                        };
-                                                      });
+                                                      setTeamAssignments(prev => ({
+                                                        ...prev,
+                                                        [user.id]: hasAllResponsibilities ? [] : allResponsibilityValues
+                                                      }));
                                                     }}
-                                                    className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-gray-50 transition-colors flex items-center gap-2 ${hasAllResponsibilities ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
-                                                      }`}
+                                                    className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-gray-50 transition-colors flex items-center gap-2 ${hasAllResponsibilities ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
                                                   >
-                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${hasAllResponsibilities ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
-                                                      }`}>
+                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${hasAllResponsibilities ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
                                                       {hasAllResponsibilities && (
                                                         <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -1635,11 +1661,9 @@ What We Offer:
                                                         };
                                                       });
                                                     }}
-                                                    className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-gray-50 transition-colors flex items-center gap-2 ${isSelected ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
-                                                      }`}
+                                                    className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-gray-50 transition-colors flex items-center gap-2 ${isSelected ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
                                                   >
-                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
-                                                      }`}>
+                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
                                                       {isSelected && (
                                                         <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -1663,24 +1687,33 @@ What We Offer:
                         </div>
                       )}
 
-                      {/* Summary */}
-                      {Object.keys(teamAssignments).filter(userId => teamAssignments[userId].length > 0).length > 0 && (
-                        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                            </svg>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-blue-900">
-                                {Object.keys(teamAssignments).filter(userId => teamAssignments[userId].length > 0).length} team member(s) assigned
-                              </p>
-                              <p className="text-xs text-blue-700 mt-1">
-                                These assignments will determine stage ownership and notification routing in the hiring pipeline.
-                              </p>
+                      {/* Stage coverage checklist */}
+                      {(() => {
+                        const required = getResponsibilitiesForStages(hiringStages);
+                        const allAssigned = Object.values(teamAssignments).flat();
+                        const covered = required.filter(r => allAssigned.includes(r.value));
+                        const uncovered = required.filter(r => !allAssigned.includes(r.value));
+                        return (
+                          <div className={`mt-4 p-4 rounded-lg border ${uncovered.length === 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                            <p className={`text-sm font-semibold mb-2 ${uncovered.length === 0 ? 'text-green-800' : 'text-amber-800'}`}>
+                              {uncovered.length === 0 ? '✅ All stages covered' : `⚠️ ${uncovered.length} stage(s) need an owner`}
+                            </p>
+                            <div className="space-y-1">
+                              {required.map(r => {
+                                const isCovered = allAssigned.includes(r.value);
+                                return (
+                                  <div key={r.value} className="flex items-center gap-2 text-xs">
+                                    <span className={isCovered ? 'text-green-600' : 'text-amber-600'}>{isCovered ? '✓' : '✗'}</span>
+                                    <span className={isCovered ? 'text-green-700' : 'text-amber-700 font-medium'}>{r.label}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
+                            {errors.teamAssignments && <p className="text-red-600 text-xs mt-2 font-medium">{errors.teamAssignments}</p>}
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
+
                       <div className="flex justify-between mt-4 pt-4 border-t border-gray-200">
                         <button
                           type="button"
@@ -1690,11 +1723,11 @@ What We Offer:
                           ← Previous
                         </button>
                         <button
-                          type="button"
-                          onClick={handleNextSection}
-                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                          type="submit"
+                          disabled={!!titleWarning || isCheckingTitle}
+                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Next
+                          Create Job Opening
                         </button>
                       </div>
                     </div>
@@ -1887,17 +1920,26 @@ What We Offer:
                         </div>
                       </div>
 
-                      <div className="flex justify-end mt-6 pt-6 border-t border-gray-200">
+                      <div className="flex justify-between mt-6 pt-6 border-t border-gray-200">
                         <button
-                          type="submit"
-                          disabled={!!titleWarning || isCheckingTitle}
-                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          type="button"
+                          onClick={handlePrevSection}
+                          className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
                         >
-                          Create Job Opening
+                          ← Previous
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleNextSection}
+                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                        >
+                          Next →
                         </button>
                       </div>
                     </div>
                   )}
+
+
                 </div>
               </form>
             </div>
