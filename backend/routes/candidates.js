@@ -10,27 +10,27 @@ router.get('/', async (req, res) => {
     const { page = 1, limit = 10, search = '' } = req.query;
     const offset = (page - 1) * limit;
 
-    let query = `
-      SELECT 
-        c.candidate_id,
-        c.full_name,
-        c.phone_number,
-        c.email,
-        c.gender,
-        c.marital_status,
-        c.current_company,
-        c.notice_period,
-        c.current_ctc,
-        c.location,
-        c.currently_employed,
-        c.previous_company,
-        c.expected_ctc,
-        c.experience_years,
-        c.resume_link,
-        c.created_at,
-        0 as resume_score
+    let query = `SELECT
+      c.candidate_id,
+      c.full_name,
+      c.phone_number,
+      c.email,
+      c.gender,
+      c.marital_status,
+      c.current_company,
+      c.notice_period,
+      c.current_ctc,
+      c.location,
+      c.currently_employed,
+      c.previous_company,
+      c.expected_ctc,
+      c.experience_years,
+      c.resume_link,
+      c.created_at,
+      COALESCE(ad.resume_score, 0) as resume_score
       FROM public.candidates c
-    `;
+      LEFT JOIN ai_data ad ON c.candidate_id = ad.candidate_id
+      `;
 
     let countQuery = 'SELECT COUNT(*) FROM public.candidates';
     let queryParams = [];
@@ -49,13 +49,13 @@ router.get('/', async (req, res) => {
         current_company ILIKE $1 OR 
         location ILIKE $1
       `;
-      queryParams = [`%${search}%`, limit, offset];
-      countParams = [`%${search}%`];
+      queryParams = [`% ${search}% `, limit, offset];
+      countParams = [`% ${search}% `];
     } else {
       queryParams = [limit, offset];
     }
 
-    query += ` ORDER BY created_at DESC LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
+    query += ` ORDER BY created_at DESC LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length} `;
 
     const [candidatesResult, countResult] = await Promise.all([
       pool.query(query, queryParams),
@@ -127,16 +127,16 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const candidateId = `FLC${Date.now().toString().slice(-8)}`;
+    const candidateId = `FLC${Date.now().toString().slice(-8)} `;
 
     const result = await pool.query(`
-      INSERT INTO public.candidates (
+      INSERT INTO public.candidates(
         candidate_id, full_name, phone_number, email, gender, marital_status,
         current_company, notice_period, current_ctc, location, resume_link,
         currently_employed, previous_company, expected_ctc, experience_years
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-      RETURNING *
-    `, [
+      ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    RETURNING *
+      `, [
       candidateId, full_name, phone_number, email, gender, marital_status,
       current_company, notice_period, current_ctc, location, resume_link,
       currently_employed, previous_company, expected_ctc, experience_years
@@ -164,7 +164,10 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      'SELECT * FROM public.candidates WHERE candidate_id = $1',
+      `SELECT c.*, COALESCE(ad.resume_score, 0) as resume_score 
+       FROM public.candidates c 
+       LEFT JOIN ai_data ad ON c.candidate_id = ad.candidate_id 
+       WHERE c.candidate_id = $1`,
       [id]
     );
 
@@ -249,12 +252,12 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'No fields to update' });
     }
 
-    const setClause = keys.map((key, index) => `${key} = $${index + 2}`).join(', ');
-    const query = `UPDATE public.candidates SET ${setClause} WHERE candidate_id = $1 RETURNING *`;
+    const setClause = keys.map((key, index) => `${key} = $${index + 2} `).join(', ');
+    const query = `UPDATE public.candidates SET ${setClause} WHERE candidate_id = $1 RETURNING * `;
 
     const result = await pool.query(query, [id, ...values]);
 
-    await logAudit(null, 'System', 'CANDIDATE_UPDATED', `Candidate updated: ${dbFields.full_name || id}`, 'candidate', id, req);
+    await logAudit(null, 'System', 'CANDIDATE_UPDATED', `Candidate updated: ${dbFields.full_name || id} `, 'candidate', id, req);
 
     res.json({
       status: 'success',
@@ -276,7 +279,7 @@ router.put('/:id', async (req, res) => {
 router.put('/:id/stage', async (req, res) => {
   try {
     const { id } = req.params;
-    const { currentStage, status, reason, feedback, jobId, movedByName, movedByRole, movedByUserId } = req.body;
+    const { currentStage, status, reason, feedback, jobId, movedByName, movedByRole, movedByUserId, assignmentScore } = req.body;
 
     const newStage = currentStage || status;
     if (!newStage) {
@@ -290,17 +293,33 @@ router.put('/:id/stage', async (req, res) => {
     const userId = movedByUserId ? parseInt(movedByUserId) : null;
 
     // 1. Update current_stage on the candidates table
-    const updateResult = await pool.query(
-      `UPDATE candidates
+    const scoreValue = assignmentScore !== undefined && assignmentScore !== '' ? parseInt(assignmentScore) : null;
+    let updateQuery, updateParams;
+
+    if (scoreValue !== null) {
+      updateQuery = `UPDATE candidates
        SET current_stage = $1,
-           current_stage_since = NOW(),
-           last_stage_change_at = NOW(),
-           last_stage_change_by = $3,
-           updated_at = NOW()
+  assignment_score = $3,
+  current_stage_since = NOW(),
+  last_stage_change_at = NOW(),
+  last_stage_change_by = $4,
+  updated_at = NOW()
        WHERE candidate_id = $2
-       RETURNING *`,
-      [newStage, id, userName]
-    );
+RETURNING * `;
+      updateParams = [newStage, id, scoreValue, userName];
+    } else {
+      updateQuery = `UPDATE candidates
+       SET current_stage = $1,
+  current_stage_since = NOW(),
+  last_stage_change_at = NOW(),
+  last_stage_change_by = $3,
+  updated_at = NOW()
+       WHERE candidate_id = $2
+RETURNING * `;
+      updateParams = [newStage, id, userName];
+    }
+
+    const updateResult = await pool.query(updateQuery, updateParams);
 
     if (updateResult.rows.length === 0) {
       return res.status(404).json({ status: 'error', message: 'Candidate not found' });
@@ -331,7 +350,7 @@ router.put('/:id/stage', async (req, res) => {
        SET status = $1
        WHERE candidate_id = $2 
        AND application_id = (
-         SELECT application_id FROM job_applications 
+  SELECT application_id FROM job_applications 
          WHERE candidate_id = $2 
          ORDER BY applied_at DESC 
          LIMIT 1
@@ -344,8 +363,8 @@ router.put('/:id/stage', async (req, res) => {
       await pool.query(
         `UPDATE candidate_pipeline_stages
          SET current_stage = $1,
-             updated_at    = NOW(),
-             updated_by    = $2
+  updated_at = NOW(),
+  updated_by = $2
          WHERE candidate_id = $3`,
         [newStage, userName, id]
       );
@@ -357,9 +376,9 @@ router.put('/:id/stage', async (req, res) => {
     // 4. Log the chronological stage history (Stacked Feedback)
     try {
       await pool.query(
-        `INSERT INTO candidate_stage_history 
-         (candidate_id, job_id, from_stage, to_stage, stage_index, moved_by_user_id, moved_by_name, moved_by_role, moved_at, feedback, reason)
-         VALUES ($1, $2, NULL, $3, 0, $4, $5, $6, NOW(), $7, $8)`,
+        `INSERT INTO candidate_stage_history
+  (candidate_id, job_id, from_stage, to_stage, stage_index, moved_by_user_id, moved_by_name, moved_by_role, moved_at, feedback, reason)
+VALUES($1, $2, NULL, $3, 0, $4, $5, $6, NOW(), $7, $8)`,
         [id, jobIdVal, newStage, userId, userName, userRole, feedbackText, feedbackText]
       );
     } catch (historyErr) {
@@ -368,7 +387,7 @@ router.put('/:id/stage', async (req, res) => {
 
     try {
       await logAudit(null, userName, 'STAGE_UPDATED',
-        `Candidate ${id} moved to stage: ${newStage}${feedbackText ? ` | Feedback: ${feedbackText}` : ''}`,
+        `Candidate ${id} moved to stage: ${newStage}${feedbackText ? ` | Feedback: ${feedbackText}` : ''} `,
         'candidate', id, req);
     } catch (auditErr) { }
 
@@ -377,7 +396,7 @@ router.put('/:id/stage', async (req, res) => {
       data: updateResult.rows[0],
       candidateId: id,
       stage: newStage,
-      message: `Stage updated to ${newStage}`
+      message: `Stage updated to ${newStage} `
     });
 
   } catch (error) {
@@ -422,7 +441,7 @@ router.post('/send-invite', async (req, res) => {
       to: email,
       subject: 'Welcome to FluidJobs.ai - Join the Premier Job Platform',
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  < div style = "font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;" >
           <p style="font-size: 16px; color: #333; line-height: 1.6;">Hello ${name},</p>
           
           <p style="font-size: 16px; color: #333; line-height: 1.6;">
@@ -462,8 +481,8 @@ router.post('/send-invite', async (req, res) => {
             Best regards,<br>
             <strong>Team FluidJobs.ai</strong>
           </p>
-        </div>
-      `
+        </div >
+  `
     };
 
     await transporter.sendMail(mailOptions);
@@ -515,9 +534,9 @@ router.post('/send-job-notification', async (req, res) => {
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
-      subject: `New Job Opportunity: ${job.job_title}`,
+      subject: `New Job Opportunity: ${job.job_title} `,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  < div style = "font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;" >
           <p style="font-size: 16px; color: #333; line-height: 1.6;">Hello ${name},</p>
           
           <p style="font-size: 16px; color: #333; line-height: 1.6;">
@@ -546,8 +565,8 @@ router.post('/send-job-notification', async (req, res) => {
             Best regards,<br>
             <strong>Team FluidJobs.ai</strong>
           </p>
-        </div>
-      `
+        </div >
+  `
     };
 
     await transporter.sendMail(mailOptions);
@@ -604,17 +623,17 @@ router.get('/:id/history', async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      `SELECT 
-        history_id as id,
-        candidate_id,
-        job_id,
-        from_stage,
-        to_stage,
-        stage_index,
-        moved_by_name,
-        moved_at,
-        feedback,
-        reason
+      `SELECT
+history_id as id,
+  candidate_id,
+  job_id,
+  from_stage,
+  to_stage,
+  stage_index,
+  moved_by_name,
+  moved_at,
+  feedback,
+  reason
        FROM candidate_stage_history 
        WHERE candidate_id = $1 
        ORDER BY moved_at DESC`,

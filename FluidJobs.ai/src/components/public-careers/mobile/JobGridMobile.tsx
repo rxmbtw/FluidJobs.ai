@@ -31,25 +31,34 @@ const JobGridMobile: React.FC = () => {
 
         if (data.success && data.jobs) {
           const formatted: Job[] = data.jobs.map((job: any) => {
-            const minSalary = job.min_salary ? (job.min_salary / 100000).toFixed(1) : null
-            const maxSalary = job.max_salary ? (job.max_salary / 100000).toFixed(1) : null
-            const ctc = minSalary && maxSalary ? `Rs.${minSalary}L-Rs.${maxSalary}L` : 'Not Specified'
+            let ctc = ''
+            if (job.showSalaryToCandidate) {
+              const formatMoney = (amount: number) => new Intl.NumberFormat('en-IN').format(amount);
+
+              if (job.jobType === 'Internship') {
+                if (job.minSalary && job.maxSalary) {
+                  ctc = `INR ${formatMoney(job.minSalary)} - INR ${formatMoney(job.maxSalary)} /month`
+                } else if (job.minSalary) {
+                  ctc = `INR ${formatMoney(job.minSalary)} /month`
+                }
+              } else {
+                if (job.minSalary && job.maxSalary) {
+                  ctc = `INR ${formatMoney(job.minSalary)} - INR ${formatMoney(job.maxSalary)} per annum`
+                } else if (job.minSalary) {
+                  ctc = `INR ${formatMoney(job.minSalary)} per annum`
+                }
+              }
+            }
 
             return {
-              id: job.id || job.job_id,
-              postedDate: job.created_at
-                ? new Date(job.created_at).toLocaleDateString('en-GB')
-                : new Date().toLocaleDateString('en-GB'),
-              title: job.job_title || job.title,
-              jobType: job.workplace || job.job_type || 'Full-Time',
-              jobMode: job.mode_of_job || 'On-site',
-              location: Array.isArray(job.locations)
-                ? job.locations.join(', ')
-                : typeof job.locations === 'string'
-                  ? job.locations.replace(/[{}"]/g, '').split(',').map((l: string) => l.trim()).join(', ')
-                  : 'Remote',
+              id: job.id,
+              postedDate: job.postedDate || new Date().toLocaleDateString('en-GB'),
+              title: job.title || 'Job Opening',
+              jobType: job.jobType || 'Full-Time',
+              jobMode: job.modeOfJob || 'On-site',
+              location: job.location || 'Remote',
               ctc,
-              image: job.selectedImage || job.selected_image || DEFAULT_JOB_IMAGE
+              image: job.selectedImage || DEFAULT_JOB_IMAGE
             }
           })
           setJobs(formatted)

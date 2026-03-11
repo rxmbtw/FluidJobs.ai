@@ -38,9 +38,15 @@ const JobCardMobile: React.FC<JobCardMobileProps> = ({ job }) => {
             <span className="job-value-mobile">{job.location}</span>
           </div>
           <div className="job-detail-item-mobile">
-            <span className="job-label-mobile">CTC</span>
-            <span className="job-value-mobile">{job.ctc}</span>
+            <span className="job-label-mobile">LOCATION</span>
+            <span className="job-value-mobile">{job.location}</span>
           </div>
+          {job.ctc && (
+            <div className="job-detail-item-mobile">
+              <span className="job-label-mobile">CTC</span>
+              <span className="job-value-mobile">{job.ctc}</span>
+            </div>
+          )}
         </div>
         <Link to={`/careers/job/${job.id}`} className="view-opening-link-mobile">View the opening →</Link>
       </div>

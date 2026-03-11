@@ -31,6 +31,10 @@ const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate, onBack, 
   const [timelineFeedbackText, setTimelineFeedbackText] = React.useState('');
   const [isMovingStage, setIsMovingStage] = React.useState(false);
 
+  // AI Scoring state
+  const [isScoring, setIsScoring] = React.useState(false);
+  const [scoreReasoning, setScoreReasoning] = React.useState<string | null>(null);
+
   React.useEffect(() => {
     setDisplayCandidate(candidate);
     setEditedCandidate(candidate);
@@ -59,6 +63,43 @@ const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate, onBack, 
     setIsEditing(false);
     setEditedCandidate({ ...displayCandidate });
     setShowDiscardModal(false);
+  };
+
+  const handleGenerateScore = async () => {
+    setIsScoring(true);
+    setScoreReasoning(null);
+    try {
+      const token = localStorage.getItem('token');
+      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+      const response = await fetch(`${backendUrl}/api/ai/score-candidate/${candidate.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        // Update local candidate state
+        setEditedCandidate(prev => ({ ...prev, resumeScore: result.score }));
+        setDisplayCandidate(prev => ({ ...prev, resumeScore: result.score }));
+        setScoreReasoning(result.reasoning || null);
+
+        // Let the parent tracker board know about the update and force a board rebuild
+        if (onCandidateUpdate) {
+          onCandidateUpdate({ ...candidate, resumeScore: result.score });
+        }
+      } else {
+        console.error('Failed to generate score:', result.error);
+        alert(`Failed to generate score: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error generating AI score:', error);
+      alert('An error occurred while generating the candidate AI score.');
+    } finally {
+      setIsScoring(false);
+    }
   };
 
   const handleSaveClick = () => {
@@ -337,7 +378,7 @@ const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate, onBack, 
         feedback: stageFeedback.exists ? stageFeedback.feedback : 'No feedback provided',
         hasFeedback: stageFeedback.exists && !stageFeedback.isEmpty,
         score: stage.includes('Technical') || stage === InterviewStage.ASSIGNMENT_RESULT
-          ? candidate.assignmentScore || Math.floor(Math.random() * 30) + 70
+          ? candidate.assignmentScore || null
           : null,
         duration: i < currentStageIndex ? Math.floor(Math.random() * 5) + 1 : aging
       });
@@ -570,15 +611,23 @@ const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate, onBack, 
               </div>
 
               <div className="flex gap-2 justify-center mb-8">
-                <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white transition-all">
+                <a
+                  href={displayCandidate.email ? `mailto:${displayCandidate.email}` : '#'}
+                  title={`Email: ${displayCandidate.email || 'Not available'}`}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white transition-all"
+                >
                   <Mail className="w-4 h-4" />
-                </button>
-                <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white transition-all">
-                  <Phone className="w-4 h-4" />
-                </button>
-                <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white transition-all">
+                </a>
+                <a
+                  href={displayCandidate.linkedinUrl ? displayCandidate.linkedinUrl : '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={(displayCandidate as any).linkedinUrl ? 'View LinkedIn Profile' : 'LinkedIn not provided'}
+                  className={`w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white transition-all ${!(displayCandidate as any).linkedinUrl ? 'opacity-40 cursor-default' : ''}`}
+                  onClick={!(displayCandidate as any).linkedinUrl ? (e) => e.preventDefault() : undefined}
+                >
                   <Linkedin className="w-4 h-4" />
-                </button>
+                </a>
               </div>
 
               <div className="space-y-4 text-left pt-6 border-t border-slate-100">
@@ -755,7 +804,7 @@ const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate, onBack, 
                           />
                         </div>
                       ) : (
-                        <span className="text-slate-900 font-bold">{candidate.currentSalary || `${candidate.ctc.currency} ${candidate.ctc.current.toLocaleString()}`}</span>
+                        <span className="text-slate-900 font-bold">{candidate.currentSalary || (candidate.ctc?.currency ? `${candidate.ctc.currency} ${candidate.ctc.current?.toLocaleString() ?? 0}` : 'Not specified')}</span>
                       )}
                     </div>
                     <div className="flex justify-between items-center text-sm">
@@ -771,7 +820,7 @@ const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate, onBack, 
                           />
                         </div>
                       ) : (
-                        <span className="text-slate-900 font-bold">{candidate.expectedSalary || `${candidate.ctc.currency} ${candidate.ctc.expected.toLocaleString()}`}</span>
+                        <span className="text-slate-900 font-bold">{candidate.expectedSalary || (candidate.ctc?.currency ? `${candidate.ctc.currency} ${candidate.ctc.expected?.toLocaleString() ?? 0}` : 'Not specified')}</span>
                       )}
                     </div>
                     <div className="flex justify-between items-center text-sm">
@@ -902,40 +951,56 @@ const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate, onBack, 
                   </div>
                 </div>
 
+                {/* Resume Section - Above AI Score */}
+                <div className="pb-4 border-b border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Resume</p>
+                  {((candidate as any).resumePath || candidate.resumeUrl) ? (
+                    <div className="flex flex-col gap-2">
+                      <a
+                        href={(candidate as any).resumePath ? `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}${(candidate as any).resumePath}` : candidate.resumeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" /> View Resume
+                      </a>
+                      <a
+                        href={(candidate as any).resumePath ? `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}${(candidate as any).resumePath}` : candidate.resumeUrl}
+                        download
+                        className="w-full py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Download className="w-4 h-4" /> Download Resume
+                      </a>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5" /> No resume uploaded
+                    </p>
+                  )}
+                </div>
+
                 {/* Resume Score Section */}
                 <div className="pb-4">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Resume Score</p>
-                  <div className="flex justify-between items-center">
-                    <span className={`text-2xl font-bold ${(candidate.resumeScore || 0) >= 80 ? 'text-green-600' :
-                      (candidate.resumeScore || 0) >= 60 ? 'text-yellow-600' :
-                        'text-red-600'
-                      }`}>
-                      {candidate.resumeScore || 0}/100
-                    </span>
+                  <div className="flex justify-between items-center mb-3">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest m-0">AI Candidate Score</p>
+                  </div>
+                  <div className="flex flex-col">
+                    {(editedCandidate.resumeScore || candidate.resumeScore || 0) > 0 ? (
+                      <span className={`text-2xl font-bold ${(editedCandidate.resumeScore || candidate.resumeScore || 0) >= 80 ? 'text-green-600' : (editedCandidate.resumeScore || candidate.resumeScore || 0) >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {editedCandidate.resumeScore || candidate.resumeScore || 0}/100
+                      </span>
+                    ) : (
+                      <span className="text-sm text-slate-400 italic">Not yet scored</span>
+                    )}
+                    {scoreReasoning && (
+                      <p className="text-xs text-slate-500 mt-2 bg-slate-50 p-2 rounded italic border border-slate-100">
+                        "{scoreReasoning}"
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Resume Section - Explicit text labels */}
-              {candidate.resumeUrl && (
-                <div className="space-y-2 mt-6">
-                  <a
-                    href={candidate.resumeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
-                  >
-                    <FileText className="w-4 h-4" /> View CV
-                  </a>
-                  <a
-                    href={candidate.resumeUrl}
-                    download
-                    className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Download className="w-4 h-4" /> Download CV
-                  </a>
-                </div>
-              )}
             </div>
           </div>
         </div>

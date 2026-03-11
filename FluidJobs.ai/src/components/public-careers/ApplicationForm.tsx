@@ -32,7 +32,8 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({ onClose, isGeneralApp
     // Fields for "No" (not currently working)
     lastCompany: '',
     joiningDate: '',
-    lastCTC: ''
+    lastCTC: '',
+    linkedinUrl: ''
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement> | { target: { name: string; value: string } }) => {
@@ -42,9 +43,20 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({ onClose, isGeneralApp
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFormData(prev => ({ ...prev, cv: e.target.files![0] }))
+      const file = e.target.files[0];
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File size exceeds the 10MB limit. Please upload a smaller file.');
+        e.target.value = '';
+        return;
+      }
+      setFormData(prev => ({ ...prev, cv: file }));
     }
   }
+
+  const handlePreviewFile = (file: File) => {
+    const fileUrl = URL.createObjectURL(file);
+    window.open(fileUrl, '_blank');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -156,6 +168,17 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({ onClose, isGeneralApp
                 options={maritalStatusOptions}
                 placeholder="Select Status"
                 required
+              />
+            </div>
+            <div className="form-group form-group-full">
+              <label htmlFor="linkedinUrl">LinkedIn Profile URL (Optional)</label>
+              <input
+                type="url"
+                id="linkedinUrl"
+                name="linkedinUrl"
+                value={formData.linkedinUrl}
+                onChange={handleChange}
+                placeholder="https://linkedin.com/in/your-profile"
               />
             </div>
           </div>
@@ -350,11 +373,32 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({ onClose, isGeneralApp
                 id="cv"
                 name="cv"
                 onChange={handleFileChange}
-                required
+                required={!formData.cv}
                 accept=".pdf,.doc,.docx"
                 className="file-input"
               />
-              {formData.cv && <span className="file-name">{formData.cv.name}</span>}
+              {formData.cv && (
+                <div style={{ marginTop: '8px' }}>
+                  <span
+                    className="file-name"
+                    onClick={() => handlePreviewFile(formData.cv as File)}
+                    style={{
+                      cursor: 'pointer',
+                      color: '#4f46e5',
+                      textDecoration: 'underline',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    title="Click to preview file"
+                  >
+                    📄 {formData.cv.name}
+                  </span>
+                  <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>
+                    ({(formData.cv.size / 1024 / 1024).toFixed(2)} MB)
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -367,8 +411,8 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({ onClose, isGeneralApp
             {isSubmitting ? 'Submitting...' : 'Submit Application'}
           </button>
         </div>
-      </form>
-    </div>
+      </form >
+    </div >
   )
 }
 

@@ -24,6 +24,7 @@ import AdminCreateUser from './pages/admin/views/AdminCreateUser';
 import RecruitersDashboard from './pages/admin/RecruitersDashboard';
 import PrivateRoute from './components/PrivateRoute';
 import RoleRoute from './components/RoleRoute';
+import AIMentor from './components/new-dashboard/AIMentor';
 // Public Careers Pages
 import JobListings from './pages/public-careers/JobListings';
 import JobDetails from './pages/public-careers/JobDetails';
@@ -154,6 +155,9 @@ const router = createBrowserRouter(
         {/* Recruiters Analytics Dashboard */}
         <Route path="recruiters" element={<RecruitersDashboard />} />
 
+        {/* AI Mentor */}
+        <Route path="ai-mentor" element={<AIMentor />} />
+
         {/* Legacy routes mappings (can be removed or kept for safety if external links exist) */}
         <Route path="send-invitation" element={<Navigate to="create-candidate/invite" replace />} />
         <Route path="bulk-import" element={<Navigate to="create-candidate/import" replace />} />
@@ -189,6 +193,7 @@ const router = createBrowserRouter(
         </Route>
 
         <Route path="accounts" element={<AdminAccounts />} />
+        <Route path="ai-mentor" element={<AIMentor />} />
         <Route path="recruiters" element={<RecruitersDashboard />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="profile-settings" element={<AdminProfileSettings />} />

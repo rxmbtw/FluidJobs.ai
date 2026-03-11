@@ -40,31 +40,38 @@ const JobDetailsMobile: React.FC = () => {
         if (data.success && data.jobs) {
           const found = data.jobs.find((j: any) => String(j.id || j.job_id) === String(id))
           if (found) {
-            const locations = Array.isArray(found.locations)
-              ? found.locations.join(', ')
-              : typeof found.locations === 'string'
-                ? found.locations.replace(/[{}"]/g, '').split(',').map((l: string) => l.trim()).join(', ')
-                : 'Remote'
+            let ctcDisplay = 'Not Specified';
+            if (found.showSalaryToCandidate) {
+              const formatMoney = (amount: number) => new Intl.NumberFormat('en-IN').format(amount);
 
-            const minSalary = found.min_salary ? (found.min_salary / 100000).toFixed(1) : null
-            const maxSalary = found.max_salary ? (found.max_salary / 100000).toFixed(1) : null
-            const ctc = minSalary && maxSalary ? `Rs.${minSalary}L-Rs.${maxSalary}L` : 'Not Specified'
+              if (found.jobType === 'Internship') {
+                if (found.minSalary && found.maxSalary) {
+                  ctcDisplay = `INR ${formatMoney(found.minSalary)} - INR ${formatMoney(found.maxSalary)} /month`;
+                } else if (found.minSalary) {
+                  ctcDisplay = `INR ${formatMoney(found.minSalary)} /month`;
+                }
+              } else {
+                if (found.minSalary && found.maxSalary) {
+                  ctcDisplay = `INR ${formatMoney(found.minSalary)} - INR ${formatMoney(found.maxSalary)} per annum`;
+                } else if (found.minSalary) {
+                  ctcDisplay = `INR ${formatMoney(found.minSalary)} per annum`;
+                }
+              }
+            }
 
             setJob({
-              id: String(found.id || found.job_id),
-              title: found.job_title || found.title || 'Job Opening',
-              postedDate: found.created_at
-                ? new Date(found.created_at).toLocaleDateString('en-GB')
-                : new Date().toLocaleDateString('en-GB'),
-              jobType: found.workplace || found.job_type || 'Full-Time',
-              jobMode: found.mode_of_job || found.jobMode || 'On-site',
-              location: locations,
-              ctc,
-              industry: found.job_domain || 'Technology',
-              description: found.description || found.job_description || '',
-              skills: Array.isArray(found.skills) ? found.skills : [],
-              qualifications: found.qualifications || [`${found.min_experience || 0}-${found.max_experience || 0} years of experience`],
-              image: found.selectedImage || found.selected_image || DEFAULT_JOB_IMAGE
+              id: String(found.id),
+              title: found.title || 'Job Opening',
+              postedDate: found.postedDate || new Date().toLocaleDateString('en-GB'),
+              jobType: found.jobType || 'Full-Time',
+              jobMode: found.modeOfJob || 'On-site',
+              location: found.location || 'Remote',
+              ctc: ctcDisplay,
+              industry: found.industry || 'Technology',
+              description: found.description || '',
+              skills: found.skills || [],
+              qualifications: found.experienceRange ? [found.experienceRange] : [],
+              image: found.selectedImage || DEFAULT_JOB_IMAGE
             })
           }
         }
@@ -78,8 +85,13 @@ const JobDetailsMobile: React.FC = () => {
     fetchJob()
   }, [id])
 
+  const formRef = React.useRef<HTMLDivElement>(null)
+
   const handleApplyClick = () => {
     setShowForm(true)
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
   }
 
   if (loading) {
@@ -170,32 +182,15 @@ const JobDetailsMobile: React.FC = () => {
             <>
               <h2 className="section-title-mobile">DESCRIPTION</h2>
               <div className="description-content-mobile">
-                <p style={{ whiteSpace: 'pre-line', marginBottom: '16px' }}>{job.description}</p>
+                <div
+                  className="rich-text-content"
+                  style={{ marginBottom: '16px' }}
+                  dangerouslySetInnerHTML={{ __html: job.description }}
+                />
               </div>
             </>
           )}
 
-          {job.skills.length > 0 && (
-            <div className="description-content-mobile">
-              <h3 className="subsection-title-mobile">Required Skills</h3>
-              <ul className="description-list-mobile">
-                {job.skills.map((skill, index) => (
-                  <li key={index}>{skill}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {job.qualifications.length > 0 && (
-            <div className="description-content-mobile">
-              <h3 className="subsection-title-mobile">Qualifications</h3>
-              <ul className="description-list-mobile">
-                {job.qualifications.map((qual, index) => (
-                  <li key={index}>{qual}</li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           {!showForm && (
             <button className="apply-button-mobile" onClick={handleApplyClick}>
@@ -206,7 +201,11 @@ const JobDetailsMobile: React.FC = () => {
             </button>
           )}
 
-          {showForm && <ApplicationForm onClose={() => setShowForm(false)} />}
+          {showForm && (
+            <div ref={formRef}>
+              <ApplicationForm onClose={() => setShowForm(false)} />
+            </div>
+          )}
         </div>
       </div>
       <FooterMobile />

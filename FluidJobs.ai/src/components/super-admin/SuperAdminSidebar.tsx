@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
     Users, FileText, UserCheck, Settings, LogOut, Search, X, Check, Plus,
-    ChevronLeft, ChevronRight, Briefcase, Upload, Mail, User, Building2, TrendingUp
+    ChevronLeft, ChevronRight, Briefcase, Upload, Mail, User, Building2, TrendingUp, Bot
 } from 'lucide-react';
 
 interface SuperAdminSidebarProps {
@@ -181,6 +181,15 @@ const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({
                 >
                     <TrendingUp size={20} className="flex-shrink-0" />
                     {isExpanded && <span className="text-sm font-medium whitespace-nowrap">Recruiters</span>}
+                </button>
+
+                {/* AI Mentor */}
+                <button
+                    onClick={() => navigate('/superadmin-dashboard/ai-mentor')}
+                    className={`w-full flex items-center ${isExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${isActive('/superadmin-dashboard/ai-mentor') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50'}`}
+                >
+                    <Bot size={20} className="flex-shrink-0" />
+                    {isExpanded && <span className="text-sm font-medium whitespace-nowrap">FluidJobs AI Mentor</span>}
                 </button>
             </nav>
 

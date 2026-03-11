@@ -52,7 +52,7 @@ import { useAuth } from '../../contexts/AuthProvider';
 import { useDebounce } from './useDebounce';
 import { usePipelineOptimizations } from './usePipelineOptimizations';
 import OptimizedCandidateRow from './OptimizedCandidateRow';
-import { StageJumpModal, FeedbackReviewModal } from './StageJumpModals';
+import { StageJumpModal, FeedbackReviewModal, StatusActionModal } from './StageJumpModals';
 import { HMReviewModal } from './HMReviewModal';
 import { CandidateCardSkipBadge, CandidateCardActions } from './CandidateCardComponents';
 
@@ -117,9 +117,12 @@ interface PipelineBoardProps {
   candidates: PipelineCandidate[];
   users?: any[];
   stages?: JobStage[]; // JobStage[]
+  // Job-level team assignments from Job Settings
+  teamAssignments?: Record<string, string[]>; // { userId: responsibilities[] }
+  primaryRecruiterId?: number | null;
 }
 
-const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates: propCandidates, users = [], stages: jobStages }) => {
+const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates: propCandidates, users = [], stages: jobStages, teamAssignments = {}, primaryRecruiterId = null }) => {
   const { setHeaderActions } = useDashboardHeader();
   // Use candidates from props instead of hardcoded ones
   const [candidates, setCandidates] = useState<PipelineCandidate[]>(propCandidates || []);
@@ -271,6 +274,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   const [jumpDirection, setJumpDirection] = useState<'forward' | 'backward'>('forward');
   const [targetJumpStage, setTargetJumpStage] = useState<string | null>(null);
   const [jumpFeedback, setJumpFeedback] = useState('');
+  const [jumpAssignmentScore, setJumpAssignmentScore] = useState('');
 
   // Feedback review modal states
   // Feedback review modal states
@@ -278,10 +282,23 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
   const [selectedFeedbackStage, setSelectedFeedbackStage] = useState<string | null>(null);
   const [selectedFeedbackCandidate, setSelectedFeedbackCandidate] = useState<PipelineCandidate | null>(null);
 
+  // Status Action Modal State
+  const [showStatusActionModal, setShowStatusActionModal] = useState(false);
+  const [selectedStatusCandidate, setSelectedStatusCandidate] = useState<PipelineCandidate | null>(null);
+  const [selectedStatusAction, setSelectedStatusAction] = useState<'Reject' | 'Drop' | 'Hold' | null>(null);
+  const [statusReason, setStatusReason] = useState('');
+
   // Rejection Cooldown State
   const [showCooldownModal, setShowCooldownModal] = useState(false);
   const [cooldownCandidate, setCooldownCandidate] = useState<PipelineCandidate | null>(null);
   const [daysSinceRejection, setDaysSinceRejection] = useState<number>(0);
+
+  // Multi-Interviewer Picker state
+  const [showInterviewerPicker, setShowInterviewerPicker] = useState(false);
+  const [interviewerPickerStage, setInterviewerPickerStage] = useState<string | null>(null);
+  const [interviewerPickerCandidate, setInterviewerPickerCandidate] = useState<PipelineCandidate | null>(null);
+  const [selectedInterviewerUserId, setSelectedInterviewerUserId] = useState<string | null>(null);
+  const [pickerDirection, setPickerDirection] = useState<'forward' | 'backward'>('forward');
 
   // Configuration: Define which stages allow skipping
   const SKIPPABLE_STAGES: string[] = [
@@ -987,10 +1004,26 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
   // Handle opening stage jump modal
   const handleStageJump = (candidate: PipelineCandidate, direction: 'forward' | 'backward', targetStage?: InterviewStage) => {
+    const resolvedTarget = targetStage || null;
+
+    // If moving forward to a stage with 2+ interviewers, show picker first
+    if (direction === 'forward' && resolvedTarget) {
+      const assignees = getStageAssignees(resolvedTarget);
+      if (assignees.length >= 2) {
+        setInterviewerPickerCandidate(candidate);
+        setInterviewerPickerStage(resolvedTarget);
+        setPickerDirection(direction);
+        setSelectedInterviewerUserId(null);
+        setShowInterviewerPicker(true);
+        return; // Don't open StageJumpModal yet — wait for picker selection
+      }
+    }
+
     setSelectedCandidatesForJump([candidate]);
     setJumpDirection(direction);
-    setTargetJumpStage(targetStage || null);
+    setTargetJumpStage(resolvedTarget);
     setJumpFeedback('');
+    setJumpAssignmentScore('');
     setShowStageJumpModal(true);
   };
 
@@ -1047,7 +1080,8 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
       const result = await CandidateService.bulkUpdateCandidateStages(
         candidateIds,
         targetJumpStage,
-        finalReason
+        finalReason,
+        targetJumpStage.includes('Assignment') || targetJumpStage === 'Assignment Result' ? jumpAssignmentScore : undefined
       );
 
       if (result.success) {
@@ -1066,6 +1100,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
         setSelectedCandidatesForJump([]);
         setTargetJumpStage(null);
         setJumpFeedback('');
+        setJumpAssignmentScore('');
       } else {
         alert('Failed to update one or more candidates.');
       }
@@ -1087,6 +1122,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
     setJumpDirection('forward');
     setTargetJumpStage(null);
     setJumpFeedback('');
+    setJumpAssignmentScore('');
     setShowStageJumpModal(true);
   };
 
@@ -1284,6 +1320,65 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
         break;
     }
     setOpenStageMenu(null);
+  };
+
+  // ─── Team owner helper ─────────────────────────────────────────────────────
+  // Maps pipeline stage → the most relevant responsibility key in teamAssignments
+  const STAGE_TO_RESPONSIBILITY: Record<string, string> = {
+    'CV Shortlist': 'cv_shortlist_reviewer',
+    'CV Shortlisted': 'cv_shortlist_reviewer',
+    'Screening': 'screening_reviewer',
+    'HM Review': 'hiring_manager',
+    'Assignment': 'assignment_reviewer',
+    'Assignment Result': 'assignment_reviewer',
+    'L1 Technical': 'l1_technical_interviewer',
+    'L2 Technical': 'l2_technical_interviewer',
+    'L3 Technical': 'l3_technical_interviewer',
+    'L4 Technical': 'l4_technical_interviewer',
+    'HR Round': 'hr_round',
+    'Management Round': 'management_round',
+  };
+
+  // Returns { label, name, role } of the first matching team member for a stage, or the primary recruiter
+  const getStageOwner = (stage: string): { label: string; name: string; role: string } | null => {
+    const responsibility = STAGE_TO_RESPONSIBILITY[stage];
+    if (responsibility && Object.keys(teamAssignments).length > 0) {
+      for (const [userId, responsibilities] of Object.entries(teamAssignments)) {
+        if (responsibilities.includes(responsibility)) {
+          const user = users.find(u => String(u.id) === String(userId));
+          if (user) {
+            const label = responsibility === 'hiring_manager' ? 'Hiring Manager'
+              : responsibility.includes('interviewer') ? 'Assigned Interviewer'
+                : responsibility === 'hr_round' ? 'HR'
+                  : responsibility === 'management_round' ? 'Management'
+                    : responsibility.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            return { label, name: user.name || user.full_name || 'Unknown', role: user.role || '' };
+          }
+        }
+      }
+    }
+    // Fall back to primary recruiter if assigned
+    if (primaryRecruiterId) {
+      const recruiter = users.find(u => String(u.id) === String(primaryRecruiterId));
+      if (recruiter) {
+        return { label: 'Primary Recruiter', name: recruiter.name || recruiter.full_name || 'Unknown', role: recruiter.role || '' };
+      }
+    }
+    return null;
+  };
+
+  // Returns ALL users assigned to a given stage (for multi-interviewer picker)
+  const getStageAssignees = (stage: string): { id: string; name: string; role: string }[] => {
+    const responsibility = STAGE_TO_RESPONSIBILITY[stage];
+    if (!responsibility || Object.keys(teamAssignments).length === 0) return [];
+    const assignees: { id: string; name: string; role: string }[] = [];
+    for (const [userId, responsibilities] of Object.entries(teamAssignments)) {
+      if (responsibilities.includes(responsibility)) {
+        const user = users.find(u => String(u.id) === String(userId));
+        if (user) assignees.push({ id: String(userId), name: user.name || user.full_name || 'Unknown', role: user.role || '' });
+      }
+    }
+    return assignees;
   };
 
   return (
@@ -1516,14 +1611,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                       setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
+                                    onStatusAction={(candidate, action) => {
+                                      setSelectedStatusCandidate(candidate);
+                                      setSelectedStatusAction(action);
+                                      setStatusReason('');
+                                      setShowStatusActionModal(true);
+                                    }}
+                                    onMoveStage={(candidate) => { handleStageJump(candidate, 'forward'); }}
                                   />
-                                  <button
-                                    onClick={() => onViewProfile(candidate.id)}
-                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
-                                    title="View candidate details"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </button>
+
                                 </div>
                               </div>
 
@@ -1566,6 +1662,22 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                   </div>
                                 )}
                               </div>
+
+                              {/* Team owner for this stage */}
+                              {(() => {
+                                const owner = getStageOwner(stage); return owner ? (
+                                  <div className="mb-3">
+                                    <div className="flex items-center gap-2 text-xs">
+                                      <div className="w-4 h-4 rounded-full bg-indigo-100 flex items-center justify-center ring-2 ring-white">
+                                        <LucideUser className="w-2 h-2 text-indigo-600" />
+                                      </div>
+                                      <span className="text-gray-500">{owner.label}:</span>
+                                      <span className="font-medium text-indigo-700">{owner.name}</span>
+                                      {owner.role && <span className="text-gray-400">({owner.role})</span>}
+                                    </div>
+                                  </div>
+                                ) : null;
+                              })()}
 
                               {/* Subtle divider + Check status action */}
 
@@ -1614,14 +1726,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                       setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
+                                    onStatusAction={(candidate, action) => {
+                                      setSelectedStatusCandidate(candidate);
+                                      setSelectedStatusAction(action);
+                                      setStatusReason('');
+                                      setShowStatusActionModal(true);
+                                    }}
+                                    onMoveStage={(candidate) => { handleStageJump(candidate, 'forward'); }}
                                   />
-                                  <button
-                                    onClick={() => onViewProfile(candidate.id)}
-                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
-                                    title="View candidate details"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </button>
+
                                 </div>
                               </div>
 
@@ -1661,6 +1774,22 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                               )}
 
                               {/* Increased spacing + Check status action */}
+
+                              {/* Team owner for this stage */}
+                              {(() => {
+                                const owner = getStageOwner(stage); return owner ? (
+                                  <div className="mb-2">
+                                    <div className="flex items-center gap-2 text-xs">
+                                      <div className="w-4 h-4 rounded-full bg-indigo-100 flex items-center justify-center ring-2 ring-white">
+                                        <LucideUser className="w-2 h-2 text-indigo-600" />
+                                      </div>
+                                      <span className="text-gray-500">{owner.label}:</span>
+                                      <span className="font-medium text-indigo-700">{owner.name}</span>
+                                      {owner.role && <span className="text-gray-400">({owner.role})</span>}
+                                    </div>
+                                  </div>
+                                ) : null;
+                              })()}
 
                             </div>
                           );
@@ -1725,14 +1854,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                       setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
+                                    onStatusAction={(candidate, action) => {
+                                      setSelectedStatusCandidate(candidate);
+                                      setSelectedStatusAction(action);
+                                      setStatusReason('');
+                                      setShowStatusActionModal(true);
+                                    }}
+                                    onMoveStage={(candidate) => { handleStageJump(candidate, 'forward'); }}
                                   />
-                                  <button
-                                    onClick={() => onViewProfile(candidate.id)}
-                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
-                                    title="View candidate details"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </button>
+
                                 </div>
                               </div>
 
@@ -1818,6 +1948,22 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                 </div>
                               )}
 
+                              {/* Assigned team member for this stage (from Job Settings) */}
+                              {(() => {
+                                const owner = getStageOwner(stage); return owner ? (
+                                  <div className="mb-3 mt-1">
+                                    <div className="flex items-center gap-2 text-xs">
+                                      <div className="w-4 h-4 rounded-full bg-indigo-100 flex items-center justify-center ring-2 ring-white">
+                                        <LucideUser className="w-2 h-2 text-indigo-600" />
+                                      </div>
+                                      <span className="text-gray-500">{owner.label}:</span>
+                                      <span className="font-medium text-indigo-700">{owner.name}</span>
+                                      {owner.role && <span className="text-gray-400">({owner.role})</span>}
+                                    </div>
+                                  </div>
+                                ) : null;
+                              })()}
+
                               {/* Subtle gray divider at bottom for visual consistency */}
                               <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-100"></div>
                             </div>
@@ -1880,14 +2026,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                       setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
+                                    onStatusAction={(candidate, action) => {
+                                      setSelectedStatusCandidate(candidate);
+                                      setSelectedStatusAction(action);
+                                      setStatusReason('');
+                                      setShowStatusActionModal(true);
+                                    }}
+                                    onMoveStage={(candidate) => { handleStageJump(candidate, 'forward'); }}
                                   />
-                                  <button
-                                    onClick={() => onViewProfile(candidate.id)}
-                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
-                                    title="View candidate details"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </button>
+
                                 </div>
                               </div>
 
@@ -1985,14 +2132,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                       setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
+                                    onStatusAction={(candidate, action) => {
+                                      setSelectedStatusCandidate(candidate);
+                                      setSelectedStatusAction(action);
+                                      setStatusReason('');
+                                      setShowStatusActionModal(true);
+                                    }}
+                                    onMoveStage={(candidate) => { handleStageJump(candidate, 'forward'); }}
                                   />
-                                  <button
-                                    onClick={() => onViewProfile(candidate.id)}
-                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
-                                    title="View candidate details"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </button>
+
                                 </div>
                               </div>
 
@@ -2056,6 +2204,21 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
 
                               {/* Action area */}
 
+                              {/* Assigned team member for this stage */}
+                              {(() => {
+                                const owner = getStageOwner(stage); return owner ? (
+                                  <div className="mb-3">
+                                    <div className="flex items-center gap-2 text-xs">
+                                      <div className="w-4 h-4 rounded-full bg-indigo-100 flex items-center justify-center ring-2 ring-white">
+                                        <LucideUser className="w-2 h-2 text-indigo-600" />
+                                      </div>
+                                      <span className="text-gray-500">{owner.label}:</span>
+                                      <span className="font-medium text-indigo-700">{owner.name}</span>
+                                      {owner.role && <span className="text-gray-400">({owner.role})</span>}
+                                    </div>
+                                  </div>
+                                ) : null;
+                              })()}
 
                               {/* Subtle gray divider at bottom for visual consistency */}
                               <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-100"></div>
@@ -2070,7 +2233,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                           const interviewAging = Math.floor(Math.random() * 10) + 1; // 1-10 days
                           const interviewers = [getRandomUser(['admin', 'superadmin', 'hr'])];
                           const interviewer = interviewers[0];
-                          const assignmentScore = Math.random() > 0.3 ? Math.floor(Math.random() * 40) + 60 : null; // Sometimes show previous score
+                          const assignmentScore = candidate.assignmentScore; // Use actual assignment score
 
                           return (
                             <div
@@ -2118,14 +2281,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                       setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
+                                    onStatusAction={(candidate, action) => {
+                                      setSelectedStatusCandidate(candidate);
+                                      setSelectedStatusAction(action);
+                                      setStatusReason('');
+                                      setShowStatusActionModal(true);
+                                    }}
+                                    onMoveStage={(candidate) => { handleStageJump(candidate, 'forward'); }}
                                   />
-                                  <button
-                                    onClick={() => onViewProfile(candidate.id)}
-                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
-                                    title="View candidate details"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </button>
+
                                 </div>
                               </div>
 
@@ -2250,14 +2414,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                       setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
+                                    onStatusAction={(candidate, action) => {
+                                      setSelectedStatusCandidate(candidate);
+                                      setSelectedStatusAction(action);
+                                      setStatusReason('');
+                                      setShowStatusActionModal(true);
+                                    }}
+                                    onMoveStage={(candidate) => { handleStageJump(candidate, 'forward'); }}
                                   />
-                                  <button
-                                    onClick={() => onViewProfile(candidate.id)}
-                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
-                                    title="View candidate details"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </button>
+
                                 </div>
                               </div>
 
@@ -2386,14 +2551,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                       setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
+                                    onStatusAction={(candidate, action) => {
+                                      setSelectedStatusCandidate(candidate);
+                                      setSelectedStatusAction(action);
+                                      setStatusReason('');
+                                      setShowStatusActionModal(true);
+                                    }}
+                                    onMoveStage={(candidate) => { handleStageJump(candidate, 'forward'); }}
                                   />
-                                  <button
-                                    onClick={() => onViewProfile(candidate.id)}
-                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
-                                    title="View candidate details"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </button>
+
                                 </div>
                               </div>
 
@@ -2468,7 +2634,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                           // Generate interview completion status and details
                           const completionStatuses = ['Completed', 'In Progress', 'Scheduled'];
                           const completionStatus = completionStatuses[Math.floor(Math.random() * completionStatuses.length)];
-                          const assignmentScore = Math.random() > 0.3 ? Math.floor(Math.random() * 40) + 60 : null; // Sometimes show assignment score
+                          const assignmentScore = candidate.assignmentScore; // Use actual assignment score
 
                           return (
                             <div
@@ -2518,14 +2684,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                       setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
+                                    onStatusAction={(candidate, action) => {
+                                      setSelectedStatusCandidate(candidate);
+                                      setSelectedStatusAction(action);
+                                      setStatusReason('');
+                                      setShowStatusActionModal(true);
+                                    }}
+                                    onMoveStage={(candidate) => { handleStageJump(candidate, 'forward'); }}
                                   />
-                                  <button
-                                    onClick={() => onViewProfile(candidate.id)}
-                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
-                                    title="View candidate details"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </button>
+
                                 </div>
                               </div>
 
@@ -2646,14 +2813,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                       setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
+                                    onStatusAction={(candidate, action) => {
+                                      setSelectedStatusCandidate(candidate);
+                                      setSelectedStatusAction(action);
+                                      setStatusReason('');
+                                      setShowStatusActionModal(true);
+                                    }}
+                                    onMoveStage={(candidate) => { handleStageJump(candidate, 'forward'); }}
                                   />
-                                  <button
-                                    onClick={() => onViewProfile(candidate.id)}
-                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
-                                    title="View candidate details"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </button>
+
                                 </div>
                               </div>
 
@@ -2770,14 +2938,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                       setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
+                                    onStatusAction={(candidate, action) => {
+                                      setSelectedStatusCandidate(candidate);
+                                      setSelectedStatusAction(action);
+                                      setStatusReason('');
+                                      setShowStatusActionModal(true);
+                                    }}
+                                    onMoveStage={(candidate) => { handleStageJump(candidate, 'forward'); }}
                                   />
-                                  <button
-                                    onClick={() => onViewProfile(candidate.id)}
-                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
-                                    title="View candidate details"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </button>
+
                                 </div>
                               </div>
 
@@ -2885,14 +3054,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                       setSelectedFeedbackStage(getPreviousStage(stage));
                                       setShowFeedbackReviewModal(true);
                                     }}
+                                    onStatusAction={(candidate, action) => {
+                                      setSelectedStatusCandidate(candidate);
+                                      setSelectedStatusAction(action);
+                                      setStatusReason('');
+                                      setShowStatusActionModal(true);
+                                    }}
+                                    onMoveStage={(candidate) => { handleStageJump(candidate, 'forward'); }}
                                   />
-                                  <button
-                                    onClick={() => onViewProfile(candidate.id)}
-                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
-                                    title="View candidate details"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </button>
+
                                 </div>
                               </div>
 
@@ -2957,13 +3127,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                     {candidate.name}
                                   </h4>
                                 </button>
-                                <button
-                                  onClick={() => onViewProfile(candidate.id)}
-                                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
-                                  title="View candidate details"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </button>
+
                               </div>
 
                               {/* Joined Status Badge */}
@@ -3038,14 +3202,15 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                                     setSelectedFeedbackStage(getPreviousStage(stage));
                                     setShowFeedbackReviewModal(true);
                                   }}
+                                  onStatusAction={(candidate, action) => {
+                                    setSelectedStatusCandidate(candidate);
+                                    setSelectedStatusAction(action);
+                                    setStatusReason('');
+                                    setShowStatusActionModal(true);
+                                  }}
+                                  onMoveStage={(candidate) => { handleStageJump(candidate, 'forward'); }}
                                 />
-                                <button
-                                  onClick={() => onViewProfile(candidate.id)}
-                                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all group"
-                                  title="View candidate details"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </button>
+
                                 <div className={`px-2 py-0.5 rounded text-xs font-medium ${candidate.aging > 15 ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
                                   {candidate.aging}d
                                 </div>
@@ -3084,7 +3249,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
                             </div>
 
                             {/* Assignment Score */}
-                            {candidate.assignmentScore && (
+                            {candidate.assignmentScore && (candidate.stage.includes('Assignment') || candidate.stage === 'Assignment Result') && (
                               <div className="mb-3">
                                 <div className="text-xs text-gray-600 font-medium mb-1">
                                   Assignment Score: <span className="font-bold text-green-600">{candidate.assignmentScore}%</span>
@@ -3853,6 +4018,7 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
         direction={jumpDirection}
         targetStage={targetJumpStage}
         feedback={jumpFeedback}
+        assignmentScore={jumpAssignmentScore}
         availableStages={
           selectedCandidatesForJump.length > 0
             ? jumpDirection === 'forward'
@@ -3865,10 +4031,56 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
           setSelectedCandidatesForJump([]);
           setTargetJumpStage(null);
           setJumpFeedback('');
+          setJumpAssignmentScore('');
         }}
         onTargetStageChange={setTargetJumpStage}
         onFeedbackChange={setJumpFeedback}
+        onAssignmentScoreChange={setJumpAssignmentScore}
         onExecute={executeStageJump}
+      />
+
+      {/* ==================== STATUS ACTION MODAL ==================== */}
+      <StatusActionModal
+        show={showStatusActionModal}
+        candidate={selectedStatusCandidate}
+        action={selectedStatusAction}
+        reason={statusReason}
+        onClose={() => {
+          setShowStatusActionModal(false);
+          setSelectedStatusCandidate(null);
+          setSelectedStatusAction(null);
+          setStatusReason('');
+        }}
+        onReasonChange={setStatusReason}
+        onExecute={async () => {
+          if (!selectedStatusCandidate || !selectedStatusAction || !statusReason.trim()) return;
+
+          let newStage: InterviewStage;
+          if (selectedStatusAction === 'Reject') newStage = InterviewStage.REJECTED;
+          else if (selectedStatusAction === 'Drop') newStage = InterviewStage.DROPPED;
+          else if (selectedStatusAction === 'Hold') newStage = InterviewStage.ON_HOLD;
+          else return;
+
+          try {
+            await CandidateService.updateCandidateStage({
+              candidateId: selectedStatusCandidate.id,
+              newStage,
+              userId: currentUser?.id || 'admin',
+              reason: statusReason.trim()
+            });
+
+            // Update local state to immediately show in UI
+            setCandidates(prev => prev.map(c => c.id === selectedStatusCandidate.id ? { ...c, stage: newStage } : c));
+          } catch (err) {
+            console.error('Failed to update status:', err);
+            // Could add toast notification here, optionally handled by the service in the future
+          } finally {
+            setShowStatusActionModal(false);
+            setSelectedStatusCandidate(null);
+            setSelectedStatusAction(null);
+            setStatusReason('');
+          }
+        }}
       />
 
       {/* ==================== FEEDBACK REVIEW MODAL ==================== */}
@@ -3888,6 +4100,116 @@ const PipelineBoard: React.FC<PipelineBoardProps> = ({ onViewProfile, candidates
           setSelectedFeedbackStage(null);
         }}
       />
+      {/* ==================== INTERVIEWER PICKER MODAL ==================== */}
+      {showInterviewerPicker && interviewerPickerCandidate && interviewerPickerStage && (() => {
+        const assignees = getStageAssignees(interviewerPickerStage);
+        const stageName = interviewerPickerStage;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 animate-in zoom-in-95 duration-200">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Select Interviewer</h3>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    Multiple interviewers are assigned to <span className="font-medium text-blue-600">{stageName}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowInterviewerPicker(false);
+                    setInterviewerPickerCandidate(null);
+                    setInterviewerPickerStage(null);
+                    setSelectedInterviewerUserId(null);
+                  }}
+                  className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Candidate info */}
+              <div className="bg-blue-50 rounded-lg px-4 py-2.5 mb-5 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {(interviewerPickerCandidate.name || 'C').charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-blue-900">{interviewerPickerCandidate.name || 'Candidate'}</p>
+                  <p className="text-xs text-blue-600">moving → {stageName}</p>
+                </div>
+              </div>
+
+              {/* Assignee list */}
+              <div className="space-y-2 mb-6">
+                {assignees.map(assignee => (
+                  <button
+                    key={assignee.id}
+                    onClick={() => setSelectedInterviewerUserId(assignee.id)}
+                    className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all flex items-center gap-3 ${selectedInterviewerUserId === assignee.id
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-blue-300 bg-white'
+                      }`}
+                  >
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${selectedInterviewerUserId === assignee.id ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                      }`}>
+                      {assignee.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{assignee.name}</p>
+                      <p className="text-xs text-gray-500 capitalize">{assignee.role}</p>
+                    </div>
+                    {selectedInterviewerUserId === assignee.id && (
+                      <svg className="w-5 h-5 text-blue-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowInterviewerPicker(false);
+                    setInterviewerPickerCandidate(null);
+                    setInterviewerPickerStage(null);
+                    setSelectedInterviewerUserId(null);
+                  }}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={!selectedInterviewerUserId}
+                  onClick={() => {
+                    if (!selectedInterviewerUserId) return;
+                    // Close picker, proceed with stage jump modal
+                    setShowInterviewerPicker(false);
+                    setSelectedCandidatesForJump([interviewerPickerCandidate]);
+                    setJumpDirection(pickerDirection);
+                    setTargetJumpStage(interviewerPickerStage);
+                    setJumpFeedback('');
+                    setJumpAssignmentScore('');
+                    // Store chosen interviewer in feedback prefix (will be visible in pipeline)
+                    const chosen = assignees.find(a => a.id === selectedInterviewerUserId);
+                    if (chosen) setJumpFeedback(`Assigned to: ${chosen.name} (${chosen.role})\n`);
+                    setShowStageJumpModal(true);
+                    setInterviewerPickerCandidate(null);
+                    setInterviewerPickerStage(null);
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Confirm & Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
     </div>
   );
 };

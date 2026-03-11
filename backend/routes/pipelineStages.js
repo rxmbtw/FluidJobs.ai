@@ -51,7 +51,13 @@ router.get('/:jobId', authenticateToken, async (req, res) => {
         c.current_ctc,
         c.location as candidate_location,
         ja.applied_at,
-        ja.application_id
+        ja.application_id,
+        c.gender,
+        c.marital_status,
+        c.currently_employed,
+        c.last_company,
+        c.mode_of_job,
+        ja.resume_path
       FROM candidate_pipeline_stages cps
       JOIN candidates c ON cps.candidate_id = c.candidate_id
       LEFT JOIN job_applications ja ON ja.job_id = cps.job_id AND ja.candidate_id = cps.candidate_id

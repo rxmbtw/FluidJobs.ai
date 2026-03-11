@@ -181,6 +181,8 @@ export interface Candidate {
   resumeScore?: number;
   skills?: string[];
   modeOfJob?: string; // Work mode in previous company
+  resumePath?: string; // Path to submitted resume file
+  linkedinUrl?: string; // Candidate's LinkedIn profile URL
   candidateJobStatuses?: { job_id: number, job_title: string, status: string }[];
 
   // Permissions (computed at runtime)

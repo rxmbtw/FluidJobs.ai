@@ -7,6 +7,7 @@ export interface StageUpdateRequest {
   newStage: string;
   reason?: string;
   userId: string;
+  assignmentScore?: string;
   approvals?: any[];
 }
 
@@ -129,19 +130,22 @@ export class CandidateService {
       // History and tracking
       stageHistory: [],
       comments: [],
-      resumeUrl: dbCandidate.resume_link,
+      resumeUrl: dbCandidate.resume_link || dbCandidate.resume_path || undefined,
 
       // Additional fields from database
-      gender: dbCandidate.gender,
+      gender: dbCandidate.gender || '',
       experienceYears: parseFloat(dbCandidate.experience_years) || 0,
-      currentlyEmployed: dbCandidate.currently_employed,
-      currentCompany: dbCandidate.current_company,
-      previousCompany: dbCandidate.previous_company,
-      lastWorkingDay: dbCandidate.last_working_day,
-      modeOfJob: dbCandidate.mode_of_job,
-      joiningDate: dbCandidate.joining_date,
-      maritalStatus: dbCandidate.marital_status,
-      resumeScore: dbCandidate.resume_score || Math.floor(Math.random() * 40) + 60, // Random score for demo
+      currentlyEmployed: dbCandidate.currently_employed || '',
+      currentCompany: dbCandidate.current_company || '',
+      previousCompany: dbCandidate.previous_company || '',
+      lastWorkingDay: dbCandidate.last_working_day || dbCandidate.last_company || '',
+      modeOfJob: dbCandidate.mode_of_job || '',
+      joiningDate: dbCandidate.joining_date || '',
+      maritalStatus: dbCandidate.marital_status || '',
+      resumeScore: dbCandidate.resume_score || 0,
+      resumePath: dbCandidate.resume_path || '',
+      linkedinUrl: dbCandidate.linkedin_url || '',
+      assignmentScore: dbCandidate.assignment_score ?? undefined,
       skills: [], // Would be populated from a separate skills table in production
 
       // Permissions (will be added by the caller if user context is available)
@@ -293,7 +297,7 @@ export class CandidateService {
             lastUpdateDate: s.updated_at ? new Date(s.updated_at).toISOString() : new Date().toISOString(),
             experience: s.experience_years ? `${s.experience_years} Years` : '0 Years',
             experienceYears: parseFloat(s.experience_years) || 0,
-            location: s.candidate_location || 'Not specified',
+            location: s.candidate_location || s.location || 'Not specified',
             currentCompany: s.current_company || '',
             noticePeriod: s.notice_period || 'Not specified',
             ctc: {
@@ -301,6 +305,13 @@ export class CandidateService {
               expected: parseFloat(s.expected_ctc) || 0,
               currency: 'INR'
             },
+            gender: s.gender || '',
+            maritalStatus: s.marital_status || '',
+            currentlyEmployed: s.currently_employed || '',
+            lastWorkingDay: s.last_company || '',
+            modeOfJob: s.mode_of_job || '',
+            resumePath: s.resume_path || '',
+            linkedinUrl: s.linkedin_url || '',
             status: 'Active',
             hiringManagerId: 'default-hm',
             jobTitle: 'Candidate',
@@ -324,7 +335,7 @@ export class CandidateService {
             comments: [],
             skills: [],
             isOnHold: s.current_stage === 'On Hold',
-            resumeScore: Math.floor(Math.random() * 30) + 70,
+            resumeScore: s.resume_score || 0,
           }));
         }
       }
@@ -462,6 +473,7 @@ export class CandidateService {
         movedByName: user.name,
         movedByRole: this.safeGetRole(user),
         movedByUserId: user.id,
+        assignmentScore: request.assignmentScore
       };
 
       let updatedCandidate: Candidate;
@@ -531,7 +543,8 @@ export class CandidateService {
   static async bulkUpdateCandidateStages(
     candidateIds: string[],
     newStage: string,
-    reason?: string
+    reason?: string,
+    assignmentScore?: string
   ): Promise<{
     success: boolean;
     results: Array<{ candidateId: string; success: boolean; error?: string }>;
@@ -552,7 +565,8 @@ export class CandidateService {
           candidateId,
           newStage,
           reason,
-          userId: user.id
+          userId: user.id,
+          assignmentScore
         });
 
         results.push({

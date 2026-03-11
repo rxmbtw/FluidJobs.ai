@@ -6,13 +6,15 @@ import {
   Italic,
   Underline,
   Strikethrough,
-  Check
+  Check,
+  X
 } from 'lucide-react';
 import { indianCities } from '../../data/indianCities';
 import './JobCreationForm.css';
 import SuccessModal from '../../components/SuccessModal';
 import ImagePickerModal from '../common/ImagePickerModal';
 import { safeClosest } from '../../utils/domHelpers';
+import CTCCalculator from '../common/CTCCalculator';
 import { formatJobTitle, getDuplicateTitleError } from '../../utils/jobTitleUtils';
 
 interface JobCreationFormProps {
@@ -47,15 +49,20 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     mode_of_job: '',
     skills: '',
     job_description: '',
-    primary_recruiter_id: ''
+    primary_recruiter_id: '',
+    education: ''
   });
   const [skillsInput, setSkillsInput] = useState('');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [showSkillsSuggestions, setShowSkillsSuggestions] = useState(false);
+  const [apiSkillsSuggestions, setApiSkillsSuggestions] = useState<string[]>([]);
   const [locationInput, setLocationInput] = useState('');
+  const [apiLocationSuggestions, setApiLocationSuggestions] = useState<string[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [showDomainSuggestions, setShowDomainSuggestions] = useState(false);
   const [apiDomainSuggestions, setApiDomainSuggestions] = useState<string[]>([]);
+  const [showEducationSuggestions, setShowEducationSuggestions] = useState(false);
+  const [apiEducationSuggestions, setApiEducationSuggestions] = useState<string[]>([]);
   const [showMinExpSuggestions, setShowMinExpSuggestions] = useState(false);
   const [showMaxExpSuggestions, setShowMaxExpSuggestions] = useState(false);
   const [showJobTypeSuggestions, setShowJobTypeSuggestions] = useState(false);
@@ -77,18 +84,17 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
   const [usedImages, setUsedImages] = useState<string[]>([]); // images used by other jobs in the same account
   const [selectedHiringManager, setSelectedHiringManager] = useState('');
   const [selectedRecruiters, setSelectedRecruiters] = useState<string[]>([]);
-  const [hiringStages, setHiringStages] = useState<any[]>([
+  // Default 7 hiring stages (user can add/remove later)
+  const DEFAULT_HIRING_STAGES = [
     { id: 'screening', name: 'Screening', type: 'standard', isMandatory: true, remarksRequired: false, order: 1 },
     { id: 'cv_shortlist', name: 'CV Shortlist', type: 'standard', isMandatory: false, remarksRequired: false, order: 2 },
     { id: 'hm_review', name: 'HM Review', type: 'standard', isMandatory: false, remarksRequired: false, order: 3 },
     { id: 'assignment', name: 'Assignment', type: 'standard', isMandatory: false, remarksRequired: true, order: 4 },
     { id: 'l1_tech', name: 'L1 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 5 },
     { id: 'l2_tech', name: 'L2 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 6 },
-    { id: 'l3_tech', name: 'L3 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 7 },
-    { id: 'l4_tech', name: 'L4 Technical', type: 'standard', isMandatory: false, remarksRequired: true, order: 8 },
-    { id: 'hr_round', name: 'HR Round', type: 'standard', isMandatory: true, remarksRequired: true, order: 9 },
-    { id: 'management', name: 'Management Round', type: 'standard', isMandatory: false, remarksRequired: true, order: 10 }
-  ]);
+    { id: 'hr_round', name: 'HR Round', type: 'standard', isMandatory: false, remarksRequired: true, order: 7 },
+  ];
+  const [hiringStages, setHiringStages] = useState<any[]>(DEFAULT_HIRING_STAGES);
   const [newStageInput, setNewStageInput] = useState('');
   const [currentStageType, setCurrentStageType] = useState<'standard' | 'custom'>('standard');
   const [showNewStageInput, setShowNewStageInput] = useState(false);
@@ -98,26 +104,108 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
   const [isCheckingTitle, setIsCheckingTitle] = useState(false);
   const titleCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Load draft on mount
+  useEffect(() => {
+    const draftStr = localStorage.getItem('fluidjobs_create_job_draft');
+    if (draftStr) {
+      try {
+        const draft = JSON.parse(draftStr);
+        if (draft.activeSection) setActiveSection(draft.activeSection);
+        if (draft.selectedAccount) setSelectedAccount(draft.selectedAccount);
+        if (draft.formData) setFormData(draft.formData);
+        if (draft.selectedSkills) setSelectedSkills(draft.selectedSkills);
+        if (draft.selectedLocation) setSelectedLocation(draft.selectedLocation);
+        if (draft.selectedImage) setSelectedImage(draft.selectedImage);
+        if (draft.selectedImageId) setSelectedImageId(draft.selectedImageId);
+        if (draft.hiringStages) setHiringStages(draft.hiringStages);
+        if (draft.teamAssignments) setTeamAssignments(draft.teamAssignments);
+        if (draft.completedSections) setCompletedSections(new Set(draft.completedSections));
+      } catch (err) {
+        console.error('Failed to parse create job draft', err);
+      }
+    }
+  }, []);
+
+  // Save draft when relevant state changes
+  useEffect(() => {
+    const draft = {
+      activeSection,
+      selectedAccount,
+      formData,
+      selectedSkills,
+      selectedLocation,
+      selectedImage,
+      selectedImageId,
+      hiringStages,
+      teamAssignments,
+      completedSections: Array.from(completedSections)
+    };
+    localStorage.setItem('fluidjobs_create_job_draft', JSON.stringify(draft));
+  }, [activeSection, selectedAccount, formData, selectedSkills, selectedLocation, selectedImage, selectedImageId, hiringStages, teamAssignments, completedSections]);
+
   const experienceOptions = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
   const jobTypeOptions = ['Full-time', 'Part-time', 'Contract', 'Internship'];
   const openingsOptions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
   const modeOptions = ['Work From Home', 'Hybrid', 'On-site'];
   const domainSuggestions = [
-    // Tech & Engineering
-    'Software Engineering', 'Frontend Development', 'Backend Development', 'Full Stack Development',
-    'Mobile Development', 'DevOps & SRE', 'Cloud Computing', 'Data Science', 'Machine Learning',
-    'Artificial Intelligence', 'Data Engineering', 'Cybersecurity', 'IT & Systems',
-    'Quality Assurance (QA)', 'Blockchain & Web3', 'Game Development', 'AR/VR/XR',
-    'Embedded Systems', 'Network Engineering', 'Database Administration',
+    // 80 Tech Domains
+    'Software Engineer', 'Frontend Developer', 'Backend Developer', 'Full Stack Developer',
+    'Mobile App Developer (iOS)', 'Mobile App Developer (Android)', 'Cross-Platform Mobile Developer',
+    'DevOps Engineer', 'Site Reliability Engineer (SRE)', 'Cloud Architect',
+    'Cloud Engineer (AWS)', 'Cloud Engineer (Azure)', 'Cloud Engineer (GCP)',
+    'Data Scientist', 'Machine Learning Engineer', 'AI Engineer',
+    'Generative AI Engineer', 'Deep Learning Engineer', 'Computer Vision Engineer',
+    'NLP Engineer', 'Data Engineer', 'Big Data Analyst',
+    'Data Architect', 'Database Administrator (DBA)', 'Cybersecurity Analyst',
+    'Information Security Engineer', 'Network Security Engineer', 'Application Security Engineer',
+    'Penetration Tester (CEH)', 'IT Systems Administrator', 'Network Engineer',
+    'IT Support Engineer', 'IT Infrastructure Specialist', 'QA Automation Engineer',
+    'Manual QA Tester', 'Performance Test Engineer', 'Security Test Engineer',
+    'SDET', 'Blockchain Developer', 'Web3 Engineer',
+    'Smart Contract Developer', 'Game Developer', 'AR/VR/XR Developer',
+    'Embedded Systems Engineer', 'IoT Engineer', 'Robotics Software Engineer',
+    'UI Developer', 'UX Engineer', 'Algorithm Engineer',
+    'Platform Engineer', 'Release Engineer', 'Infrastructure as Code (IaC) Engineer',
+    'Data Warehouse Architect', 'BI Developer', 'ETL Developer',
+    'Data Governance Specialist', 'IAM Specialist', 'Cloud Security Architect',
+    'Endpoint Security Specialist', 'SecOps Engineer', 'Firmware Engineer',
+    'Systems Programmer', 'API Developer', 'Microservices Developer',
+    'Enterprise Architect', 'Solutions Architect', 'Technical Lead',
+    'Engineering Manager', 'Scrum Master (Tech)', 'Agile Coach',
+    'Technical Product Owner', 'RPA Developer', 'Salesforce Developer',
+    'SAP Consultant', 'ERP Developer', 'CRM Specialist',
+    'ServiceNow Developer', 'DevSecOps Engineer', 'MLOps Engineer',
+    'DataOps Engineer',
 
-    // Product & Design
-    'Product Management', 'Project Management', 'UI/UX Design', 'Product Design',
-    'Graphic Design', 'Technical Writing', 'Scrum & Agile',
+    // 20 Non-Tech IT Operations/Management
+    'Product Manager', 'Project Manager', 'Program Manager',
+    'UI/UX Designer', 'Product Designer', 'Technical Writer',
+    'Digital Marketing Specialist', 'IT B2B Sales', 'Business Development (Tech)',
+    'Pre-Sales Engineer', 'Customer Success Manager', 'Tech Support Manager',
+    'HR / Talent Acquisition (Tech)', 'HR Business Partner (IT)', 'IT Operations Manager',
+    'Financial Analyst (FP&A - Tech)', 'Tech Procurement Manager', 'Legal & IT Compliance',
+    'Strategy & Consulting', 'Supply Chain Management (IT)'
+  ];
 
-    // Business & Operations
-    'Digital Marketing', 'Sales & Business Development', 'Human Resources (HR)',
-    'Talent Acquisition', 'Finance & Accounting', 'Operations', 'Customer Success',
-    'Legal & Compliance', 'Strategy & Consulting', 'Supply Chain & Logistics'
+  const educationSuggestions = [
+    'B.Tech - Computer Science', 'B.Tech - Information Technology', 'B.Tech - Electronics',
+    'B.Tech - Mechanical', 'B.Tech - Civil', 'B.Tech - Any Specialization',
+    'M.Tech - Computer Science', 'M.Tech - Information Technology', 'M.Tech - Data Science',
+    'BCA (Bachelor of Computer Applications)', 'MCA (Master of Computer Applications)',
+    'B.Sc - Computer Science', 'B.Sc - Information Technology', 'B.Sc - Mathematics', 'B.Sc - Physics',
+    'M.Sc - Computer Science', 'M.Sc - Information Technology', 'M.Sc - Data Science',
+    'Diploma in Computer Science', 'Diploma in Information Technology', 'Diploma in Engineering',
+    'MBA - Finance', 'MBA - HR', 'MBA - Marketing', 'MBA - Information Technology', 'MBA - Operations',
+    'BBA', 'B.Com', 'M.Com',
+    'Ph.D - Computer Science', 'Ph.D - Artificial Intelligence', 'Ph.D - Machine Learning',
+    'Any Graduate', 'Any Post Graduate', 'Graduate in any discipline',
+    'BE/B.Tech', 'ME/M.Tech', 'MCA/M.Sc', 'B.Sc/BCA',
+    'High School Diploma',
+    'Certification in Full Stack Development', 'Certification in Data Science',
+    'Certification in Cloud Computing', 'Certification in Cybersecurity', 'Certification in UI/UX',
+    'B.A', 'M.A', 'B.Arch', 'M.Arch', 'B.Pharma', 'M.Pharma',
+    'B.Ed', 'M.Ed', 'LLB', 'LLM',
+    'Chartered Accountant (CA)', 'Company Secretary (CS)'
   ];
 
   const skillsSuggestions = [
@@ -144,10 +232,36 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     { id: 'location', label: 'Location & Mode' },
     { id: 'requirements', label: 'Requirements & Skills' },
     { id: 'compensation', label: 'Compensation' },
-    { id: 'team', label: 'Team & Recruiters' },
     { id: 'description', label: 'Job Description' },
-    { id: 'process', label: 'Hiring Process' }
+    { id: 'process', label: 'Hiring Process' },
+    { id: 'team', label: 'Team & Recruiters' },
   ];
+
+  // Stage name → responsibility key mapping (must mirror PipelineBoard STAGE_TO_RESPONSIBILITY)
+  const STAGE_TO_RESPONSIBILITY: Record<string, { value: string; label: string }> = {
+    'Screening': { value: 'screening_reviewer', label: 'Screening Reviewer' },
+    'CV Shortlist': { value: 'cv_shortlist_reviewer', label: 'CV Shortlist Reviewer' },
+    'HM Review': { value: 'hiring_manager', label: 'Hiring Manager' },
+    'Assignment': { value: 'assignment_reviewer', label: 'Assignment Reviewer' },
+    'L1 Technical': { value: 'l1_technical_interviewer', label: 'L1 Technical Interviewer' },
+    'L2 Technical': { value: 'l2_technical_interviewer', label: 'L2 Technical Interviewer' },
+    'L3 Technical': { value: 'l3_technical_interviewer', label: 'L3 Technical Interviewer' },
+    'L4 Technical': { value: 'l4_technical_interviewer', label: 'L4 Technical Interviewer' },
+    'HR Round': { value: 'hr_round', label: 'HR Round' },
+    'Management Round': { value: 'management_round', label: 'Management Round' },
+  };
+
+  // Returns the dynamic responsibility list based on configured hiring stages
+  const getResponsibilitiesForStages = (stages: any[]) => {
+    const responsibilities: { value: string; label: string }[] = [];
+    stages.forEach(stage => {
+      const resp = STAGE_TO_RESPONSIBILITY[stage.name];
+      if (resp && !responsibilities.find(r => r.value === resp.value)) {
+        responsibilities.push(resp);
+      }
+    });
+    return responsibilities;
+  };
 
   const predefinedStages = [
     'CV Shortlist',
@@ -155,16 +269,15 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     'Assignment',
     'L1 Technical',
     'L2 Technical',
+    'HR Round',
     'L3 Technical',
     'L4 Technical',
-    'HR Round',
     'Management Round',
-    'Offer Extended',
   ];
 
   useEffect(() => {
     const hasOpenDropdown = showDomainSuggestions || showMinExpSuggestions || showMaxExpSuggestions ||
-      showJobTypeSuggestions || showLocationSuggestions || showModeSuggestions || showSkillsSuggestions;
+      showJobTypeSuggestions || showLocationSuggestions || showModeSuggestions || showSkillsSuggestions || showEducationSuggestions;
 
     if (hasOpenDropdown) {
       document.body.classList.add('dropdown-open');
@@ -175,7 +288,58 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     return () => {
       document.body.classList.remove('dropdown-open');
     };
-  }, [showDomainSuggestions, showMinExpSuggestions, showMaxExpSuggestions, showJobTypeSuggestions, showLocationSuggestions, showModeSuggestions, showSkillsSuggestions]);
+  }, [showDomainSuggestions, showMinExpSuggestions, showMaxExpSuggestions, showJobTypeSuggestions, showLocationSuggestions, showModeSuggestions, showSkillsSuggestions, showEducationSuggestions]);
+
+  // Fetch dynamic location suggestions
+  useEffect(() => {
+    const term = locationInput.trim();
+    if (!term || selectedLocation) {
+      setApiLocationSuggestions([]);
+      return;
+    }
+
+    const fetchLocations = async () => {
+      try {
+        const baseUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+        const res = await fetch(`${baseUrl}/api/suggestions/locations?q=${encodeURIComponent(term)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setApiLocationSuggestions(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch locations', err);
+      }
+    };
+
+    const timer = setTimeout(fetchLocations, 400); // 400ms debounce
+    return () => clearTimeout(timer);
+  }, [locationInput, selectedLocation]);
+
+  // Fetch dynamic skill suggestions
+  useEffect(() => {
+    const term = skillsInput.trim();
+
+    const fetchSkills = async () => {
+      try {
+        const baseUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+        const url = term
+          ? `${baseUrl}/api/suggestions/skills?q=${encodeURIComponent(term)}`
+          : `${baseUrl}/api/suggestions/skills`;
+
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          // Filter out already selected skills
+          setApiSkillsSuggestions(data.filter((s: string) => !selectedSkills.includes(s)));
+        }
+      } catch (err) {
+        console.error('Failed to fetch skills', err);
+      }
+    };
+
+    const timer = setTimeout(fetchSkills, 300); // 300ms debounce
+    return () => clearTimeout(timer);
+  }, [skillsInput, selectedSkills]);
 
   // Filter local tech domains based on user input
   useEffect(() => {
@@ -191,6 +355,21 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
 
     setApiDomainSuggestions(matched.slice(0, 8));
   }, [formData.job_domain]);
+
+  // Filter local education suggestions based on user input
+  useEffect(() => {
+    const term = formData.education.trim().toLowerCase();
+    if (!term) {
+      setApiEducationSuggestions([]);
+      return;
+    }
+
+    const matched = educationSuggestions.filter(edu =>
+      edu.toLowerCase().includes(term)
+    );
+
+    setApiEducationSuggestions(matched.slice(0, 8));
+  }, [formData.education]);
 
   // Debounced job title duplicate check (useRef timer — avoids stale closure / StrictMode issues)
   useEffect(() => {
@@ -319,6 +498,23 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     }
   }, [selectedAccount, isSuperAdmin]);
 
+  // Fetch used images for the selected account
+  useEffect(() => {
+    const fetchUsedImages = async () => {
+      try {
+        const baseUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+        const res = await fetch(`${baseUrl}/api/jobs-enhanced/account-used-images?account_id=${selectedAccount}`);
+        if (res.ok) {
+          const data = await res.json();
+          setUsedImages(data.usedImages || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch used images', err);
+      }
+    };
+    if (selectedAccount) fetchUsedImages();
+  }, [selectedAccount]);
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -331,6 +527,7 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
         setShowLocationSuggestions(false);
         setShowModeSuggestions(false);
         setShowSkillsSuggestions(false);
+        setShowEducationSuggestions(false);
         setShowAccountDropdown(false);
       }
     };
@@ -347,6 +544,7 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
       setShowLocationSuggestions(false);
       setShowModeSuggestions(false);
       setShowSkillsSuggestions(false);
+      setShowEducationSuggestions(false);
       setShowAccountDropdown(false);
     };
 
@@ -407,10 +605,7 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     });
   };
 
-  const filteredSkills = skillsSuggestions.filter(skill =>
-    skill.toLowerCase().includes(skillsInput.toLowerCase()) &&
-    !selectedSkills.includes(skill)
-  ).slice(0, 10);
+  // filteredSkills logic replaced by apiSkillsSuggestions state
 
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
@@ -418,20 +613,40 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
     if (!selectedAccount) newErrors.selectedAccount = 'Please select an account';
     if (!formData.job_title.trim()) newErrors.job_title = 'Job title is required';
     if (!formData.job_domain.trim()) newErrors.job_domain = 'Job domain is required';
+
     if (!formData.min_experience.trim()) newErrors.min_experience = 'Min experience is required';
     if (!formData.max_experience.trim()) newErrors.max_experience = 'Max experience is required';
+    if (formData.min_experience && formData.max_experience && parseInt(formData.min_experience) > parseInt(formData.max_experience)) {
+      newErrors.min_experience = 'Min experience cannot be greater than Max experience';
+      newErrors.max_experience = 'Max experience must be >= Min experience';
+    }
+
     if (!formData.job_type.trim()) newErrors.job_type = 'Job type is required';
-    if (!formData.no_of_openings.trim()) newErrors.no_of_openings = 'Number of openings is required';
+
+    if (!formData.no_of_openings.trim()) {
+      newErrors.no_of_openings = 'Number of openings is required';
+    } else if (parseInt(formData.no_of_openings) < 1) {
+      newErrors.no_of_openings = 'Number of openings must be at least 1';
+    }
+
     if (!formData.min_salary.trim()) newErrors.min_salary = 'Min salary is required';
     if (!formData.max_salary.trim()) newErrors.max_salary = 'Max salary is required';
+    if (formData.min_salary && formData.max_salary && parseInt(formData.min_salary) > parseInt(formData.max_salary)) {
+      newErrors.min_salary = 'Min salary cannot be greater than Max salary';
+      newErrors.max_salary = 'Max salary must be >= Min salary';
+    }
+
     if (!formData.registration_opening_date.trim()) newErrors.registration_opening_date = 'Registration opening date is required';
     if (!formData.locations.trim()) newErrors.locations = 'At least one location is required';
     if (!formData.mode_of_job.trim()) newErrors.mode_of_job = 'Mode of job is required';
+    if (!formData.education.trim()) newErrors.education = 'Education requirement is required';
     if (!formData.skills.trim()) newErrors.skills = 'At least one skill is required';
+
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = formData.job_description;
     const textContent = tempDiv.textContent || tempDiv.innerText || '';
     if (!textContent.trim()) newErrors.job_description = 'Job description is required';
+
     if (!selectedImage) newErrors.selectedImage = 'Please select a job posting image';
 
     setErrors(newErrors);
@@ -449,10 +664,21 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
         if (!formData.job_title.trim()) newErrors.job_title = 'Job title is required';
         else if (titleWarning) newErrors.job_title = getDuplicateTitleError(titleWarning);
         if (!formData.job_domain.trim()) newErrors.job_domain = 'Job domain is required';
+
         if (!formData.min_experience.trim()) newErrors.min_experience = 'Min experience is required';
         if (!formData.max_experience.trim()) newErrors.max_experience = 'Max experience is required';
+        if (formData.min_experience && formData.max_experience && parseInt(formData.min_experience) > parseInt(formData.max_experience)) {
+          newErrors.min_experience = 'Min experience cannot be greater than Max experience';
+          newErrors.max_experience = 'Max experience must be >= Min experience';
+        }
+
         if (!formData.job_type.trim()) newErrors.job_type = 'Job type is required';
-        if (!formData.no_of_openings.trim()) newErrors.no_of_openings = 'Number of openings is required';
+
+        if (!formData.no_of_openings.trim()) {
+          newErrors.no_of_openings = 'Number of openings is required';
+        } else if (parseInt(formData.no_of_openings) < 1) {
+          newErrors.no_of_openings = 'Number of openings must be at least 1';
+        }
         break;
       case 'image':
         if (!selectedImage) newErrors.selectedImage = 'Please select a job posting image';
@@ -471,12 +697,30 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
         if (!textContent.trim()) newErrors.job_description = 'Job description is required';
         break;
       case 'requirements':
+        if (!formData.education.trim()) newErrors.education = 'Education requirement is required';
         if (!formData.skills.trim()) newErrors.skills = 'At least one skill is required';
         break;
       case 'compensation':
-        if (!formData.min_salary.trim()) newErrors.min_salary = 'Min salary is required';
-        if (!formData.max_salary.trim()) newErrors.max_salary = 'Max salary is required';
+        if (!formData.min_salary || !String(formData.min_salary).trim()) newErrors.min_salary = 'Min CTC is required';
+        if (formData.min_salary && formData.max_salary && parseInt(formData.min_salary) > parseInt(formData.max_salary)) {
+          newErrors.min_salary = 'Min cannot be greater than Max';
+          newErrors.max_salary = 'Max must be >= Min';
+        }
         break;
+      case 'process':
+        if (hiringStages.length === 0) newErrors.hiringStages = 'At least one hiring stage is required';
+        break;
+      case 'team': {
+        // Every stage must have at least one assigned person
+        const requiredResponsibilities = getResponsibilitiesForStages(hiringStages);
+        const allAssigned = Object.values(teamAssignments).flat();
+        const uncovered = requiredResponsibilities.filter(r => !allAssigned.includes(r.value));
+        if (uncovered.length > 0) {
+          newErrors.teamAssignments = `Assign someone for: ${uncovered.map(r => r.label).join(', ')}`;
+        }
+        if (!formData.primary_recruiter_id) newErrors.primary_recruiter_id = 'Primary recruiter is required';
+        break;
+      }
     }
 
     setErrors(prev => ({ ...prev, ...newErrors }));
@@ -587,7 +831,9 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
           account_id: parseInt(selectedAccount) || null,
           created_by_user_id: currentAdmin?.id || null,
           primary_recruiter_id: formData.primary_recruiter_id,
-          interview_stages: hiringStages // Add interview stages to payload
+          education: formData.education,
+          interview_stages: hiringStages, // Add interview stages to payload
+          team_assignments: teamAssignments // Add team assignments to payload
         };
 
         const endpoint = isSuperAdmin
@@ -605,6 +851,7 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
         const data = await response.json();
 
         if (data.success) {
+          localStorage.removeItem('fluidjobs_create_job_draft'); // Clear draft on success
           setShowSuccessModal(true);
           window.dispatchEvent(new Event('jobCreated'));
           setTimeout(() => {
@@ -649,28 +896,43 @@ const JobCreationForm: React.FC<JobCreationFormProps> = ({ onBack, isSuperAdmin 
         setIsGeneratingFromPdf(false);
       }
     } else {
-      const description = `We are looking for a talented ${formData.job_title} to join our dynamic team. 
-
-Key Responsibilities:
-• Develop and maintain high-quality software solutions
-• Collaborate with cross-functional teams
-• Participate in code reviews and technical discussions
-• Contribute to architectural decisions
-
-Requirements:
-• ${formData.min_experience}-${formData.max_experience} years of experience
-• Strong technical skills and problem-solving abilities
-• Excellent communication and teamwork skills
-
-What We Offer:
-• Competitive salary package
-• Flexible working arrangements
-• Growth opportunities
-• Collaborative work environment`;
-
-      setIsUserEditing(false);
-      setFormData(prev => ({ ...prev, job_description: description }));
-      setErrors(prev => ({ ...prev, job_description: '' }));
+      setIsGeneratingFromPdf(true);
+      try {
+        const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token') || localStorage.getItem('token');
+        const response = await fetch('http://localhost:8000/api/ai/generate-jd', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            job_title: formData.job_title,
+            job_domain: formData.job_domain,
+            min_experience: formData.min_experience,
+            max_experience: formData.max_experience,
+            job_type: formData.job_type,
+            location: formData.locations || [],
+            skills: formData.skills || [],
+            education: formData.education || '',
+            min_salary: formData.min_salary || '',
+            max_salary: formData.max_salary || '',
+            show_salary_to_candidate: formData.show_salary_to_candidate
+          })
+        });
+        const data = await response.json();
+        if (data.success && data.description) {
+          setIsUserEditing(false);
+          setFormData(prev => ({ ...prev, job_description: data.description }));
+          setErrors(prev => ({ ...prev, job_description: '' }));
+        } else {
+          alert('Failed to generate description via AI.');
+        }
+      } catch (error) {
+        console.error('Error generating AI JD:', error);
+        alert('Failed to generate description via AI.');
+      } finally {
+        setIsGeneratingFromPdf(false);
+      }
     }
   };
 
@@ -685,6 +947,12 @@ What We Offer:
       setFormData(prev => ({ ...prev, job_description: editorRef.current!.innerHTML }));
     }
   };
+
+  useEffect(() => {
+    if (editorRef.current && !isUserEditing && formData.job_description !== editorRef.current.innerHTML) {
+      editorRef.current.innerHTML = formData.job_description;
+    }
+  }, [formData.job_description, isUserEditing]);
 
   return (
     <div className="min-h-screen bg-white job-form-container">
@@ -829,7 +1097,8 @@ What We Offer:
                                 {apiDomainSuggestions.map((domain, index) => (
                                   <div
                                     key={index}
-                                    onClick={() => {
+                                    onMouseDown={(e) => {
+                                      e.preventDefault(); // Prevent input from losing focus immediately
                                       setFormData(prev => ({ ...prev, job_domain: domain }));
                                       setShowDomainSuggestions(false);
                                       setErrors(prev => ({ ...prev, job_domain: '' }));
@@ -1058,24 +1327,21 @@ What We Offer:
                           <div className="relative">
                             <input
                               type="text"
-                              value={selectedLocation || locationInput}
+                              value={locationInput || formData.locations}
                               onChange={(e) => {
-                                if (!selectedLocation) {
-                                  setLocationInput(e.target.value);
-                                  setShowLocationSuggestions(true);
-                                }
+                                setLocationInput(e.target.value);
+                                setFormData(prev => ({ ...prev, locations: e.target.value }));
+                                setSelectedLocation('');
+                                setShowLocationSuggestions(true);
                               }}
                               onFocus={() => {
-                                if (!selectedLocation) {
-                                  setShowLocationSuggestions(true);
-                                }
+                                setShowLocationSuggestions(true);
                               }}
                               placeholder="Search city..."
                               className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.locations ? 'border-red-500' : 'border-gray-300'
                                 }`}
-                              readOnly={!!selectedLocation}
                             />
-                            {selectedLocation && (
+                            {locationInput && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1091,26 +1357,27 @@ What We Offer:
                               </button>
                             )}
                             {errors.locations && <p className="text-red-500 text-sm mt-1">{errors.locations}</p>}
-                            {showLocationSuggestions && locationInput && !selectedLocation && (
+                            {showLocationSuggestions && locationInput && apiLocationSuggestions.length > 0 && (
                               <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                {indianCities
-                                  .filter(city => city.toLowerCase().includes(locationInput.toLowerCase()))
-                                  .slice(0, 10)
-                                  .map(city => (
-                                    <div
-                                      key={city}
-                                      onClick={() => {
-                                        setSelectedLocation(city);
-                                        setFormData(prev => ({ ...prev, locations: city }));
-                                        setLocationInput('');
-                                        setShowLocationSuggestions(false);
-                                        setErrors(prev => ({ ...prev, locations: '' }));
-                                      }}
-                                      className="px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm"
-                                    >
-                                      {city}
-                                    </div>
-                                  ))}
+                                {apiLocationSuggestions.map(city => (
+                                  <div
+                                    key={city}
+                                    onClick={() => {
+                                      setSelectedLocation(city);
+                                      setFormData(prev => ({ ...prev, locations: city }));
+                                      setLocationInput(city);
+                                      setShowLocationSuggestions(false);
+                                      setErrors(prev => ({ ...prev, locations: '' }));
+                                    }}
+                                    className="px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm flex items-center gap-2"
+                                  >
+                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    {city}
+                                  </div>
+                                ))}
                               </div>
                             )}
                           </div>
@@ -1167,6 +1434,7 @@ What We Offer:
                         <input
                           type="file"
                           accept=".pdf"
+                          id="create-jd-pdf"
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
@@ -1199,7 +1467,25 @@ What We Offer:
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         {isUploadingPdf && <p className="text-sm text-gray-500 mt-1">🔄 Uploading PDF...</p>}
-                        {pdfFileName && <p className="text-sm text-green-600 mt-1">✓ {pdfFileName} uploaded. Click "Generate Description" to extract text.</p>}
+                        {pdfFileName && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <p className="text-sm text-green-600 font-medium">✓ {pdfFileName} uploaded. Click "Generate Description" to extract text.</p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUploadedPdfUrl('');
+                                setPdfFileName('');
+                                setUploadedPdfFile(null);
+                                const fileInput = document.getElementById('create-jd-pdf') as HTMLInputElement;
+                                if (fileInput) fileInput.value = '';
+                              }}
+                              className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition-colors"
+                              title="Remove PDF"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       <div className="rich-text-editor">
@@ -1233,6 +1519,33 @@ What We Offer:
                                 <option value="h1">Heading 1</option>
                                 <option value="h2">Heading 2</option>
                                 <option value="h3">Heading 3</option>
+                              </select>
+
+                              <select
+                                onChange={(e) => execEditorCommand('fontName', e.target.value)}
+                                className="px-3 py-1 border border-gray-300 rounded text-sm min-w-[100px]"
+                                defaultValue=""
+                              >
+                                <option value="" disabled>Font</option>
+                                <option value="Arial">Arial</option>
+                                <option value="Times New Roman">Times New Roman</option>
+                                <option value="Courier New">Courier New</option>
+                                <option value="Georgia">Georgia</option>
+                                <option value="Verdana">Verdana</option>
+                                <option value="Tahoma">Tahoma</option>
+                                <option value="Trebuchet MS">Trebuchet MS</option>
+                              </select>
+
+                              <select
+                                onChange={(e) => execEditorCommand('fontSize', e.target.value)}
+                                className="px-3 py-1 border border-gray-300 rounded text-sm"
+                                defaultValue=""
+                              >
+                                <option value="" disabled>Size</option>
+                                <option value="1">Small</option>
+                                <option value="3">Normal</option>
+                                <option value="5">Large</option>
+                                <option value="7">Huge</option>
                               </select>
 
                               <div className="w-px h-6 bg-gray-300"></div>
@@ -1303,6 +1616,43 @@ What We Offer:
                   {activeSection === 'requirements' && (
                     <div className="space-y-6">
                       <h3 className="text-lg font-semibold text-gray-900">Requirements & Skills</h3>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Education Requirement <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            name="education"
+                            value={formData.education}
+                            onChange={handleInputChange}
+                            onFocus={() => setShowEducationSuggestions(true)}
+                            placeholder="Ex. BE/B Tech/BCA/MCA/Equivalent"
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900 ${errors.education ? 'border-red-500' : 'border-gray-300'}`}
+                          />
+                          {showEducationSuggestions && apiEducationSuggestions.length > 0 && (
+                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto dropdown-content">
+                              {apiEducationSuggestions.map(edu => (
+                                <div
+                                  key={edu}
+                                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    setFormData(prev => ({ ...prev, education: edu }));
+                                    setShowEducationSuggestions(false);
+                                    if (errors.education) setErrors(prev => ({ ...prev, education: '' }));
+                                  }}
+                                >
+                                  {edu}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {errors.education && <p className="text-red-500 text-sm mt-1">{errors.education}</p>}
+                      </div>
+
                       <div className="relative">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Skills <span className="text-red-500">*</span>
@@ -1330,16 +1680,16 @@ What We Offer:
                           value={skillsInput}
                           onChange={handleSkillsInputChange}
                           onKeyPress={handleSkillsKeyPress}
-                          onFocus={() => setShowSkillsSuggestions(skillsInput.length > 0)}
+                          onFocus={() => setShowSkillsSuggestions(true)}
                           placeholder="Type to search skills or press Enter to add custom skill..."
                           className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.skills ? 'border-red-500' : 'border-gray-300'
                             }`}
                         />
                         {errors.skills && <p className="text-red-500 text-sm mt-1">{errors.skills}</p>}
 
-                        {showSkillsSuggestions && filteredSkills.length > 0 && (
+                        {showSkillsSuggestions && apiSkillsSuggestions.length > 0 && (
                           <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                            {filteredSkills.map(skill => (
+                            {apiSkillsSuggestions.map(skill => (
                               <label key={skill} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
                                 <input
                                   type="checkbox"
@@ -1381,17 +1731,23 @@ What We Offer:
                       <h3 className="text-lg font-semibold text-gray-900">Compensation</h3>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Annual Salary Per annum (₹) <span className="text-red-500">*</span>
+                          {formData.job_type === 'Internship' ? 'Stipend (INR / month)' : 'Annual CTC (INR)'} <span className="text-red-500">*</span>
                         </label>
                         <div className="space-y-3">
                           <div className="flex gap-2">
                             <div className="flex-1">
                               <input
-                                type="number"
+                                type="text"
                                 name="min_salary"
-                                value={formData.min_salary}
-                                onChange={handleInputChange}
-                                placeholder="Min Salary"
+                                value={formData.min_salary ? Number(formData.min_salary).toLocaleString('en-IN') : ''}
+                                onChange={(e) => {
+                                  // Strip non-numbers before saving
+                                  const rawValue = e.target.value.replace(/[^0-9]/g, '');
+                                  handleInputChange({
+                                    target: { name: 'min_salary', value: rawValue, type: 'text' }
+                                  } as any);
+                                }}
+                                placeholder={formData.job_type === 'Internship' ? "Min Stipend" : "Min CTC (Fixed CTC if Max is empty)"}
                                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.min_salary ? 'border-red-500' : 'border-gray-300'
                                   }`}
                               />
@@ -1401,11 +1757,16 @@ What We Offer:
                             </div>
                             <div className="flex-1">
                               <input
-                                type="number"
+                                type="text"
                                 name="max_salary"
-                                value={formData.max_salary}
-                                onChange={handleInputChange}
-                                placeholder="Max Salary"
+                                value={formData.max_salary ? Number(formData.max_salary).toLocaleString('en-IN') : ''}
+                                onChange={(e) => {
+                                  const rawValue = e.target.value.replace(/[^0-9]/g, '');
+                                  handleInputChange({
+                                    target: { name: 'max_salary', value: rawValue, type: 'text' }
+                                  } as any);
+                                }}
+                                placeholder={formData.job_type === 'Internship' ? "Max Stipend (Optional)" : "Max CTC (Optional)"}
                                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.max_salary ? 'border-red-500' : 'border-gray-300'
                                   }`}
                               />
@@ -1414,9 +1775,12 @@ What We Offer:
                               )}
                             </div>
                           </div>
-                          {(errors.min_salary || errors.max_salary) && (
-                            <p className="text-red-500 text-sm">{errors.min_salary || errors.max_salary}</p>
-                          )}
+                          <CTCCalculator
+                            initialCTC={Number(formData.max_salary) || Number(formData.min_salary) || 0}
+                            isStipend={formData.job_type === 'Internship'}
+                          />
+                          {errors.min_salary && <p className="text-sm text-red-600">{errors.min_salary}</p>}
+                          {errors.max_salary && <p className="text-sm text-red-600">{errors.max_salary}</p>}
                           <label className="flex items-center">
                             <input
                               type="checkbox"
@@ -1453,6 +1817,22 @@ What We Offer:
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">Assign Hiring Team</h3>
                         <p className="text-sm text-gray-500 mt-1">Select responsibilities for each team member for this specific job opening.</p>
+                      </div>
+                      {/* Primary Sourcing Recruiter Selection */}
+                      <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                        <label className="block text-sm font-semibold text-gray-900 mb-2">Primary Sourcing Recruiter <span className="text-red-500">*</span></label>
+                        <p className="text-xs text-gray-500 mb-3">The main recruiter responsible for sourcing and candidate pipeline.</p>
+                        <select
+                          value={formData.primary_recruiter_id}
+                          onChange={(e) => setFormData(prev => ({ ...prev, primary_recruiter_id: e.target.value }))}
+                          className={`w-full md:w-1/2 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${errors.primary_recruiter_id ? 'border-red-500' : 'border-gray-300'}`}
+                        >
+                          <option value="">-- Select Primary Recruiter --</option>
+                          {users.filter(u => ['Recruiter', 'HR', 'Admin', 'Interviewer', 'Sales', 'SuperAdmin'].includes(u.role)).map(user => (
+                            <option key={user.id} value={user.id}>{user.name} ({user.role})</option>
+                          ))}
+                        </select>
+                        {errors.primary_recruiter_id && <p className="text-red-500 text-xs mt-1">{errors.primary_recruiter_id}</p>}
                       </div>
 
 
@@ -1529,32 +1909,20 @@ What We Offer:
                                   </div>
                                 )}
 
-                                {/* Hidden Select for Form Compatibility */}
+                                {/* Hidden Select for Form Compatibility — dynamic options */}
                                 <select
                                   multiple
                                   value={userAssignments}
                                   onChange={(e) => {
                                     const selected = Array.from(e.target.selectedOptions, option => option.value);
-                                    setTeamAssignments(prev => ({
-                                      ...prev,
-                                      [user.id]: selected
-                                    }));
+                                    setTeamAssignments(prev => ({ ...prev, [user.id]: selected }));
                                   }}
                                   className="hidden"
                                   id={`responsibilities-${user.id}`}
                                 >
-                                  <option value="hiring_manager">Hiring Manager</option>
-                                  <option value="screening">Screening Interviewer</option>
-                                  <option value="cv_shortlist">CV Shortlist Reviewer</option>
-                                  <option value="hm_review">HM Review</option>
-                                  <option value="assignment">Assignment Reviewer</option>
-                                  <option value="l1_technical">L1 Technical Interviewer</option>
-                                  <option value="l2_technical">L2 Technical Interviewer</option>
-                                  <option value="l3_technical">L3 Technical Interviewer</option>
-                                  <option value="l4_technical">L4 Technical Interviewer</option>
-                                  <option value="hr_round">HR Round Interviewer</option>
-                                  <option value="management_round">Management Round Interviewer</option>
-                                  <option value="final_decision_maker">Final Decision Maker</option>
+                                  {getResponsibilitiesForStages(hiringStages).map(r => (
+                                    <option key={r.value} value={r.value}>{r.label}</option>
+                                  ))}
                                 </select>
 
                                 {/* Add Responsibility Dropdown */}
@@ -1569,21 +1937,8 @@ What We Offer:
                                     <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                                       <div className="p-1">
                                         {(() => {
-                                          const allResponsibilities = [
-                                            { value: 'hiring_manager', label: 'Hiring Manager' },
-                                            { value: 'screening', label: 'Screening Interviewer' },
-                                            { value: 'cv_shortlist', label: 'CV Shortlist Reviewer' },
-                                            { value: 'hm_review', label: 'HM Review' },
-                                            { value: 'assignment', label: 'Assignment Reviewer' },
-                                            { value: 'l1_technical', label: 'L1 Technical Interviewer' },
-                                            { value: 'l2_technical', label: 'L2 Technical Interviewer' },
-                                            { value: 'l3_technical', label: 'L3 Technical Interviewer' },
-                                            { value: 'l4_technical', label: 'L4 Technical Interviewer' },
-                                            { value: 'hr_round', label: 'HR Round Interviewer' },
-                                            { value: 'management_round', label: 'Management Round Interviewer' },
-                                            { value: 'final_decision_maker', label: 'Final Decision Maker' }
-                                          ];
-
+                                          // Dynamic: only show responsibilities for active hiring stages
+                                          const allResponsibilities = getResponsibilitiesForStages(hiringStages);
                                           const isAdminOrSuperAdmin = user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'superadmin';
                                           const allResponsibilityValues = allResponsibilities.map(r => r.value);
                                           const hasAllResponsibilities = allResponsibilityValues.every(value => userAssignments.includes(value));
@@ -1595,18 +1950,14 @@ What We Offer:
                                                   <button
                                                     type="button"
                                                     onClick={() => {
-                                                      setTeamAssignments(prev => {
-                                                        return {
-                                                          ...prev,
-                                                          [user.id]: hasAllResponsibilities ? [] : allResponsibilityValues
-                                                        };
-                                                      });
+                                                      setTeamAssignments(prev => ({
+                                                        ...prev,
+                                                        [user.id]: hasAllResponsibilities ? [] : allResponsibilityValues
+                                                      }));
                                                     }}
-                                                    className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-gray-50 transition-colors flex items-center gap-2 ${hasAllResponsibilities ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
-                                                      }`}
+                                                    className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-gray-50 transition-colors flex items-center gap-2 ${hasAllResponsibilities ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
                                                   >
-                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${hasAllResponsibilities ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
-                                                      }`}>
+                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${hasAllResponsibilities ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
                                                       {hasAllResponsibilities && (
                                                         <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -1635,11 +1986,9 @@ What We Offer:
                                                         };
                                                       });
                                                     }}
-                                                    className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-gray-50 transition-colors flex items-center gap-2 ${isSelected ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
-                                                      }`}
+                                                    className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-gray-50 transition-colors flex items-center gap-2 ${isSelected ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
                                                   >
-                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
-                                                      }`}>
+                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
                                                       {isSelected && (
                                                         <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -1663,24 +2012,33 @@ What We Offer:
                         </div>
                       )}
 
-                      {/* Summary */}
-                      {Object.keys(teamAssignments).filter(userId => teamAssignments[userId].length > 0).length > 0 && (
-                        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                            </svg>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-blue-900">
-                                {Object.keys(teamAssignments).filter(userId => teamAssignments[userId].length > 0).length} team member(s) assigned
-                              </p>
-                              <p className="text-xs text-blue-700 mt-1">
-                                These assignments will determine stage ownership and notification routing in the hiring pipeline.
-                              </p>
+                      {/* Stage coverage checklist */}
+                      {(() => {
+                        const required = getResponsibilitiesForStages(hiringStages);
+                        const allAssigned = Object.values(teamAssignments).flat();
+                        const covered = required.filter(r => allAssigned.includes(r.value));
+                        const uncovered = required.filter(r => !allAssigned.includes(r.value));
+                        return (
+                          <div className={`mt-4 p-4 rounded-lg border ${uncovered.length === 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                            <p className={`text-sm font-semibold mb-2 ${uncovered.length === 0 ? 'text-green-800' : 'text-amber-800'}`}>
+                              {uncovered.length === 0 ? '✅ All stages covered' : `⚠️ ${uncovered.length} stage(s) need an owner`}
+                            </p>
+                            <div className="space-y-1">
+                              {required.map(r => {
+                                const isCovered = allAssigned.includes(r.value);
+                                return (
+                                  <div key={r.value} className="flex items-center gap-2 text-xs">
+                                    <span className={isCovered ? 'text-green-600' : 'text-amber-600'}>{isCovered ? '✓' : '✗'}</span>
+                                    <span className={isCovered ? 'text-green-700' : 'text-amber-700 font-medium'}>{r.label}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
+                            {errors.teamAssignments && <p className="text-red-600 text-xs mt-2 font-medium">{errors.teamAssignments}</p>}
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
+
                       <div className="flex justify-between mt-4 pt-4 border-t border-gray-200">
                         <button
                           type="button"
@@ -1690,11 +2048,11 @@ What We Offer:
                           ← Previous
                         </button>
                         <button
-                          type="button"
-                          onClick={handleNextSection}
-                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                          type="submit"
+                          disabled={!!titleWarning || isCheckingTitle}
+                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Next
+                          Create Job Opening
                         </button>
                       </div>
                     </div>
@@ -1887,17 +2245,26 @@ What We Offer:
                         </div>
                       </div>
 
-                      <div className="flex justify-end mt-6 pt-6 border-t border-gray-200">
+                      <div className="flex justify-between mt-6 pt-6 border-t border-gray-200">
                         <button
-                          type="submit"
-                          disabled={!!titleWarning || isCheckingTitle}
-                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          type="button"
+                          onClick={handlePrevSection}
+                          className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center gap-2"
                         >
-                          Create Job Opening
+                          ← Previous
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleNextSection}
+                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                        >
+                          Next →
                         </button>
                       </div>
                     </div>
                   )}
+
+
                 </div>
               </form>
             </div>

@@ -98,11 +98,13 @@ app.use('/api/contact-support', require('./routes/contactSupport'));
 app.use('/api/resume-form', require('./routes/resumeForm'));
 app.use('/api/audit-logs', require('./routes/auditLogs'));
 app.use('/api/image-proxy', require('./routes/imageProxy'));
+app.use('/api/ai', require('./routes/ai'));
 app.use('/api/job-images', require('./routes/jobImages'));
 app.use('/api/recruiters-analytics', require('./routes/recruiters-analytics'));
 app.use('/api/recruiters', require('./routes/recruiter-assignments'));
 app.use('/api/candidate-assignments', require('./routes/candidateAssignments'));
 app.use('/api/pipeline-stages', require('./routes/pipelineStages'));
+app.use('/api/suggestions', require('./routes/suggestions'));
 
 // Stub notification endpoint - silences 404 until notification system is implemented
 app.post('/api/notifications/stage-update', (req, res) => {

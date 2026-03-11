@@ -1,0 +1,29 @@
+{
+  "id": "20260308_be893022-7f70-4135-8339-ac87f63bae66",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "Of course! Here’s a step-by-step guide to creating a new job opening in FluidJobs.\n\n### **Step 1: Start a New Job**\n\n1.  Log in to your FluidJobs account.\n2.  From your main dashboard, click the **\"Create Job\"** button.\n\n### **Step 2: Fill in the Job Details**\n\nYou'll be taken to the job creation page. Here, you need to provide the essential information:\n\n*   **Job Title:** The official name of the position (e.g., \"Senior Software Engineer\").\n*   **Domain:** The department or team the role belongs to (e.g., \"Engineering\", \"Marketing\").\n*   **Location:** Where the role will be based (e.g., \"Remote\", \"New York, NY\").\n*   **Experience:** The required level of experience (e.g., \"3+ years\", \"Entry Level\").\n*   **Salary:** The salary range or specific salary for the position.\n\n### **Step 3: Use the AI Job Description Generator (Optional but Recommended)**\n\nInstead of writing a job description from scratch, you can use FluidJobs' AI tool:\n\n1.  Look for the **\"AI Job Description Generator\"** option on the job creation page.\n2.  Provide a few key details (like the job title and domain).\n3.  The AI will generate a professional draft of the job description for you to review and edit.\n\n### **Step 4: Define the Hiring Pipeline and Team**\n\nA job opening needs a clear process for moving candidates through.\n\n1.  **Hiring Pipeline:** Define the stages your candidates will go through. The default stages are:\n    *   Applied\n    *   Screening\n    *   Interview\n    *   Offered\n    *   Hired\n    *   You can customize these stages to fit your process.\n2.  **Hiring Team:** Assign the specific recruiters or hiring managers who will be responsible for this job.\n\n### **Step 5: Save Your Job Opening**\n\nOnce you've filled in all the details, click the **\"Save\"** or **\"Create\"** button. Your new job opening is now live and ready for candidates to apply!",
+        "refusal": null,
+        "reasoning_content": "The user is asking \"how to create a job opening\". This is a direct question about a core workflow within the FluidJobs platform. My persona is the FluidJobs AI Mentor, so I need to provide clear, step-by-step instructions on how to perform this task.\n\nI should break down the process into logical steps, using the information from my knowledge base. The knowledge base mentions:\n- \"Creating a Job Opening: Users can create jobs via the 'Create Job' button.\"\n- \"They will fill in details like Job Title, Domain, Location, Experience, Salary.\"\n- \"They can use the AI Job Description Generator to write the JD.\"\n- \"They must also define a Hiring Pipeline (stages) and Assign the Hiring Team.\"\n\nSo, my response should be structured around these key actions. I'll use a step-by-step format as requested by my communication style guidelines.\n\n1.  **Start with the initial action:** Clicking the \"Create Job\" button. This is the entry point.\n2.  **Detail the required information:** I'll list the key fields mentioned (Job Title, Domain, Location, etc.) and explain what they are for.\n3.  **Introduce the AI assistance:** I'll mention the AI Job Description Generator as a helpful tool, as per the knowledge base.\n4.  **Cover the setup steps:** I'll explain the need to define the Hiring Pipeline and assign the Hiring Team. This is a crucial part of the workflow.\n5.  **Conclude with the final action:** Saving the job opening.\n\nI need to keep the tone professional, helpful, and friendly. I'll use bolding to highlight key terms like button names or field names to make the instructions easy to scan. I'll avoid jargon where possible and keep the explanations simple.\n\nI will not mention any of the restricted topics (passwords, APIs, etc.) as this is a standard workflow question. The response will be entirely focused on the user's task.",
+        "role": "assistant",
+        "tool_calls": null
+      }
+    }
+  ],
+  "created": 1772966323,
+  "model": "sarvam-30b",
+  "object": "chat.completion",
+  "service_tier": null,
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 906,
+    "prompt_tokens": 547,
+    "total_tokens": 1453,
+    "completion_tokens_details": null,
+    "prompt_tokens_details": null
+  }
+}
