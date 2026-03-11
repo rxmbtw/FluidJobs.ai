@@ -35,7 +35,7 @@ router.post('/public-apply', cvUpload.single('cv'), async (req, res) => {
       experience, currentlyWorking,
       currentCompany, noticePeriod, currentCTC,
       lastCompany, joiningDate, lastCTC,
-      expectedCTC, currentCity, workMode, jobProfile
+      expectedCTC, currentCity, workMode, jobProfile, linkedinUrl
     } = req.body;
 
     if (!jobId || !fullName || !email || !phone) {
@@ -77,9 +77,9 @@ router.post('/public-apply', cvUpload.single('cv'), async (req, res) => {
           candidate_id, full_name, email, phone_number, gender, marital_status,
           current_company, notice_period, current_ctc,
           last_company, previous_ctc, city, work_mode, work_status,
-          experience_years, expected_ctc, created_at, updated_at
+          experience_years, expected_ctc, currently_employed, created_at, updated_at
         ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'Active',$14,$15,
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'Active',$14,$15,$16,
           CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )`,
         [
@@ -91,7 +91,8 @@ router.post('/public-apply', cvUpload.single('cv'), async (req, res) => {
           lastCompany || null, previousCTCNum,
           currentCity || null, workMode || null,
           experience ? parseFloat(experience) : null,
-          expectedCTCNum
+          expectedCTCNum,
+          currentlyWorking || null
         ]
       );
       candidateId = newId;
@@ -117,7 +118,22 @@ router.post('/public-apply', cvUpload.single('cv'), async (req, res) => {
       [parseInt(jobId), candidateId, resumePath]
     );
 
-    console.log(`✅ Public application: ${fullName} (${email}) applied to job ${jobId} [${job.title}] → app#${appResult.rows[0].application_id}`);
+    // 6. Auto-init candidate_pipeline_stages so the candidate appears in the pipeline board
+    const initHistory = JSON.stringify([{
+      fromStage: 'Applied',
+      toStage: 'Applied',
+      timestamp: new Date().toISOString(),
+      changedBy: 'System',
+      reason: 'Application submitted via careers page'
+    }]);
+    await pool.query(
+      `INSERT INTO candidate_pipeline_stages (job_id, candidate_id, current_stage, stage_history, updated_at)
+       VALUES ($1, $2, 'Applied', $3::jsonb, NOW())
+       ON CONFLICT (job_id, candidate_id) DO NOTHING`,
+      [parseInt(jobId), candidateId, initHistory]
+    );
+
+    console.log(`✅ Public application: ${fullName} (${email}) applied to job ${jobId} [${job.title}] → app#${appResult.rows[0].application_id}, resume: ${resumePath || 'none'}`);
 
     return res.json({
       success: true,
@@ -212,7 +228,14 @@ router.get('/admin/list', authenticateToken, async (req, res) => {
           c.current_company,
           c.notice_period,
           c.expected_ctc::text as expected_ctc,
-          c.current_ctc::text as current_ctc
+          c.current_ctc::text as current_ctc,
+          c.gender,
+          c.marital_status,
+          c.city as location,
+          c.currently_employed,
+          c.last_company as last_working_day,
+          c.mode_of_job,
+          ja.resume_path
         FROM candidates c
         LEFT JOIN job_applications ja ON ja.candidate_id = c.candidate_id
         LEFT JOIN jobs_enhanced j ON ja.job_id = j.id
@@ -243,7 +266,14 @@ router.get('/admin/list', authenticateToken, async (req, res) => {
           c.current_company,
           c.notice_period,
           c.expected_ctc::text as expected_ctc,
-          c.current_ctc::text as current_ctc
+          c.current_ctc::text as current_ctc,
+          c.gender,
+          c.marital_status,
+          c.city as location,
+          c.currently_employed,
+          c.last_company as last_working_day,
+          c.mode_of_job,
+          ja.resume_path
         FROM candidates c
         LEFT JOIN job_applications ja ON ja.candidate_id = c.candidate_id
         LEFT JOIN jobs_enhanced j ON ja.job_id = j.id

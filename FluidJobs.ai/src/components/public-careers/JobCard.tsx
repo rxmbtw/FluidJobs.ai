@@ -34,8 +34,12 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
           <div className="job-detail-row">
             <span className="job-label">LOCATION</span>
             <span className="job-value">{job.location}</span>
-            <span className="job-label">CTC</span>
-            <span className="job-value">{job.ctc}</span>
+            {job.ctc && (
+              <>
+                <span className="job-label">CTC</span>
+                <span className="job-value">{job.ctc}</span>
+              </>
+            )}
           </div>
         </div>
         <Link to={`/careers/job/${job.id}`} className="view-opening-link">View the opening →</Link>

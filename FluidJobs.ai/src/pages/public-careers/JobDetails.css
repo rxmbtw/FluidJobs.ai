@@ -43,25 +43,35 @@
 .job-hero {
   background: linear-gradient(135deg, #d3d3d3, #c0c0c0);
   border-radius: 12px;
-  padding: 4rem 2rem;
+  padding: 8rem 2rem;
   margin-bottom: 2rem;
   position: relative;
 }
 
 .job-hero-content {
-  text-align: center;
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  backdrop-filter: blur(2px);
+  max-width: 280px;
 }
 
 .job-posted-date {
-  font-size: 0.875rem;
-  color: #666;
-  margin-bottom: 1rem;
+  font-size: 0.65rem;
+  color: #e5e7eb;
+  margin-bottom: 0.1rem;
 }
 
 .job-details-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: #333;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: white;
+  margin: 0;
+  line-height: 1.3;
 }
 
 .job-info-bar {
@@ -146,6 +156,49 @@
   position: absolute;
   left: 0.5rem;
   color: #333;
+}
+
+.rich-text-content h1,
+.rich-text-content h2,
+.rich-text-content h3 {
+  color: #333;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.rich-text-content h1 {
+  font-size: 1.5rem;
+}
+
+.rich-text-content h2 {
+  font-size: 1.25rem;
+}
+
+.rich-text-content h3 {
+  font-size: 1.1rem;
+}
+
+.rich-text-content p {
+  margin-bottom: 1rem;
+}
+
+.rich-text-content ul,
+.rich-text-content ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.rich-text-content li {
+  margin-bottom: 0.5rem;
+}
+
+.rich-text-content ul {
+  list-style-type: disc;
+}
+
+.rich-text-content ol {
+  list-style-type: decimal;
 }
 
 .apply-button {

@@ -1,5 +1,6 @@
 .job-card-mobile {
   background: white;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 1rem;

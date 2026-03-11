@@ -1,0 +1,278 @@
+{
+  "candidates": [
+    {
+      "column_name": "candidate_id",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "full_name",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "phone_number",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "email",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "gender",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "marital_status",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "current_company",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "notice_period",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "current_ctc",
+      "data_type": "numeric"
+    },
+    {
+      "column_name": "location",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "resume_link",
+      "data_type": "text"
+    },
+    {
+      "column_name": "currently_employed",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "previous_company",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "expected_ctc",
+      "data_type": "numeric"
+    },
+    {
+      "column_name": "experience_years",
+      "data_type": "numeric"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "column_name": "profile_image_url",
+      "data_type": "text"
+    },
+    {
+      "column_name": "cover_image_url",
+      "data_type": "text"
+    },
+    {
+      "column_name": "work_status",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "last_company",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "previous_ctc",
+      "data_type": "numeric"
+    },
+    {
+      "column_name": "work_mode",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "user_role",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "role",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "password_hash",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "resume_files",
+      "data_type": "jsonb"
+    },
+    {
+      "column_name": "city",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "college",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "joining_date",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "leaving_date",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "documents",
+      "data_type": "jsonb"
+    },
+    {
+      "column_name": "current_stage",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "current_stage_since",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "column_name": "last_stage_change_at",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "column_name": "last_stage_change_by",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "total_pipeline_days",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "hiring_manager_id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "hiring_manager_name",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "assigned_recruiter_id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "assigned_recruiter_name",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "job_id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "job_title",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "last_working_day",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "mode_of_job",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "current_salary",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "expected_salary",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "roll_no",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "first_name",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "middle_name",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "last_name",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "course",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "primary_specialization",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "date_of_birth",
+      "data_type": "date"
+    },
+    {
+      "column_name": "blood_group",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "medical_history",
+      "data_type": "text"
+    },
+    {
+      "column_name": "disability",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "known_languages",
+      "data_type": "text"
+    },
+    {
+      "column_name": "dream_company",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "assignment_score",
+      "data_type": "integer"
+    }
+  ],
+  "jobApps": [
+    {
+      "column_name": "application_id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "job_id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "candidate_id",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "user_id",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "status",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "applied_at",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "column_name": "cover_letter",
+      "data_type": "text"
+    },
+    {
+      "column_name": "resume_path",
+      "data_type": "character varying"
+    }
+  ]
+}

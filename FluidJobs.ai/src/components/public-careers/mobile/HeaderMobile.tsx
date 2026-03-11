@@ -18,7 +18,7 @@ const HeaderMobile: React.FC = () => {
       <header className="header-mobile">
         <div className="header-mobile-content">
           <div className="logo-mobile">
-            <img src="/logo.png" alt="FluidJobs.ai" className="logo-image-mobile" />
+            <img src="/images/Fluidlive Official logo.png" alt="FluidJobs.ai" className="logo-image-mobile" />
           </div>
           <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)}>
             <span></span>
@@ -28,7 +28,6 @@ const HeaderMobile: React.FC = () => {
         </div>
         {menuOpen && (
           <nav className="nav-mobile">
-            <a href="https://fluid.live" className="nav-link-mobile">Home</a>
             <Link to="/careers" className={`nav-link-mobile ${location.pathname === '/careers' ? 'active' : ''}`} onClick={() => setMenuOpen(false)}>View Openings</Link>
             <a href="https://fluid.live/about/#contact" className="nav-link-mobile">Contact Us</a>
             <button className="apply-unlisted-btn-mobile" onClick={handleApplyClick}>

@@ -6,23 +6,67 @@ import { Info, FileText, CheckSquare, DollarSign, Users, ClipboardList, Trash2, 
 import SuccessModal from '../SuccessModal';
 import ImagePickerModal from '../common/ImagePickerModal';
 import { formatJobTitle, getDuplicateTitleError } from '../../utils/jobTitleUtils';
+import CTCCalculator from '../common/CTCCalculator';
 
 const domainSuggestions = [
-  // Tech & Engineering
-  'Software Engineering', 'Frontend Development', 'Backend Development', 'Full Stack Development',
-  'Mobile Development', 'DevOps & SRE', 'Cloud Computing', 'Data Science', 'Machine Learning',
-  'Artificial Intelligence', 'Data Engineering', 'Cybersecurity', 'IT & Systems',
-  'Quality Assurance (QA)', 'Blockchain & Web3', 'Game Development', 'AR/VR/XR',
-  'Embedded Systems', 'Network Engineering', 'Database Administration',
+  // 80 Tech Domains
+  'Software Engineer', 'Frontend Developer', 'Backend Developer', 'Full Stack Developer',
+  'Mobile App Developer (iOS)', 'Mobile App Developer (Android)', 'Cross-Platform Mobile Developer',
+  'DevOps Engineer', 'Site Reliability Engineer (SRE)', 'Cloud Architect',
+  'Cloud Engineer (AWS)', 'Cloud Engineer (Azure)', 'Cloud Engineer (GCP)',
+  'Data Scientist', 'Machine Learning Engineer', 'AI Engineer',
+  'Generative AI Engineer', 'Deep Learning Engineer', 'Computer Vision Engineer',
+  'NLP Engineer', 'Data Engineer', 'Big Data Analyst',
+  'Data Architect', 'Database Administrator (DBA)', 'Cybersecurity Analyst',
+  'Information Security Engineer', 'Network Security Engineer', 'Application Security Engineer',
+  'Penetration Tester (CEH)', 'IT Systems Administrator', 'Network Engineer',
+  'IT Support Engineer', 'IT Infrastructure Specialist', 'QA Automation Engineer',
+  'Manual QA Tester', 'Performance Test Engineer', 'Security Test Engineer',
+  'SDET', 'Blockchain Developer', 'Web3 Engineer',
+  'Smart Contract Developer', 'Game Developer', 'AR/VR/XR Developer',
+  'Embedded Systems Engineer', 'IoT Engineer', 'Robotics Software Engineer',
+  'UI Developer', 'UX Engineer', 'Algorithm Engineer',
+  'Platform Engineer', 'Release Engineer', 'Infrastructure as Code (IaC) Engineer',
+  'Data Warehouse Architect', 'BI Developer', 'ETL Developer',
+  'Data Governance Specialist', 'IAM Specialist', 'Cloud Security Architect',
+  'Endpoint Security Specialist', 'SecOps Engineer', 'Firmware Engineer',
+  'Systems Programmer', 'API Developer', 'Microservices Developer',
+  'Enterprise Architect', 'Solutions Architect', 'Technical Lead',
+  'Engineering Manager', 'Scrum Master (Tech)', 'Agile Coach',
+  'Technical Product Owner', 'RPA Developer', 'Salesforce Developer',
+  'SAP Consultant', 'ERP Developer', 'CRM Specialist',
+  'ServiceNow Developer', 'DevSecOps Engineer', 'MLOps Engineer',
+  'DataOps Engineer',
 
-  // Product & Design
-  'Product Management', 'Project Management', 'UI/UX Design', 'Product Design',
-  'Graphic Design', 'Technical Writing', 'Scrum & Agile',
+  // 20 Non-Tech IT Operations/Management
+  'Product Manager', 'Project Manager', 'Program Manager',
+  'UI/UX Designer', 'Product Designer', 'Technical Writer',
+  'Digital Marketing Specialist', 'IT B2B Sales', 'Business Development (Tech)',
+  'Pre-Sales Engineer', 'Customer Success Manager', 'Tech Support Manager',
+  'HR / Talent Acquisition (Tech)', 'HR Business Partner (IT)', 'IT Operations Manager',
+  'Financial Analyst (FP&A - Tech)', 'Tech Procurement Manager', 'Legal & IT Compliance',
+  'Strategy & Consulting', 'Supply Chain Management (IT)'
+];
 
-  // Business & Operations
-  'Digital Marketing', 'Sales & Business Development', 'Human Resources (HR)',
-  'Talent Acquisition', 'Finance & Accounting', 'Operations', 'Customer Success',
-  'Legal & Compliance', 'Strategy & Consulting', 'Supply Chain & Logistics'
+const educationSuggestions = [
+  'B.Tech - Computer Science', 'B.Tech - Information Technology', 'B.Tech - Electronics',
+  'B.Tech - Mechanical', 'B.Tech - Civil', 'B.Tech - Any Specialization',
+  'M.Tech - Computer Science', 'M.Tech - Information Technology', 'M.Tech - Data Science',
+  'BCA (Bachelor of Computer Applications)', 'MCA (Master of Computer Applications)',
+  'B.Sc - Computer Science', 'B.Sc - Information Technology', 'B.Sc - Mathematics', 'B.Sc - Physics',
+  'M.Sc - Computer Science', 'M.Sc - Information Technology', 'M.Sc - Data Science',
+  'Diploma in Computer Science', 'Diploma in Information Technology', 'Diploma in Engineering',
+  'MBA - Finance', 'MBA - HR', 'MBA - Marketing', 'MBA - Information Technology', 'MBA - Operations',
+  'BBA', 'B.Com', 'M.Com',
+  'Ph.D - Computer Science', 'Ph.D - Artificial Intelligence', 'Ph.D - Machine Learning',
+  'Any Graduate', 'Any Post Graduate', 'Graduate in any discipline',
+  'BE/B.Tech', 'ME/M.Tech', 'MCA/M.Sc', 'B.Sc/BCA',
+  'High School Diploma',
+  'Certification in Full Stack Development', 'Certification in Data Science',
+  'Certification in Cloud Computing', 'Certification in Cybersecurity', 'Certification in UI/UX',
+  'B.A', 'M.A', 'B.Arch', 'M.Arch', 'B.Pharma', 'M.Pharma',
+  'B.Ed', 'M.Ed', 'LLB', 'LLM',
+  'Chartered Accountant (CA)', 'Company Secretary (CS)'
 ];
 
 const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSaveSuccess?: () => void }> = ({ onDirtyChange, onSaveSuccess }) => {
@@ -44,6 +88,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
     numberOfOpenings: '2',
     modeOfJob: 'Remote',
     description: '',
+    education: '',
     requirements: [] as string[],
     skills: [] as string[],
     salary: {
@@ -66,7 +111,10 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
   const [selectedLocations, setSelectedLocations] = useState(['Mumbai', 'Bangalore']);
   const [locationInput, setLocationInput] = useState('');
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [apiLocationSuggestions, setApiLocationSuggestions] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
+  const [showSkillsSuggestions, setShowSkillsSuggestions] = useState(false);
+  const [apiSkillsSuggestions, setApiSkillsSuggestions] = useState<string[]>([]);
   const [newStageInput, setNewStageInput] = useState('');
   const [currentStageType, setCurrentStageType] = useState<'standard' | 'custom'>('standard');
   const [showNewStageInput, setShowNewStageInput] = useState(false);
@@ -82,6 +130,9 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
   const [isCheckingTitle, setIsCheckingTitle] = useState(false);
   const [showDomainSuggestions, setShowDomainSuggestions] = useState(false);
   const [apiDomainSuggestions, setApiDomainSuggestions] = useState<string[]>([]);
+  const [showEducationSuggestions, setShowEducationSuggestions] = useState(false);
+  const [apiEducationSuggestions, setApiEducationSuggestions] = useState<string[]>([]);
+  const [usedImages, setUsedImages] = useState<string[]>([]);
 
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [statusAction, setStatusAction] = useState<'Paused' | 'Closed' | null>(null);
@@ -106,9 +157,19 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
         if (!jobDetails.title.trim()) newErrors.title = 'Job title is required';
         else if (titleWarning) newErrors.title = getDuplicateTitleError(titleWarning);
         if (!jobDetails.domain) newErrors.domain = 'Job domain is required';
+
         if (!jobDetails.minExperience) newErrors.minExperience = 'Min experience is required';
         if (!jobDetails.maxExperience) newErrors.maxExperience = 'Max experience is required';
-        if (!jobDetails.numberOfOpenings || parseInt(jobDetails.numberOfOpenings) < 1) newErrors.numberOfOpenings = 'Valid number of openings is required';
+        if (jobDetails.minExperience && jobDetails.maxExperience && parseInt(jobDetails.minExperience) > parseInt(jobDetails.maxExperience)) {
+          newErrors.minExperience = 'Min experience cannot be greater than Max experience';
+          newErrors.maxExperience = 'Max experience must be >= Min experience';
+        }
+
+        if (!jobDetails.numberOfOpenings) {
+          newErrors.numberOfOpenings = 'Valid number of openings is required';
+        } else if (parseInt(jobDetails.numberOfOpenings) < 1) {
+          newErrors.numberOfOpenings = 'Number of openings must be at least 1';
+        }
         break;
       case 'image':
         if (!selectedImage) newErrors.selectedImage = 'Job posting image is required';
@@ -128,11 +189,19 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
         if (!textContent.trim()) newErrors.description = 'Job description is required';
         break;
       case 'requirements':
+        if (!jobDetails.education.trim()) newErrors.education = 'Education requirement is required';
         if (jobDetails.skills.length === 0) newErrors.skills = 'At least one skill is required';
         break;
       case 'compensation':
-        if (!jobDetails.salary.min && jobDetails.salary.min !== 0) newErrors.minSalary = 'Min salary is required';
-        if (!jobDetails.salary.max && jobDetails.salary.max !== 0) newErrors.maxSalary = 'Max salary is required';
+        if (!jobDetails.salary.min || !String(jobDetails.salary.min).trim()) newErrors.minSalary = 'Min CTC is required';
+        if (
+          jobDetails.salary.min !== undefined &&
+          jobDetails.salary.max !== undefined &&
+          Number(jobDetails.salary.min) > Number(jobDetails.salary.max)
+        ) {
+          newErrors.minSalary = 'Min salary cannot be greater than Max salary';
+          newErrors.maxSalary = 'Max salary must be >= Min salary';
+        }
         break;
     }
 
@@ -203,6 +272,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
           numberOfOpenings: data.noOfOpenings || data.no_of_openings || prev.numberOfOpenings,
           modeOfJob: data.modeOfJob || data.mode_of_job || prev.modeOfJob,
           description: data.description || prev.description,
+          education: data.education || prev.education,
           skills: data.skills || prev.skills,
           requirements: Array.isArray(data.requirements) ? data.requirements : prev.requirements,
           status: data.status ? (data.status.charAt(0).toUpperCase() + data.status.slice(1).toLowerCase()) : prev.status,
@@ -223,6 +293,14 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
             return latest;
           });
         }, 100);
+
+        // Fetch used images for this account
+        if (data.account_id) {
+          fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/account-used-images?account_id=${data.account_id}`)
+            .then(res => res.ok ? res.json() : { usedImages: [] })
+            .then(resData => setUsedImages(resData.usedImages || []))
+            .catch(err => console.error('Failed to fetch used images', err));
+        }
 
         // Load selected cover image
         if (data.selectedImage || data.selected_image) {
@@ -308,6 +386,21 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
     setApiDomainSuggestions(matched.slice(0, 8));
   }, [jobDetails.domain]);
 
+  // Filter local education suggestions based on user input
+  useEffect(() => {
+    const term = jobDetails.education?.trim().toLowerCase() || '';
+    if (!term) {
+      setApiEducationSuggestions([]);
+      return;
+    }
+
+    const matched = educationSuggestions.filter(edu =>
+      edu.toLowerCase().includes(term)
+    );
+
+    setApiEducationSuggestions(matched.slice(0, 8));
+  }, [jobDetails.education]);
+
   // Debounced job title duplicate check
   useEffect(() => {
     if (!jobDetails.title?.trim()) {
@@ -337,6 +430,57 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
     }, 700);
     return () => clearTimeout(timer);
   }, [jobDetails.title, jobId]);
+
+  // Fetch dynamic location suggestions
+  useEffect(() => {
+    const term = locationInput.trim();
+    if (!term) {
+      setApiLocationSuggestions([]);
+      return;
+    }
+
+    const fetchLocations = async () => {
+      try {
+        const baseUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+        const res = await fetch(`${baseUrl}/api/suggestions/locations?q=${encodeURIComponent(term)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setApiLocationSuggestions(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch locations', err);
+      }
+    };
+
+    const timer = setTimeout(fetchLocations, 400); // 400ms debounce
+    return () => clearTimeout(timer);
+  }, [locationInput]);
+
+  // Fetch dynamic skill suggestions
+  useEffect(() => {
+    const term = skillInput.trim();
+    if (!term) {
+      setApiSkillsSuggestions([]);
+      return;
+    }
+
+    const fetchSkills = async () => {
+      try {
+        const baseUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+        const res = await fetch(`${baseUrl}/api/suggestions/skills?q=${encodeURIComponent(term)}`);
+        if (res.ok) {
+          const data = await res.json();
+          // Filter out already selected skills
+          setApiSkillsSuggestions(data.filter((s: string) => !jobDetails.skills.includes(s)));
+        }
+      } catch (err) {
+        console.error('Failed to fetch skills', err);
+      }
+    };
+
+    const timer = setTimeout(fetchSkills, 300); // 300ms debounce
+    return () => clearTimeout(timer);
+  }, [skillInput, jobDetails.skills]);
 
   const handleCancelClick = () => {
     if (isDirty()) {
@@ -723,34 +867,45 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
         setIsGeneratingFromPdf(false);
       }
     } else {
-      const description = `We are looking for a talented ${jobDetails.title} to join our team.
+      setIsGeneratingFromPdf(true);
+      try {
+        const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token') || localStorage.getItem('token');
+        const aiResponse = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/ai/generate-jd`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            job_title: jobDetails.title,
+            job_domain: jobDetails.domain,
+            min_experience: jobDetails.minExperience,
+            max_experience: jobDetails.maxExperience,
+            job_type: jobDetails.type,
+            education: jobDetails.education || '',
+            location: jobDetails.location || '',
+            skills: jobDetails.skills || [],
+            min_salary: jobDetails.salary?.min || '',
+            max_salary: jobDetails.salary?.max || '',
+            show_salary_to_candidate: jobDetails.salary?.showToCandidate || false
+          })
+        });
+        const aiData = await aiResponse.json();
 
-<div><br></div>
-<p><strong>Key Responsibilities:</strong></p>
-<ul>
-<li>Develop and maintain high-quality solutions</li>
-<li>Collaborate with cross-functional teams</li>
-<li>Participate in discussions</li>
-<li>Contribute to architectural decisions</li>
-</ul>
-<div><br></div>
-<p><strong>Requirements:</strong></p>
-<ul>
-<li>${jobDetails.minExperience}-${jobDetails.maxExperience} years of experience</li>
-<li>Strong technical skills and problem-solving abilities</li>
-<li>Excellent communication and teamwork skills</li>
-</ul>
-<div><br></div>
-<p><strong>What We Offer:</strong></p>
-<ul>
-<li>Competitive salary package</li>
-<li>Flexible working arrangements</li>
-<li>Growth opportunities</li>
-</ul>`;
-
-      setIsUserEditing(false);
-      handleInputChange('description', description);
-      if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+        if (aiData.success && aiData.description) {
+          setIsUserEditing(false);
+          handleInputChange('description', aiData.description);
+          if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+          setShowSuccessModal(true);
+        } else {
+          alert('Failed to generate description via AI');
+        }
+      } catch (error) {
+        console.error('Error generating AI JD:', error);
+        alert('Failed to generate description via AI');
+      } finally {
+        setIsGeneratingFromPdf(false);
+      }
     }
   };
 
@@ -898,7 +1053,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
   useEffect(() => {
     const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token') || localStorage.getItem('token');
     if (!jobId || !token) return;
-    fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/pipeline-stages/${jobId}`, {
+    fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'} / api / pipeline - stages / ${jobId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(r => r.ok ? r.json() : null)
@@ -1211,7 +1366,8 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                             {apiDomainSuggestions.map((domain, index) => (
                               <div
                                 key={index}
-                                onClick={() => {
+                                onMouseDown={(e) => {
+                                  e.preventDefault(); // Prevent input from losing focus immediately
                                   // Update domain
                                   // Can't directly call handleInputChange since we pass the value manually instead of event
                                   setJobDetails(prev => ({ ...prev, domain }));
@@ -1500,23 +1656,21 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                       placeholder="Search and add cities..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
-                    {showLocationSuggestions && locationInput && (
+                    {showLocationSuggestions && locationInput && apiLocationSuggestions.length > 0 && (
                       <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {indianCities
-                          .filter(city =>
-                            city.toLowerCase().includes(locationInput.toLowerCase()) &&
-                            !selectedLocations.includes(city)
-                          )
-                          .slice(0, 10)
-                          .map(city => (
-                            <div
-                              key={city}
-                              onClick={() => addLocation(city)}
-                              className="px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm"
-                            >
-                              {city}
-                            </div>
-                          ))}
+                        {apiLocationSuggestions.map(city => (
+                          <div
+                            key={city}
+                            onClick={() => {
+                              addLocation(city);
+                              setShowLocationSuggestions(false);
+                              setLocationInput('');
+                            }}
+                            className="px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm"
+                          >
+                            {city}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -1568,6 +1722,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                     <input
                       type="file"
                       accept=".pdf"
+                      id="settings-jd-pdf"
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
@@ -1605,7 +1760,25 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                       {isUploadingPdf ? <span className="text-sm">🔄 Uploading...</span> : <Upload className="w-5 h-5" />}
                     </div>
                   </div>
-                  {pdfFileName && <p className="text-sm text-green-600 mt-2 font-medium">✓ {pdfFileName} uploaded. Click "Generate from PDF" to extract text.</p>}
+                  {pdfFileName && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <p className="text-sm text-green-600 font-medium">✓ {pdfFileName} uploaded. Click "Generate from PDF" to extract text.</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUploadedPdfUrl('');
+                          setPdfFileName('');
+                          setUploadedPdfFile(null);
+                          const fileInput = document.getElementById('settings-jd-pdf') as HTMLInputElement;
+                          if (fileInput) fileInput.value = '';
+                        }}
+                        className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition-colors"
+                        title="Remove PDF"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="rich-text-editor">
@@ -1621,6 +1794,33 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                         <option value="h1">Heading 1</option>
                         <option value="h2">Heading 2</option>
                         <option value="h3">Heading 3</option>
+                      </select>
+
+                      <select
+                        onChange={(e) => execEditorCommand('fontName', e.target.value)}
+                        className="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none min-w-[100px]"
+                        defaultValue=""
+                      >
+                        <option value="" disabled>Font</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Tahoma">Tahoma</option>
+                        <option value="Trebuchet MS">Trebuchet MS</option>
+                      </select>
+
+                      <select
+                        onChange={(e) => execEditorCommand('fontSize', e.target.value)}
+                        className="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none"
+                        defaultValue=""
+                      >
+                        <option value="" disabled>Size</option>
+                        <option value="1">Small</option>
+                        <option value="3">Normal</option>
+                        <option value="5">Large</option>
+                        <option value="7">Huge</option>
                       </select>
 
                       <div className="w-px h-6 bg-gray-300"></div>
@@ -1702,6 +1902,46 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                   <h3 className="text-lg font-semibold text-gray-900">Requirements & Skills</h3>
                 </div>
 
+                {/* Education */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Education Requirement <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={jobDetails.education || ''}
+                      onChange={(e) => {
+                        handleInputChange('education', e.target.value);
+                        if (errors.education) setErrors(prev => ({ ...prev, education: '' }));
+                      }}
+                      onFocus={() => setShowEducationSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowEducationSuggestions(false), 200)}
+                      placeholder="Ex. BE/B Tech/BCA/MCA/Equivalent"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 ${errors.education ? 'border-red-500' : 'border-gray-300'}`}
+                    />
+                    {showEducationSuggestions && apiEducationSuggestions.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto dropdown-content">
+                        {apiEducationSuggestions.map(edu => (
+                          <div
+                            key={edu}
+                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleInputChange('education', edu);
+                              setShowEducationSuggestions(false);
+                              if (errors.education) setErrors(prev => ({ ...prev, education: '' }));
+                            }}
+                          >
+                            {edu}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {errors.education && <p className="text-red-500 text-sm mt-1">{errors.education}</p>}
+                </div>
+
                 {/* Requirements */}
                 <div>
                   <div className="flex justify-between items-center mb-3">
@@ -1757,26 +1997,52 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                     </div>
                   )}
 
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={skillInput}
-                      onChange={(e) => setSkillInput(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          addSkill();
-                        }
-                      }}
-                      placeholder="Add a skill and press Enter"
-                      className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.skills ? 'border-red-500' : 'border-gray-300'}`}
-                    />
-                    <button
-                      onClick={addSkill}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
-                    >
-                      Add
-                    </button>
+                  <div className="relative">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={skillInput}
+                        onChange={(e) => {
+                          setSkillInput(e.target.value);
+                          setShowSkillsSuggestions(true);
+                        }}
+                        onFocus={() => setShowSkillsSuggestions(true)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addSkill();
+                          }
+                        }}
+                        placeholder="Add a skill and press Enter"
+                        className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.skills ? 'border-red-500' : 'border-gray-300'}`}
+                      />
+                      <button
+                        onClick={addSkill}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+                      >
+                        Add
+                      </button>
+                    </div>
+
+                    {showSkillsSuggestions && skillInput && apiSkillsSuggestions.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {apiSkillsSuggestions.map(skill => (
+                          <div
+                            key={skill}
+                            onClick={() => {
+                              if (!jobDetails.skills.includes(skill)) {
+                                setJobDetails(prev => ({ ...prev, skills: [...prev.skills, skill] }));
+                              }
+                              setShowSkillsSuggestions(false);
+                              setSkillInput('');
+                            }}
+                            className="px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm"
+                          >
+                            {skill}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   {errors.skills && <p className="text-red-500 text-sm mt-2">{errors.skills}</p>}
                 </div>
@@ -1806,28 +2072,36 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Salary</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {jobDetails.modeOfJob === 'Internship' || jobDetails.modeOfJob === 'internship' ? 'Min Stipend (INR/month)' : 'Min CTC (INR)'}
+                    </label>
                     <input
-                      type="number"
-                      value={jobDetails.salary.min}
+                      type="text"
+                      value={jobDetails.salary.min ? Number(jobDetails.salary.min).toLocaleString('en-IN') : ''}
                       onChange={(e) => {
-                        handleSalaryChange('min', parseInt(e.target.value));
+                        const rawValue = e.target.value.replace(/[^0-9]/g, '');
+                        handleSalaryChange('min', parseInt(rawValue) || '');
                         if (errors.minSalary) setErrors(prev => ({ ...prev, minSalary: '' }));
                       }}
+                      placeholder={jobDetails.modeOfJob === 'Internship' || jobDetails.modeOfJob === 'internship' ? 'Min Stipend' : 'Min CTC (Fixed CTC if Max is empty)'}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.minSalary ? 'border-red-500' : 'border-gray-300'}`}
                     />
                     {errors.minSalary && <p className="text-red-500 text-sm mt-1">{errors.minSalary}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Maximum Salary</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {jobDetails.modeOfJob === 'Internship' || jobDetails.modeOfJob === 'internship' ? 'Max Stipend (Optional)' : 'Max CTC (Optional)'}
+                    </label>
                     <input
-                      type="number"
-                      value={jobDetails.salary.max}
+                      type="text"
+                      value={jobDetails.salary.max ? Number(jobDetails.salary.max).toLocaleString('en-IN') : ''}
                       onChange={(e) => {
-                        handleSalaryChange('max', parseInt(e.target.value));
+                        const rawValue = e.target.value.replace(/[^0-9]/g, '');
+                        handleSalaryChange('max', parseInt(rawValue) || '');
                         if (errors.maxSalary) setErrors(prev => ({ ...prev, maxSalary: '' }));
                       }}
+                      placeholder="Optional"
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.maxSalary ? 'border-red-500' : 'border-gray-300'}`}
                     />
                     {errors.maxSalary && <p className="text-red-500 text-sm mt-1">{errors.maxSalary}</p>}
@@ -1836,7 +2110,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
                     <select
-                      value={jobDetails.salary.currency}
+                      value={jobDetails.salary.currency || 'INR'}
                       onChange={(e) => handleSalaryChange('currency', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
@@ -1847,6 +2121,11 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
                     </select>
                   </div>
                 </div>
+
+                <CTCCalculator
+                  initialCTC={Number(jobDetails.salary.max) || Number(jobDetails.salary.min) || 0}
+                  isStipend={jobDetails.modeOfJob === 'Internship' || jobDetails.modeOfJob === 'internship'}
+                />
 
                 <div>
                   <label className="flex items-center">
@@ -2342,6 +2621,7 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
         isOpen={showImageModal}
         onClose={() => setShowImageModal(false)}
         currentImageId={selectedImageId}
+        usedImages={usedImages}
         onSelect={(imageUrl, imageId) => {
           setSelectedImage(imageUrl);
           setSelectedImageId(imageId);

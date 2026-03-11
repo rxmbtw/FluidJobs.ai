@@ -47,7 +47,7 @@ export interface JobDraft {
 // --- Helpers ---
 
 const getAuthToken = (): string | null => {
-  return sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token');
+  return localStorage.getItem('token') || sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token');
 };
 
 const getAuthHeaders = (isMultipart = false) => {
@@ -257,6 +257,16 @@ export const jobService = {
       const response = await fetch(`${API_BASE_URL}/jobs-enhanced/list`, {
         headers: getAuthHeaders()
       });
+
+      if (response.status === 401 || response.status === 403) {
+        // Token expired or invalid, auto logout to fix stuck 403 errors
+        localStorage.removeItem('superadmin_token');
+        localStorage.removeItem('token');
+        sessionStorage.removeItem('fluidjobs_token');
+        window.location.href = '/login';
+        return { success: false, jobs: [] };
+      }
+
       return await response.json();
     } catch (error) {
       console.error('Error getting all jobs:', error);

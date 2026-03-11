@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Users, FileText, Settings, LogOut, Check, Plus, Briefcase, Mail, User, Building2, BarChart3 } from 'lucide-react';
+import { Users, FileText, Settings, LogOut, Check, Plus, Briefcase, Mail, User, Building2, BarChart3, Bot } from 'lucide-react';
 import AdminBreadcrumbs from '../../components/admin/AdminBreadcrumbs';
 import { DateFilterDropdown } from '../../components/DateFilterDropdown';
 import SuccessModal from '../../components/SuccessModal';
@@ -267,6 +267,15 @@ const AdminDashboard: React.FC = () => {
                 {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Recruiters Analytics</span>}
               </button>
             )}
+
+            {/* AI Mentor */}
+            <button
+              onClick={() => navigate('/admin-dashboard/ai-mentor')}
+              className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${isActive('/ai-mentor') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              <Bot size={20} className="flex-shrink-0" />
+              {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">FluidJobs AI Mentor</span>}
+            </button>
           </nav>
 
           {/* Settings Direct Navigation */}

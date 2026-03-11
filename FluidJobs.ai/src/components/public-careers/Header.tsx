@@ -12,10 +12,9 @@ const Header: React.FC = () => {
       <header className="header">
         <div className="header-content">
           <div className="logo">
-            <img src="/logo.png" alt="FluidJobs.ai" className="logo-image" />
+            <img src="/images/Fluidlive Official logo.png" alt="FluidJobs.ai" className="logo-image" />
           </div>
           <nav className="nav">
-            <a href="https://fluid.live" className="nav-link">Home</a>
             <Link to="/careers" className={`nav-link ${location.pathname === '/careers' ? 'active' : ''}`}>View Openings</Link>
             <a href="https://fluid.live/about/#contact" className="nav-link">Contact Us</a>
             <button className="apply-unlisted-btn" onClick={() => setIsModalOpen(true)}>

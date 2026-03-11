@@ -470,7 +470,7 @@ const NewDashboardContainer: React.FC<NewDashboardContainerProps> = ({ onBack, i
       case 'executive-summary':
         return (
           <ErrorBoundary>
-            <AnalyticsWidget jobId={effectiveJobId} />
+            <AnalyticsWidget jobId={effectiveJobId} stages={jobStages} />
           </ErrorBoundary>
         );
       case 'hiring-pipeline':
@@ -519,7 +519,7 @@ const NewDashboardContainer: React.FC<NewDashboardContainerProps> = ({ onBack, i
       default:
         return (
           <ErrorBoundary>
-            <AnalyticsWidget jobId={effectiveJobId} />
+            <AnalyticsWidget jobId={effectiveJobId} stages={jobStages} />
           </ErrorBoundary>
         );
     }

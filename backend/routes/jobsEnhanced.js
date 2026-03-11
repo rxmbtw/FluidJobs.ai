@@ -615,6 +615,7 @@ router.get('/:id', async (req, res) => {
       minExperience: job.min_experience,
       maxExperience: job.max_experience,
       experienceRange: job.min_experience && job.max_experience ? `${job.min_experience} -${job.max_experience} years` : null,
+      education: job.education,
       selectedImage: job.selected_image,
       showSalaryToCandidate: job.show_salary_to_candidate,
       registrationOpeningDate: job.registration_opening_date,
@@ -1001,14 +1002,15 @@ router.put('/update/:id', async (req, res) => {
         min_experience = $10,
         max_experience = $11,
         show_salary_to_candidate = $12,
-        registration_opening_date = $13,
-        registration_closing_date = $14,
-        no_of_openings = $15,
-        hiring_process = $16,
-        cover_image_id = COALESCE($17, cover_image_id),
-        selected_image = COALESCE($18, selected_image),
+        education = $13,
+        registration_opening_date = $14,
+        registration_closing_date = $15,
+        no_of_openings = $16,
+        hiring_process = $17,
+        cover_image_id = COALESCE($18, cover_image_id),
+        selected_image = COALESCE($19, selected_image),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $19
+      WHERE id = $20
       RETURNING *;
       `, [
       jobData.job_title,
@@ -1023,6 +1025,7 @@ router.put('/update/:id', async (req, res) => {
       jobData.min_experience,
       jobData.max_experience,
       jobData.show_salary_to_candidate,
+      jobData.education,
       jobData.registration_opening_date,
       jobData.registration_closing_date,
       jobData.no_of_openings,
@@ -1083,8 +1086,8 @@ router.post('/create', async (req, res) => {
         posted_date, created_at, account_id, created_by_user_id,
         job_domain, mode_of_job, min_experience, max_experience,
         min_salary, max_salary, show_salary_to_candidate, skills, locations,
-        selected_image, jd_attachment_name, registration_opening_date, registration_closing_date, hiring_process, cover_image_id
-      ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', NOW(), NOW(), $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+        selected_image, jd_attachment_name, registration_opening_date, registration_closing_date, hiring_process, cover_image_id, education
+      ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', NOW(), NOW(), $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
       RETURNING id;
       `, [
       jobData.job_title,
@@ -1112,7 +1115,8 @@ router.post('/create', async (req, res) => {
       jobData.registration_opening_date,
       jobData.registration_closing_date,
       JSON.stringify(jobData.interview_stages || []),
-      jobData.cover_image_id || null
+      jobData.cover_image_id || null,
+      jobData.education || null
     ]);
 
     // Flag the image as used

@@ -240,7 +240,19 @@ const SuperAdminDefaultView: React.FC = () => {
 
   const fetchJobs = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/list`);
+      const token = localStorage.getItem('superadmin_token') || localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/list`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('superadmin_token');
+        localStorage.removeItem('token');
+        sessionStorage.removeItem('fluidjobs_token');
+        window.location.href = '/login';
+        return;
+      }
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.jobs) {
@@ -254,7 +266,19 @@ const SuperAdminDefaultView: React.FC = () => {
 
   const fetchActiveJobs = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/active`);
+      const token = localStorage.getItem('superadmin_token') || localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/active`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('superadmin_token');
+        localStorage.removeItem('token');
+        sessionStorage.removeItem('fluidjobs_token');
+        window.location.href = '/login';
+        return;
+      }
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.jobs) {

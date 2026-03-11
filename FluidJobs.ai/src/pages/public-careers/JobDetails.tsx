@@ -41,38 +41,39 @@ const JobDetails: React.FC = () => {
         if (data.success && data.jobs) {
           const found = data.jobs.find((j: any) => String(j.id || j.job_id) === String(id))
           if (found) {
-            const locations = Array.isArray(found.locations)
-              ? found.locations.join(', ')
-              : typeof found.locations === 'string'
-                ? found.locations.replace(/[{}"]/g, '').split(',').map((l: string) => l.trim()).join(', ')
-                : 'Remote'
+            let ctcDisplay = 'Not Specified';
+            if (found.showSalaryToCandidate) {
+              const formatMoney = (amount: number) => new Intl.NumberFormat('en-IN').format(amount);
 
-            const minSalary = found.min_salary ? (found.min_salary / 100000).toFixed(1) : null
-            const maxSalary = found.max_salary ? (found.max_salary / 100000).toFixed(1) : null
-            const ctc = minSalary && maxSalary ? `Rs.${minSalary}L-Rs.${maxSalary}L` : 'Not Specified'
-
-            // Parse description for skills/qualifications
-            const desc = found.description || found.job_description || ''
-            const skills = Array.isArray(found.skills) ? found.skills : []
-            const responsibilities = found.responsibilities || []
-            const qualifications = found.qualifications || []
+              if (found.jobType === 'Internship') {
+                if (found.minSalary && found.maxSalary) {
+                  ctcDisplay = `INR ${formatMoney(found.minSalary)} - INR ${formatMoney(found.maxSalary)} /month`;
+                } else if (found.minSalary) {
+                  ctcDisplay = `INR ${formatMoney(found.minSalary)} /month`;
+                }
+              } else {
+                if (found.minSalary && found.maxSalary) {
+                  ctcDisplay = `INR ${formatMoney(found.minSalary)} - INR ${formatMoney(found.maxSalary)} per annum`;
+                } else if (found.minSalary) {
+                  ctcDisplay = `INR ${formatMoney(found.minSalary)} per annum`;
+                }
+              }
+            }
 
             setJob({
-              id: String(found.id || found.job_id),
-              title: found.job_title || found.title || 'Job Opening',
-              postedDate: found.created_at
-                ? new Date(found.created_at).toLocaleDateString('en-GB')
-                : new Date().toLocaleDateString('en-GB'),
-              jobType: found.workplace || found.job_type || 'Full-Time',
-              jobMode: found.mode_of_job || found.jobMode || 'On-site',
-              location: locations,
-              ctc,
-              industry: found.job_domain || 'Technology',
-              description: desc,
-              skills: skills.length > 0 ? skills : responsibilities,
-              qualifications: qualifications.length > 0 ? qualifications : [`${found.min_experience || 0}-${found.max_experience || 0} years of experience`],
+              id: String(found.id),
+              title: found.title || 'Job Opening',
+              postedDate: found.postedDate || new Date().toLocaleDateString('en-GB'),
+              jobType: found.jobType || 'Full-Time',
+              jobMode: found.modeOfJob || 'On-site',
+              location: found.location || 'Remote',
+              ctc: ctcDisplay,
+              industry: found.industry || 'Technology',
+              description: found.description || '',
+              skills: found.skills || [],
+              qualifications: found.experienceRange ? [found.experienceRange] : [],
               education: ['Bachelor\'s Degree or equivalent'],
-              image: found.selectedImage || found.selected_image || DEFAULT_JOB_IMAGE
+              image: found.selectedImage || DEFAULT_JOB_IMAGE
             })
           }
         }
@@ -86,8 +87,13 @@ const JobDetails: React.FC = () => {
     fetchJob()
   }, [id])
 
+  const formRef = React.useRef<HTMLDivElement>(null)
+
   const handleApplyClick = () => {
     setShowForm(true)
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
   }
 
   if (loading) {
@@ -141,7 +147,7 @@ const JobDetails: React.FC = () => {
         <div
           className="job-hero"
           style={job.image ? {
-            backgroundImage: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${job.image})`,
+            backgroundImage: `url(${job.image})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             color: 'white'
@@ -181,32 +187,15 @@ const JobDetails: React.FC = () => {
             <>
               <h2 className="section-title">DESCRIPTION</h2>
               <div className="description-content">
-                <p style={{ whiteSpace: 'pre-line', marginBottom: '20px' }}>{job.description}</p>
+                <div
+                  className="rich-text-content"
+                  style={{ marginBottom: '20px' }}
+                  dangerouslySetInnerHTML={{ __html: job.description }}
+                />
               </div>
             </>
           )}
 
-          {job.skills.length > 0 && (
-            <div className="description-content">
-              <h3 className="subsection-title">Required Skills</h3>
-              <ul className="description-list">
-                {job.skills.map((skill, index) => (
-                  <li key={index}>{skill}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {job.qualifications.length > 0 && (
-            <div className="description-content">
-              <h3 className="subsection-title">Qualifications</h3>
-              <ul className="description-list">
-                {job.qualifications.map((qual, index) => (
-                  <li key={index}>{qual}</li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           {!showForm && (
             <button className="apply-button" onClick={handleApplyClick}>
@@ -217,7 +206,11 @@ const JobDetails: React.FC = () => {
             </button>
           )}
 
-          {showForm && <ApplicationForm onClose={() => setShowForm(false)} />}
+          {showForm && (
+            <div ref={formRef}>
+              <ApplicationForm onClose={() => setShowForm(false)} />
+            </div>
+          )}
         </div>
       </div>
       <Footer />

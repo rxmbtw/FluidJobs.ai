@@ -41,6 +41,7 @@ export interface Candidate {
 	status: string;
 	role: string;
 	bio: string;
+	resumeScore?: number;
 }
 
 // Company entity

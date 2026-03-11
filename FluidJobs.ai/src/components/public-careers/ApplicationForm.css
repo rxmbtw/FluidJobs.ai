@@ -1,7 +1,22 @@
 .application-form-container {
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 2px solid #e5e5e5;
+  margin-top: 2.5rem;
+  padding-top: 0;
+  border-top: none;
+  animation: slideDownFadeIn 0.5s ease-out forwards;
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+@keyframes slideDownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .application-form {
@@ -9,22 +24,30 @@
 }
 
 .form-section {
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  border: 1px solid #f3f4f6;
 }
 
 .form-section-title {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #4169e1;
+  color: #1f2937;
+  margin-bottom: 2rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
+  gap: 2rem 1.5rem;
   transition: all 0.3s ease;
 }
 
@@ -38,21 +61,34 @@
   grid-column: 1 / -1;
 }
 
-.form-group label {
+.form-group>label {
   font-size: 0.9rem;
   font-weight: 500;
-  color: #333;
+  color: #4b5563;
+  margin-bottom: 0.5rem;
+  display: block;
+  min-height: 2.5rem;
 }
 
 .form-group input,
 .form-group select {
-  padding: 0.75rem;
-  border: 1px solid #ddd;
+  padding: 0.85rem 1.1rem;
+  border: 1px solid #d1d5db;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-family: 'Poppins', sans-serif;
-  transition: border-color 0.2s;
-  background-color: white;
+  color: #1f2937;
+  transition: all 0.2s ease;
+  background-color: #f9fafb;
+  width: 100%;
+  box-sizing: border-box;
+  height: 3.25rem;
+}
+
+.form-group input:hover,
+.form-group select:hover {
+  background-color: #ffffff;
+  border-color: #9ca3af;
 }
 
 .form-group input:focus,
@@ -63,7 +99,7 @@
 }
 
 .form-group input::placeholder {
-  color: #999;
+  color: #9ca3af;
 }
 
 .form-group input[type="date"] {
@@ -102,7 +138,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
+  padding: 0 1rem;
+  margin: 0;
+  height: 3.25rem;
+  box-sizing: border-box;
   border: 2px solid #ddd;
   border-radius: 8px;
   cursor: pointer;
@@ -110,6 +149,7 @@
   flex: 1;
   background-color: white;
   position: relative;
+  text-align: center;
 }
 
 .radio-option:hover {
@@ -123,7 +163,7 @@
   cursor: pointer;
 }
 
-.radio-option input[type="radio"]:checked ~ span {
+.radio-option input[type="radio"]:checked~span {
   font-weight: 600;
   color: white;
 }
@@ -142,52 +182,64 @@
 
 .form-actions {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 1rem;
   margin-top: 2rem;
   padding-top: 2rem;
-  border-top: 1px solid #e5e5e5;
+  border-top: none;
+  padding-bottom: 2rem;
 }
 
 .cancel-button,
 .submit-button {
-  padding: 0.875rem 2rem;
+  padding: 0.875rem 2.5rem;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   font-family: 'Poppins', sans-serif;
   border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cancel-button {
   background: white;
-  color: #666;
-  border: 1px solid #ddd;
+  color: #4b5563;
+  border: 1px solid #d1d5db;
 }
 
 .cancel-button:hover {
-  background: #f5f5f5;
+  background: #f3f4f6;
+  color: #1f2937;
 }
 
 .submit-button {
-  background: #4169e1;
+  background: #4f46e5;
   color: white;
+  box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
 }
 
 .submit-button:hover {
-  background: #2c4fb5;
+  background: #4338ca;
+  box-shadow: 0 6px 8px -1px rgba(79, 70, 229, 0.3);
+  transform: translateY(-1px);
 }
 
 @media (max-width: 768px) {
   .form-grid {
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: 1.25rem;
+  }
+
+  .form-section {
+    padding: 1.5rem;
   }
 
   .form-actions {
-    flex-direction: column;
+    flex-direction: column-reverse;
   }
 
   .cancel-button,

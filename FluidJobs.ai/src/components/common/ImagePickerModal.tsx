@@ -20,9 +20,10 @@ interface ImagePickerModalProps {
     onClose: () => void;
     onSelect: (imageUrl: string, imageId: number) => void;
     currentImageId?: number;
+    usedImages?: string[];
 }
 
-const ImagePickerModal: React.FC<ImagePickerModalProps> = ({ isOpen, onClose, onSelect, currentImageId }) => {
+const ImagePickerModal: React.FC<ImagePickerModalProps> = ({ isOpen, onClose, onSelect, currentImageId, usedImages = [] }) => {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'internal' | 'upload'>('internal');
     const [images, setImages] = useState<JobImage[]>([]);
@@ -180,19 +181,28 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({ isOpen, onClose, on
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                             {images.map(img => {
                                 const isSelected = img.id === currentImageId;
-                                const isUsed = img.is_used;
+                                const isUsed = img.is_used || usedImages.includes(img.secure_url) || usedImages.includes(img.image_url);
                                 const disableSelect = isUsed && !isSelected;
 
                                 return (
                                     <div
                                         key={img.id}
                                         onClick={() => !disableSelect && onSelect(img.secure_url, img.id)}
-                                        className={`relative group rounded-xl overflow-hidden aspect-[4/3] bg-gray-100 cursor-pointer transition-all duration-300
+                                        className={`relative group rounded-xl overflow-hidden aspect-[4/3] bg-gray-200 cursor-pointer transition-all duration-300
                       ${isSelected ? 'ring-4 ring-indigo-500 ring-offset-2 scale-105 shadow-xl z-10' : ''}
-                      ${disableSelect ? 'opacity-50 cursor-not-allowed grayscale-[30%]' : 'hover:shadow-lg hover:-translate-y-1'}
+                      ${disableSelect ? 'opacity-60 cursor-not-allowed grayscale-[40%]' : 'hover:shadow-lg hover:-translate-y-1'}
                     `}
                                     >
-                                        <img src={img.secure_url} alt={img.category} className="w-full h-full object-cover" />
+                                        <img
+                                            src={img.secure_url}
+                                            alt={img.category}
+                                            className="w-full h-full object-cover transition-opacity duration-500 ease-in-out"
+                                            loading="lazy"
+                                            style={{ opacity: 0 }}
+                                            onLoad={(e) => {
+                                                (e.target as HTMLImageElement).style.opacity = '1';
+                                            }}
+                                        />
 
                                         {/* Hover Overlay */}
                                         {!disableSelect && !isSelected && (

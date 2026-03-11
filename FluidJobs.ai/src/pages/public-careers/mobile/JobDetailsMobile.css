@@ -43,24 +43,34 @@
 .job-hero-mobile {
   background: linear-gradient(135deg, #d3d3d3, #c0c0c0);
   border-radius: 12px;
-  padding: 2rem 1rem;
+  padding: 5rem 1rem 1rem 1rem;
   margin-bottom: 1rem;
+  position: relative;
 }
 
 .job-hero-content-mobile {
-  text-align: center;
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+  max-width: calc(100% - 1.5rem);
 }
 
 .job-posted-date-mobile {
-  font-size: 0.75rem;
-  color: #666;
-  margin-bottom: 0.75rem;
+  font-size: 0.65rem;
+  color: #f3f4f6;
+  margin-bottom: 0.2rem;
 }
 
 .job-details-title-mobile {
-  font-size: 1.5rem;
+  font-size: 1rem;
   font-weight: 600;
-  color: #333;
+  color: white;
+  margin: 0;
   line-height: 1.3;
 }
 
@@ -142,6 +152,49 @@
   position: absolute;
   left: 0.5rem;
   color: #333;
+}
+
+.rich-text-content h1,
+.rich-text-content h2,
+.rich-text-content h3 {
+  color: #333;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.rich-text-content h1 {
+  font-size: 1.25rem;
+}
+
+.rich-text-content h2 {
+  font-size: 1.1rem;
+}
+
+.rich-text-content h3 {
+  font-size: 1rem;
+}
+
+.rich-text-content p {
+  margin-bottom: 0.875rem;
+}
+
+.rich-text-content ul,
+.rich-text-content ol {
+  padding-left: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.rich-text-content li {
+  margin-bottom: 0.5rem;
+}
+
+.rich-text-content ul {
+  list-style-type: disc;
+}
+
+.rich-text-content ol {
+  list-style-type: decimal;
 }
 
 .apply-button-mobile {
