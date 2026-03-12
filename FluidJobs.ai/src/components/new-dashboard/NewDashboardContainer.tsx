@@ -400,8 +400,24 @@ const NewDashboardContainer: React.FC<NewDashboardContainerProps> = ({ onBack, i
       urlSlug = jobSlug;
     }
 
-    // Use relative path to maintain role-specific URL
-    navigate(`jobs/job-dashboard/${urlSlug}/${viewId}`);
+    // Detect current dashboard from URL
+    const currentPath = window.location.pathname;
+    let dashboardPrefix = '/admin-dashboard';
+    
+    if (currentPath.includes('/superadmin-dashboard')) {
+      dashboardPrefix = '/superadmin-dashboard';
+    } else if (currentPath.includes('/interviewer-dashboard')) {
+      dashboardPrefix = '/interviewer-dashboard';
+    } else if (currentPath.includes('/recruiter-dashboard')) {
+      dashboardPrefix = '/recruiter-dashboard';
+    } else if (currentPath.includes('/sales-dashboard')) {
+      dashboardPrefix = '/sales-dashboard';
+    } else if (currentPath.includes('/hr-dashboard')) {
+      dashboardPrefix = '/hr-dashboard';
+    }
+
+    // Use absolute path with correct route structure
+    navigate(`${dashboardPrefix}/jobs/job-dashboard/${urlSlug}/${viewId}`);
   }, [navigate, effectiveJobId, jobInfo.title, jobSlug, propJobId]);
 
   const handleBackFromProfile = useCallback(() => {
