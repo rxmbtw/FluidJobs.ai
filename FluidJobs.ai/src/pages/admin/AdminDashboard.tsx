@@ -16,6 +16,7 @@ const AdminDashboard: React.FC = () => {
   const [activeJobs, setActiveJobs] = useState<any[]>([]);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [isNewDropdownOpen, setIsNewDropdownOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [jobSearchQuery, setJobSearchQuery] = useState('');
@@ -24,6 +25,7 @@ const AdminDashboard: React.FC = () => {
   const [dashboardDateRange, setDashboardDateRange] = useState({ start: '', end: '' });
   const [accounts, setAccounts] = useState<any[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(false);
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
 
   // Role-based access control
   const userRole = admin.role || 'User';
@@ -39,14 +41,27 @@ const AdminDashboard: React.FC = () => {
   
   const normalizedRole = normalizeRole(userRole);
   
-  const canCreateJobs = ['Admin', 'Recruiter', 'Sales'].includes(normalizedRole);
-  const canManageUsers = ['Admin'].includes(normalizedRole);
-  const canViewPermissions = ['HR', 'Interviewer', 'Sales', 'Recruiter'].includes(normalizedRole);
-  const canViewAccounts = ['Admin', 'Recruiter', 'HR', 'Sales', 'Interviewer'].includes(normalizedRole);
-  const canManageCandidates = ['Admin', 'HR', 'Recruiter'].includes(normalizedRole);
-  const canViewJobs = ['Admin', 'Recruiter', 'HR', 'Interviewer', 'Sales'].includes(normalizedRole);
-  const canSendInvites = ['Admin', 'HR', 'Recruiter'].includes(normalizedRole);
-  const canBulkImport = ['Admin', 'HR'].includes(normalizedRole);
+  // Get the base dashboard path from current location
+  const getDashboardBasePath = () => {
+    const path = location.pathname;
+    if (path.includes('/hr-dashboard')) return '/hr-dashboard';
+    if (path.includes('/sales-dashboard')) return '/sales-dashboard';
+    if (path.includes('/recruiter-dashboard')) return '/recruiter-dashboard';
+    if (path.includes('/interviewer-dashboard')) return '/interviewer-dashboard';
+    return '/admin-dashboard'; // default
+  };
+  
+  const dashboardBasePath = getDashboardBasePath();
+  
+  // Permission-based access control (checks actual user permissions from database)
+  const canCreateJobs = userPermissions.includes('create_job');
+  const canManageUsers = userPermissions.includes('create_users');
+  const canViewPermissions = userPermissions.includes('manage_permissions') || userPermissions.includes('view_users');
+  const canViewAccounts = userPermissions.includes('view_accounts');
+  const canManageCandidates = userPermissions.includes('create_candidates') || userPermissions.includes('edit_candidates');
+  const canViewJobs = userPermissions.includes('view_jobs');
+  const canSendInvites = userPermissions.includes('send_invites');
+  const canBulkImport = userPermissions.includes('bulk_import');
 
   const handleStatsUpdate = (updatedStats: any) => {
     setStats(updatedStats);
@@ -104,6 +119,22 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const fetchUserPermissions = async () => {
+    try {
+      const token = sessionStorage.getItem('fluidjobs_token');
+      if (!token) return;
+
+      const response = await axios.get<{ permissions: string[] }>('http://localhost:8000/api/auth/my-permissions', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      setUserPermissions(response.data.permissions);
+    } catch (error) {
+      console.error('Error fetching permissions:', error);
+      setUserPermissions([]);
+    }
+  };
+
   const fetchAccounts = async () => {
     try {
       const token = sessionStorage.getItem('fluidjobs_token');
@@ -129,7 +160,7 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     const initializeDashboard = async () => {
       setIsInitialLoading(true);
-      // await new Promise(resolve => setTimeout(resolve, 2000)); // Maybe unnecessary delay
+      await fetchUserPermissions(); // Fetch permissions first
       fetchStats();
       fetchAccounts();
       fetchJobs();
@@ -196,7 +227,7 @@ const AdminDashboard: React.FC = () => {
                       {canCreateJobs && (
                         <button
                           onClick={() => {
-                            navigate('/admin-dashboard/create-job');
+                            navigate('create-job');
                             setIsNewDropdownOpen(false);
                           }}
                           className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
@@ -208,7 +239,7 @@ const AdminDashboard: React.FC = () => {
                       {(canSendInvites || canBulkImport) && (
                         <button
                           onClick={() => {
-                            navigate('/admin-dashboard/create-candidate');
+                            navigate('create-candidate');
                             setIsNewDropdownOpen(false);
                           }}
                           className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
@@ -229,7 +260,7 @@ const AdminDashboard: React.FC = () => {
             )}
 
             <button
-              onClick={() => navigate('/admin-dashboard/overview')}
+              onClick={() => navigate('overview')}
               className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${isActive('/overview') ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
                 }`}
             >
@@ -239,7 +270,7 @@ const AdminDashboard: React.FC = () => {
 
             {canViewAccounts && (
               <button
-                onClick={() => navigate('/admin-dashboard/accounts')}
+                onClick={() => navigate('accounts')}
                 className={`w-full flex items-center ${isSidebarExpanded ? 'justify-between' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${isActive('/accounts') ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
                   }`}
               >
@@ -253,7 +284,7 @@ const AdminDashboard: React.FC = () => {
 
             {canViewJobs && (
               <button
-                onClick={() => navigate('/admin-dashboard/jobs')}
+                onClick={() => navigate('jobs')}
                 className={`w-full flex items-center ${isSidebarExpanded ? 'justify-between' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${isActive('/jobs') && !isActive('/create-job') ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
                   }`}
               >
@@ -267,7 +298,7 @@ const AdminDashboard: React.FC = () => {
 
             {canManageCandidates && (
               <button
-                onClick={() => navigate('/admin-dashboard/candidates')}
+                onClick={() => navigate('candidates')}
                 className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${isActive('/candidates') ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
                   }`}
               >
@@ -279,7 +310,7 @@ const AdminDashboard: React.FC = () => {
             {/* Approvals - For Recruiters, Admins, HR, and Sales */}
             {(['Recruiter', 'Admin', 'HR', 'Sales'].includes(normalizedRole)) && (
               <button
-                onClick={() => navigate('/admin-dashboard/approvals')}
+                onClick={() => navigate('approvals')}
                 className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${isActive('/approvals') ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
                   }`}
               >
@@ -291,7 +322,7 @@ const AdminDashboard: React.FC = () => {
             {/* Recruiters Analytics */}
             {(['Admin', 'Superadmin'].includes(normalizedRole)) && (
               <button
-                onClick={() => navigate('/admin-dashboard/recruiters')}
+                onClick={() => navigate('recruiters')}
                 className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg mb-1 text-left transition-all ${isActive('/recruiters') ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
                   }`}
               >
@@ -301,18 +332,39 @@ const AdminDashboard: React.FC = () => {
             )}
           </nav>
 
-          {/* Settings Direct Navigation */}
+          {/* Settings Direct Navigation - Same as SuperAdmin */}
           {(canManageUsers || canViewPermissions) && (
-            <div className="px-4 mb-4" style={{ borderTop: '1px solid rgba(229, 231, 235, 0.8)', paddingTop: '16px', boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.05)' }}>
-              <button
-                onClick={() => navigate('/admin-dashboard/settings')}
-                className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg mb-2 text-left transition-all ${isActive('/settings') ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+            <div className="px-4 mb-4 settings-container" style={{ borderTop: '1px solid rgba(229, 231, 235, 0.8)', paddingTop: '16px', boxShadow: '0 -1px 3px 0 rgba(0, 0, 0, 0.05)' }}>
+              <div className="relative">
+                <button
+                  onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                  className={`w-full flex items-center ${isSidebarExpanded ? 'space-x-3' : 'justify-center'} px-4 py-3 rounded-lg text-left transition-all ${
+                    location.pathname.includes('/settings') ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
                   }`}
-              >
-                <Settings size={20} className="flex-shrink-0" />
-                {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Settings</span>}
-              </button>
+                >
+                  <Settings size={20} className="flex-shrink-0" />
+                  {isSidebarExpanded && <span className="text-sm font-medium whitespace-nowrap">Settings</span>}
+                </button>
 
+                {isSidebarExpanded && isSettingsOpen && (
+                  <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-2xl shadow-2xl overflow-hidden z-20 border border-gray-200">
+                    <div className="p-2">
+                      {canManageUsers && (
+                        <button
+                          onClick={() => {
+                            navigate('settings/user-management');
+                            setIsSettingsOpen(false);
+                          }}
+                          className="w-full flex items-center space-x-3 p-3 rounded-lg text-gray-700 hover:bg-blue-50 transition text-left"
+                        >
+                          <Users size={18} />
+                          <span className="text-sm font-medium">User Management</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -356,7 +408,7 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   <button
                     onClick={() => {
-                      navigate('/admin-dashboard/profile-settings');
+                      navigate('profile-settings');
                       setIsProfileOpen(false);
                     }}
                     className="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition"
@@ -379,7 +431,7 @@ const AdminDashboard: React.FC = () => {
           </div>
 
           <Outlet context={{
-            handleTabChange: (tab: string) => navigate(`/admin-dashboard/${tab}`), // Backward compat override
+            handleTabChange: (tab: string) => navigate(tab), // Use relative path
             handleAccountsUpdate,
             handleStatsUpdate,
             dashboardDateRange,

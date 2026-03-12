@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Loader from '../../../components/Loader';
+import axios from 'axios';
 import SuccessModal from '../../../components/SuccessModal';
 import ErrorModal from '../../../components/ErrorModal';
 
@@ -11,6 +11,8 @@ const AdminCreateUser: React.FC = () => {
     const [creatingUser, setCreatingUser] = useState(false);
     const [emailError, setEmailError] = useState('');
     const [checkingEmail, setCheckingEmail] = useState(false);
+    const [showCountryCodeDropdown, setShowCountryCodeDropdown] = useState(false);
+    const [selectedCountryCode, setSelectedCountryCode] = useState('+91');
     const [showRoleDropdown, setShowRoleDropdown] = useState(false);
     const [availablePermissions, setAvailablePermissions] = useState<any[]>([]);
     const [selectedPermissions, setSelectedPermissions] = useState<{ [key: string]: boolean }>({});
@@ -29,23 +31,24 @@ const AdminCreateUser: React.FC = () => {
         setCheckingEmail(true);
         try {
             const token = sessionStorage.getItem('fluidjobs_token');
-            const response = await fetch('/api/admin/users/check-email', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ email })
-            });
-            const data = await response.json();
+            const response = await axios.post<{ exists: boolean }>('http://localhost:8000/api/admin/users/check-email', 
+                { email },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                }
+            );
 
-            if (data.exists) {
+            if (response.data.exists) {
                 setEmailError('This email is already registered.');
             } else {
                 setEmailError('');
             }
         } catch (error) {
             console.error('Error checking email:', error);
+            setEmailError('');
         } finally {
             setCheckingEmail(false);
         }
@@ -58,39 +61,39 @@ const AdminCreateUser: React.FC = () => {
             return;
         }
 
+        console.log('🔍 Fetching permissions for role:', role);
         try {
             const token = sessionStorage.getItem('fluidjobs_token');
-            const response = await fetch(`/api/auth/roles/${role}/permissions`, {
+            console.log('🔑 Token exists:', !!token);
+            
+            const url = `http://localhost:8000/api/admin/roles/${role}/permissions`;
+            console.log('📡 Calling API:', url);
+            
+            const response = await axios.get<{ permissions: any[] }>(url, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    'Authorization': `Bearer ${token}`
                 }
             });
-
-            if (response.ok) {
-                const data = await response.json();
-                setAvailablePermissions(data.permissions);
+            
+            console.log('✅ API Response:', response.data);
+            
+            if (response.data && response.data.permissions) {
+                console.log('📋 Permissions count:', response.data.permissions.length);
+                setAvailablePermissions(response.data.permissions);
+                // Set default permissions based on role defaults
                 const defaultPermissions: { [key: string]: boolean } = {};
-                data.permissions.forEach((perm: any) => {
+                response.data.permissions.forEach((perm: any) => {
                     defaultPermissions[perm.name] = perm.has_permission;
                 });
                 setSelectedPermissions(defaultPermissions);
+                console.log('✅ Permissions set successfully');
             } else {
-                const basicPermissions = [
-                    { name: 'view_jobs', description: 'View Jobs', category: 'jobs', has_permission: true, source: 'role' },
-                    { name: 'create_jobs', description: 'Create Jobs', category: 'jobs', has_permission: role === 'Admin' || role === 'Recruiter', source: 'role' },
-                    { name: 'view_candidates', description: 'View Candidates', category: 'candidates', has_permission: true, source: 'role' },
-                    { name: 'manage_candidates', description: 'Manage Candidates', category: 'candidates', has_permission: role === 'Admin' || role === 'HR', source: 'role' }
-                ];
-                setAvailablePermissions(basicPermissions);
-                const defaultPermissions: { [key: string]: boolean } = {};
-                basicPermissions.forEach((perm: any) => {
-                    defaultPermissions[perm.name] = perm.has_permission;
-                });
-                setSelectedPermissions(defaultPermissions);
+                console.warn('⚠️ No permissions in response');
             }
-        } catch (error) {
-            console.error('Error fetching role permissions:', error);
+        } catch (error: any) {
+            console.error('❌ Error fetching role permissions:', error);
+            console.error('❌ Error response:', error.response?.data);
+            console.error('❌ Error status:', error.response?.status);
         }
     };
 
@@ -123,46 +126,41 @@ const AdminCreateUser: React.FC = () => {
         setCreatingUser(true);
         try {
             const token = sessionStorage.getItem('fluidjobs_token');
-            const response = await fetch('/api/auth/users', {
-                method: 'POST',
+            const response = await axios.post('http://localhost:8000/api/admin/users', {
+                name: newUser.name,
+                email: newUser.email,
+                phone: newUser.phone,
+                role: newUser.role,
+                customPermissions: Object.entries(selectedPermissions).map(([name, granted]) => ({ name, granted, has_permission: granted }))
+            }, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    name: newUser.name,
-                    email: newUser.email,
-                    role: newUser.role,
-                    phone: newUser.phone,
-                    customPermissions: Object.entries(selectedPermissions).map(([name, granted]) => ({ name, granted }))
-                })
+                    'Authorization': `Bearer ${token}`
+                }
             });
-
-            if (response.ok) {
-                const data = await response.json();
-                setNewUser({ name: '', email: '', phone: '', role: '' });
-                setEmailError('');
-                setAvailablePermissions([]);
-                setSelectedPermissions({});
-                setSuccessMessage({
-                    title: 'User Created & Invited!',
-                    message: `User created successfully! An email invitation has been sent to ${newUser.email}.`
-                });
-                setShowSuccessModal(true);
-                // Navigate back to settings after success modal close (handled by user action usually, but here we can wait)
-            } else {
-                const error = await response.json();
-                setErrorMessage({
-                    title: 'Error',
-                    message: error.error || 'Failed to create user'
-                });
-                setShowErrorModal(true);
-            }
-        } catch (error) {
+            setNewUser({ name: '', email: '', phone: '', role: '' });
+            setEmailError('');
+            setAvailablePermissions([]);
+            setSelectedPermissions({});
+            setSuccessMessage({
+                title: 'User Created & Invited!',
+                message: `User created successfully! An email invitation has been sent to ${newUser.email}.`
+            });
+            setShowSuccessModal(true);
+        } catch (error: any) {
             console.error('Error creating user:', error);
+            console.error('Error response:', error.response?.data);
+            console.error('Error status:', error.response?.status);
+            
+            let errorMsg = 'Error creating user';
+            if (error.response?.status === 401) {
+                errorMsg = 'Authentication failed. Please log out and log back in.';
+            } else if (error.response?.data?.error) {
+                errorMsg = error.response.data.error;
+            }
+            
             setErrorMessage({
                 title: 'Error',
-                message: 'Failed to create user'
+                message: errorMsg
             });
             setShowErrorModal(true);
         } finally {
@@ -209,16 +207,75 @@ const AdminCreateUser: React.FC = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                                    <div className="flex">
-                                        <select className="px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 bg-white text-center">
-                                            <option value="+1">Code</option>
-                                        </select>
+                                    <div className="flex gap-2">
+                                        {/* Country Code Dropdown */}
+                                        <div className="relative country-code-dropdown-container" style={{ width: '120px' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowCountryCodeDropdown(!showCountryCodeDropdown)}
+                                                className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 flex items-center justify-between"
+                                            >
+                                                <span className="text-sm">{selectedCountryCode}</span>
+                                                <svg className={`w-4 h-4 transition-transform ${showCountryCodeDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </button>
+                                            {showCountryCodeDropdown && (
+                                                <div className="absolute top-full mt-1 w-64 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                                                    <div className="p-2">
+                                                        {[
+                                                            { code: '+91', country: 'India' },
+                                                            { code: '+1', country: 'USA/Canada' },
+                                                            { code: '+44', country: 'UK' },
+                                                            { code: '+61', country: 'Australia' },
+                                                            { code: '+971', country: 'UAE' },
+                                                            { code: '+65', country: 'Singapore' },
+                                                            { code: '+49', country: 'Germany' },
+                                                            { code: '+33', country: 'France' },
+                                                            { code: '+81', country: 'Japan' },
+                                                            { code: '+86', country: 'China' },
+                                                            { code: '+82', country: 'South Korea' },
+                                                            { code: '+7', country: 'Russia' },
+                                                            { code: '+55', country: 'Brazil' },
+                                                            { code: '+27', country: 'South Africa' },
+                                                            { code: '+234', country: 'Nigeria' },
+                                                            { code: '+92', country: 'Pakistan' },
+                                                            { code: '+880', country: 'Bangladesh' },
+                                                            { code: '+62', country: 'Indonesia' },
+                                                            { code: '+63', country: 'Philippines' },
+                                                            { code: '+60', country: 'Malaysia' },
+                                                            { code: '+66', country: 'Thailand' },
+                                                            { code: '+84', country: 'Vietnam' },
+                                                            { code: '+94', country: 'Sri Lanka' },
+                                                            { code: '+977', country: 'Nepal' }
+                                                        ].map(({ code, country }) => (
+                                                            <div
+                                                                key={code}
+                                                                onClick={() => {
+                                                                    setSelectedCountryCode(code);
+                                                                    setShowCountryCodeDropdown(false);
+                                                                    const phoneWithoutCode = newUser.phone.replace(/^\+\d+/, '');
+                                                                    setNewUser({ ...newUser, phone: code + phoneWithoutCode });
+                                                                }}
+                                                                className="px-3 py-2 hover:bg-blue-100 cursor-pointer text-sm rounded text-gray-900 bg-white mb-1 transition-colors duration-200"
+                                                            >
+                                                                {code} - {country}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Phone Number Input */}
                                         <input
                                             type="tel"
-                                            placeholder="9284xxxxxx"
                                             value={newUser.phone}
-                                            onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
-                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500 border-l-0"
+                                            onChange={(e) => {
+                                                setNewUser({ ...newUser, phone: e.target.value });
+                                            }}
+                                            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="9876543210"
                                         />
                                     </div>
                                 </div>
@@ -238,7 +295,7 @@ const AdminCreateUser: React.FC = () => {
                                         {showRoleDropdown && (
                                             <div className="absolute bottom-full mb-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
                                                 <div className="p-2">
-                                                    {['Recruiter', 'HR', 'Interviewer'].map(role => (
+                                                    {['Recruiter', 'HR', 'Sales', 'Interviewer'].map(role => (
                                                         <div
                                                             key={role}
                                                             onClick={() => {
@@ -327,7 +384,7 @@ const AdminCreateUser: React.FC = () => {
                     <div className="flex space-x-3">
                         <button
                             onClick={() => {
-                                navigate('/admin-dashboard/settings');
+                                navigate('../settings/user-management');
                             }}
                             className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition"
                         >
@@ -351,7 +408,7 @@ const AdminCreateUser: React.FC = () => {
                     message={successMessage.message}
                     onClose={() => {
                         setShowSuccessModal(false);
-                        navigate('/admin-dashboard/settings');
+                        navigate('../settings/user-management');
                     }}
                 />
             )}

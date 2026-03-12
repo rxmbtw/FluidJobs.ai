@@ -28,8 +28,14 @@ const domainSuggestions = [
 const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSaveSuccess?: () => void; isReadOnly?: boolean }> = ({ onDirtyChange, onSaveSuccess, isReadOnly }) => {
   const { setHeaderActions } = useDashboardHeader();
   const currentUser = JSON.parse(sessionStorage.getItem('fluidjobs_user') || localStorage.getItem('superadmin') || '{}');
-  const isRecruiterRole = currentUser.role?.toLowerCase() === 'recruiter';
-  const isReadonlyStatus = currentUser.role?.toLowerCase() !== 'admin' && currentUser.role?.toLowerCase() !== 'superadmin';
+  
+  // Check if user can approve jobs (Admin/SuperAdmin)
+  const canApproveJobs = currentUser.role?.toLowerCase() === 'admin' || currentUser.role?.toLowerCase() === 'superadmin';
+  
+  // Check if user needs approval for edits (Recruiter/Sales)
+  const needsApproval = currentUser.role?.toLowerCase() === 'recruiter' || currentUser.role?.toLowerCase() === 'sales';
+  
+  const isReadonlyStatus = !canApproveJobs;
 
   const { jobSlug } = useParams<{ jobSlug?: string }>();
   const jobId = jobSlug ? jobSlug.match(/^(\d+)/)?.[1] : null;
@@ -471,9 +477,11 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
       return;
     }
     if (isDirty()) {
-      if (isRecruiterRole) {
+      if (needsApproval) {
+        // Recruiter/Sales: Submit for approval
         setShowApprovalModal(true);
       } else {
+        // Admin/SuperAdmin: Direct save
         setShowSaveModal(true);
       }
     }
@@ -529,7 +537,39 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
 
       const token = sessionStorage.getItem('fluidjobs_token') || localStorage.getItem('superadmin_token') || localStorage.getItem('token');
       if (jobId && token) {
-        // Save hiring stages
+        // 1. Save main job details
+        const jobUpdatePayload = {
+          title: jobDetails.title,
+          domain: jobDetails.domain,
+          type: jobDetails.type,
+          locations: selectedLocations,
+          minExperience: jobDetails.minExperience,
+          maxExperience: jobDetails.maxExperience,
+          numberOfOpenings: jobDetails.numberOfOpenings,
+          modeOfJob: jobDetails.modeOfJob,
+          description: jobDetails.description,
+          skills: jobDetails.skills,
+          requirements: jobDetails.requirements,
+          salary: jobDetails.salary,
+          registrationOpeningDate: jobDetails.registrationOpeningDate,
+          registrationClosingDate: jobDetails.registrationClosingDate
+        };
+
+        const jobRes = await fetch(
+          `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/${jobId}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(jobUpdatePayload)
+          }
+        );
+        
+        if (!jobRes.ok) {
+          const err = await jobRes.json().catch(() => ({}));
+          throw new Error(err.error || `Failed to update job`);
+        }
+
+        // 2. Save hiring stages
         const stagesRes = await fetch(
           `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/update-stages/${jobId}`,
           {
@@ -540,10 +580,10 @@ const JobSettings: React.FC<{ onDirtyChange?: (isDirty: boolean) => void; onSave
         );
         if (!stagesRes.ok) {
           const err = await stagesRes.json().catch(() => ({}));
-          throw new Error(err.error || `Server error ${stagesRes.status}`);
+          throw new Error(err.error || `Failed to update stages`);
         }
 
-        // Save selected image if changed
+        // 3. Save selected image if changed
         if (selectedImage) {
           await fetch(
             `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/jobs-enhanced/update-image/${jobId}`,

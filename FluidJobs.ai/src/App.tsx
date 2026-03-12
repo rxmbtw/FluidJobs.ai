@@ -169,8 +169,7 @@ const router = createBrowserRouter(
       <Route path="/super-admin" element={<Navigate to="/superadmin-dashboard" replace />} />
       <Route path="/superadmin/dashboard" element={<Navigate to="/superadmin-dashboard" replace />} />
 
-      {/* Admin Dashboard Routes */}
-      {/* Admin Dashboard Routes */}
+      {/* Admin Dashboard Routes - Shared by all internal roles */}
       <Route path="/admin-dashboard" element={<AdminDashboard />}>
         <Route index element={<Navigate to="overview" replace />} />
         <Route path="overview" element={<AdminOverview />} />
@@ -202,9 +201,112 @@ const router = createBrowserRouter(
         <Route path="jobs/job-dashboard/:jobSlug/:view" element={<AdminJobDashboard />} />
         
         <Route path="settings" element={<AdminSettings />} />
+        <Route path="settings/*" element={<AdminSettings />} />
         <Route path="profile-settings" element={<AdminProfileSettings />} />
         <Route path="create-user" element={<AdminCreateUser />} />
       </Route>
+
+      {/* Role-specific URL aliases - All use the same AdminDashboard component */}
+      <Route path="/interviewer-dashboard" element={<AdminDashboard />}>
+        <Route index element={<Navigate to="overview" replace />} />
+        <Route path="overview" element={<AdminOverview />} />
+        <Route path="jobs" element={<AdminJobs />} />
+        <Route path="jobs/:status" element={<AdminJobs />} />
+        <Route path="create-job" element={<AdminCreateJob />} />
+        <Route path="candidates" element={<AdminCandidates />} />
+        <Route path="candidates/:candidateId" element={<AdminCandidates />} />
+        <Route path="create-candidate">
+          <Route index element={<AdminCreateCandidate />} />
+          <Route path="send-invitation" element={<AdminSendInvite />} />
+          <Route path="bulk-import" element={<AdminBulkImport />} />
+        </Route>
+        <Route path="accounts" element={<AdminAccounts />} />
+        <Route path="recruiters" element={<RecruitersDashboard />} />
+        <Route path="approvals" element={<AdminApprovals />} />
+        <Route path="approvals/:status" element={<AdminApprovals />} />
+        <Route path="jobs/job-dashboard/:jobSlug" element={<AdminJobDashboard />} />
+        <Route path="jobs/job-dashboard/:jobSlug/:view" element={<AdminJobDashboard />} />
+        <Route path="settings" element={<AdminSettings />} />
+        <Route path="settings/*" element={<AdminSettings />} />
+        <Route path="profile-settings" element={<AdminProfileSettings />} />
+        <Route path="create-user" element={<AdminCreateUser />} />
+      </Route>
+
+      <Route path="/recruiter-dashboard" element={<AdminDashboard />}>
+        <Route index element={<Navigate to="overview" replace />} />
+        <Route path="overview" element={<AdminOverview />} />
+        <Route path="jobs" element={<AdminJobs />} />
+        <Route path="jobs/:status" element={<AdminJobs />} />
+        <Route path="create-job" element={<AdminCreateJob />} />
+        <Route path="candidates" element={<AdminCandidates />} />
+        <Route path="candidates/:candidateId" element={<AdminCandidates />} />
+        <Route path="create-candidate">
+          <Route index element={<AdminCreateCandidate />} />
+          <Route path="send-invitation" element={<AdminSendInvite />} />
+          <Route path="bulk-import" element={<AdminBulkImport />} />
+        </Route>
+        <Route path="accounts" element={<AdminAccounts />} />
+        <Route path="recruiters" element={<RecruitersDashboard />} />
+        <Route path="approvals" element={<AdminApprovals />} />
+        <Route path="approvals/:status" element={<AdminApprovals />} />
+        <Route path="jobs/job-dashboard/:jobSlug" element={<AdminJobDashboard />} />
+        <Route path="jobs/job-dashboard/:jobSlug/:view" element={<AdminJobDashboard />} />
+        <Route path="settings" element={<AdminSettings />} />
+        <Route path="settings/*" element={<AdminSettings />} />
+        <Route path="profile-settings" element={<AdminProfileSettings />} />
+        <Route path="create-user" element={<AdminCreateUser />} />
+      </Route>
+
+      <Route path="/sales-dashboard" element={<AdminDashboard />}>
+        <Route index element={<Navigate to="overview" replace />} />
+        <Route path="overview" element={<AdminOverview />} />
+        <Route path="jobs" element={<AdminJobs />} />
+        <Route path="jobs/:status" element={<AdminJobs />} />
+        <Route path="create-job" element={<AdminCreateJob />} />
+        <Route path="candidates" element={<AdminCandidates />} />
+        <Route path="candidates/:candidateId" element={<AdminCandidates />} />
+        <Route path="create-candidate">
+          <Route index element={<AdminCreateCandidate />} />
+          <Route path="send-invitation" element={<AdminSendInvite />} />
+          <Route path="bulk-import" element={<AdminBulkImport />} />
+        </Route>
+        <Route path="accounts" element={<AdminAccounts />} />
+        <Route path="recruiters" element={<RecruitersDashboard />} />
+        <Route path="approvals" element={<AdminApprovals />} />
+        <Route path="approvals/:status" element={<AdminApprovals />} />
+        <Route path="jobs/job-dashboard/:jobSlug" element={<AdminJobDashboard />} />
+        <Route path="jobs/job-dashboard/:jobSlug/:view" element={<AdminJobDashboard />} />
+        <Route path="settings" element={<AdminSettings />} />
+        <Route path="settings/*" element={<AdminSettings />} />
+        <Route path="profile-settings" element={<AdminProfileSettings />} />
+        <Route path="create-user" element={<AdminCreateUser />} />
+      </Route>
+
+      <Route path="/hr-dashboard" element={<AdminDashboard />}>
+        <Route index element={<Navigate to="overview" replace />} />
+        <Route path="overview" element={<AdminOverview />} />
+        <Route path="jobs" element={<AdminJobs />} />
+        <Route path="jobs/:status" element={<AdminJobs />} />
+        <Route path="create-job" element={<AdminCreateJob />} />
+        <Route path="candidates" element={<AdminCandidates />} />
+        <Route path="candidates/:candidateId" element={<AdminCandidates />} />
+        <Route path="create-candidate">
+          <Route index element={<AdminCreateCandidate />} />
+          <Route path="send-invitation" element={<AdminSendInvite />} />
+          <Route path="bulk-import" element={<AdminBulkImport />} />
+        </Route>
+        <Route path="accounts" element={<AdminAccounts />} />
+        <Route path="recruiters" element={<RecruitersDashboard />} />
+        <Route path="approvals" element={<AdminApprovals />} />
+        <Route path="approvals/:status" element={<AdminApprovals />} />
+        <Route path="jobs/job-dashboard/:jobSlug" element={<AdminJobDashboard />} />
+        <Route path="jobs/job-dashboard/:jobSlug/:view" element={<AdminJobDashboard />} />
+        <Route path="settings" element={<AdminSettings />} />
+        <Route path="settings/*" element={<AdminSettings />} />
+        <Route path="profile-settings" element={<AdminProfileSettings />} />
+        <Route path="create-user" element={<AdminCreateUser />} />
+      </Route>
+
       <Route path="/company-dashboard" element={<Navigate to="/admin-dashboard" replace />} />
 
       {/* Protected Routes */}

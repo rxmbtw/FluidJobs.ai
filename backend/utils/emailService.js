@@ -5,19 +5,28 @@ const createTransporter = (email, password) => {
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT),
     secure: process.env.SMTP_SECURE === 'true',
-    auth: { user: email, pass: password }
+    auth: { user: email, pass: password },
+    tls: {
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2'
+    },
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100,
+    rateDelta: 1000,
+    rateLimit: 5
   });
 };
 
 const transporters = {
-  noreply: () => createTransporter(process.env.EMAIL_NOREPLY, process.env.EMAIL_NOREPLY_PASS),
-  assessments: () => createTransporter(process.env.EMAIL_ASSESSMENTS, process.env.EMAIL_ASSESSMENTS_PASS),
-  jobs: () => createTransporter(process.env.EMAIL_JOBS, process.env.EMAIL_JOBS_PASS),
-  recruitment: () => createTransporter(process.env.EMAIL_RECRUITMENT, process.env.EMAIL_RECRUITMENT_PASS)
+  noreply: createTransporter(process.env.EMAIL_NOREPLY, process.env.EMAIL_NOREPLY_PASS),
+  assessments: createTransporter(process.env.EMAIL_ASSESSMENTS, process.env.EMAIL_ASSESSMENTS_PASS),
+  jobs: createTransporter(process.env.EMAIL_JOBS, process.env.EMAIL_JOBS_PASS),
+  recruitment: createTransporter(process.env.EMAIL_RECRUITMENT, process.env.EMAIL_RECRUITMENT_PASS)
 };
 
 const sendEmail = async (type, { to, subject, html, text }) => {
-  const transporter = transporters[type]();
+  const transporter = transporters[type];
   const from = transporter.options.auth.user;
   
   return await transporter.sendMail({ from, to, subject, html, text });

@@ -14,7 +14,7 @@ const AdminCreateJob: React.FC = () => {
             <div className="flex-1 overflow-auto px-8 py-6">
                 <JobCreationForm
                     onBack={() => {
-                        navigate('/admin-dashboard/jobs');
+                        navigate('../jobs');
                     }}
                     isSuperAdmin={false}
                 />

@@ -95,6 +95,194 @@ router.post('/edit-request', authenticateToken, async (req, res) => {
   }
 });
 
+// Get user's own edit requests
+router.get('/edit-requests/my-requests', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const result = await pool.query(`
+      SELECT 
+        jer.*,
+        j.title as job_title,
+        u.name as requested_by_name,
+        r.name as reviewed_by_name
+      FROM job_edit_requests jer
+      JOIN jobs_enhanced j ON jer.job_id = j.id
+      JOIN users u ON jer.requested_by = u.id
+      LEFT JOIN users r ON jer.reviewed_by = r.id
+      WHERE jer.requested_by = $1
+      ORDER BY jer.created_at DESC
+    `, [userId]);
+
+    res.json({ success: true, requests: result.rows });
+  } catch (error) {
+    console.error('Error fetching user edit requests:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Get pending edit requests (Admin/SuperAdmin only)
+router.get('/edit-requests/pending', authenticateToken, async (req, res) => {
+  try {
+    const userRole = req.user.role;
+    
+    if (!['Admin', 'SuperAdmin'].includes(userRole)) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
+
+    const result = await pool.query(`
+      SELECT 
+        jer.*,
+        j.title as job_title,
+        u.name as requested_by_name,
+        u.email as requested_by_email
+      FROM job_edit_requests jer
+      JOIN jobs_enhanced j ON jer.job_id = j.id
+      JOIN users u ON jer.requested_by = u.id
+      WHERE jer.status = 'pending'
+      ORDER BY jer.created_at ASC
+    `);
+
+    res.json({ success: true, requests: result.rows });
+  } catch (error) {
+    console.error('Error fetching pending edit requests:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Approve edit request (Admin/SuperAdmin only)
+router.post('/edit-requests/:id/approve', authenticateToken, async (req, res) => {
+  try {
+    const requestId = req.params.id;
+    const reviewerId = req.user.id;
+    const userRole = req.user.role;
+    const { review_notes } = req.body;
+
+    if (!['Admin', 'SuperAdmin'].includes(userRole)) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
+
+    const requestResult = await pool.query(
+      'SELECT * FROM job_edit_requests WHERE id = $1',
+      [requestId]
+    );
+
+    if (requestResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Edit request not found' });
+    }
+
+    const editRequest = requestResult.rows[0];
+
+    if (editRequest.status !== 'pending') {
+      return res.status(400).json({ success: false, error: 'Request already processed' });
+    }
+
+    // Apply changes to job
+    const changes = editRequest.changes_json;
+    const updateFields = [];
+    const updateValues = [];
+    let paramIndex = 1;
+
+    Object.keys(changes).forEach(key => {
+      updateFields.push(`${key} = $${paramIndex}`);
+      updateValues.push(changes[key]);
+      paramIndex++;
+    });
+
+    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+    updateValues.push(editRequest.job_id);
+
+    await pool.query(
+      `UPDATE jobs_enhanced SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
+      updateValues
+    );
+
+    await pool.query(
+      `UPDATE job_edit_requests 
+       SET status = 'approved', reviewed_by = $1, reviewed_at = CURRENT_TIMESTAMP, review_notes = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [reviewerId, review_notes, requestId]
+    );
+
+    await logAudit(reviewerId, req.user.name, 'JOB_EDIT_APPROVED', `Approved edit request ${requestId} for job ${editRequest.job_id}`, 'job', editRequest.job_id, req);
+
+    res.json({ success: true, message: 'Edit request approved and changes applied' });
+  } catch (error) {
+    console.error('Error approving edit request:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Reject edit request (Admin/SuperAdmin only)
+router.post('/edit-requests/:id/reject', authenticateToken, async (req, res) => {
+  try {
+    const requestId = req.params.id;
+    const reviewerId = req.user.id;
+    const userRole = req.user.role;
+    const { review_notes } = req.body;
+
+    if (!['Admin', 'SuperAdmin'].includes(userRole)) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
+
+    const requestResult = await pool.query(
+      'SELECT * FROM job_edit_requests WHERE id = $1',
+      [requestId]
+    );
+
+    if (requestResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Edit request not found' });
+    }
+
+    const editRequest = requestResult.rows[0];
+
+    if (editRequest.status !== 'pending') {
+      return res.status(400).json({ success: false, error: 'Request already processed' });
+    }
+
+    await pool.query(
+      `UPDATE job_edit_requests 
+       SET status = 'rejected', reviewed_by = $1, reviewed_at = CURRENT_TIMESTAMP, review_notes = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [reviewerId, review_notes, requestId]
+    );
+
+    await logAudit(reviewerId, req.user.name, 'JOB_EDIT_REJECTED', `Rejected edit request ${requestId} for job ${editRequest.job_id}`, 'job', editRequest.job_id, req);
+
+    res.json({ success: true, message: 'Edit request rejected' });
+  } catch (error) {
+    console.error('Error rejecting edit request:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Update job cover image
+router.patch('/update-image/:id', authenticateToken, async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const { selected_image, cover_image_id } = req.body;
+
+    console.log('📝 Update image request:', { jobId, selected_image, cover_image_id });
+
+    if (!selected_image) {
+      return res.status(400).json({ success: false, error: 'selected_image is required' });
+    }
+
+    await pool.query(
+      'UPDATE jobs_enhanced SET selected_image = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [selected_image, jobId]
+    );
+
+    await logAudit(req.user.id, req.user.name, 'JOB_IMAGE_UPDATED', `Updated cover image for job ID: ${jobId}`, 'job', jobId, req);
+
+    console.log('✅ Image updated successfully for job', jobId);
+    res.json({ success: true, message: 'Image updated successfully' });
+  } catch (error) {
+    console.error('Error updating job image:', error);
+    res.status(500).json({ success: false, error: 'Failed to update job image' });
+  }
+});
+
 // Direct update job (used by Admin/SuperAdmin - no approval needed)
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
@@ -575,6 +763,86 @@ router.get('/closed', authenticateToken, async (req, res) => {
   }
 });
 
+// Check if job title already exists (MUST be before /:id route)
+router.get('/check-title', async (req, res) => {
+  try {
+    const { title, exclude_job_id } = req.query;
+    
+    if (!title) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
+    let query = 'SELECT id, title FROM jobs_enhanced WHERE LOWER(title) = LOWER($1)';
+    const params = [title];
+
+    if (exclude_job_id) {
+      query += ' AND id != $2';
+      params.push(exclude_job_id);
+    }
+
+    const result = await pool.query(query, params);
+    
+    res.json({
+      exists: result.rows.length > 0,
+      jobs: result.rows
+    });
+  } catch (error) {
+    console.error('Error checking job title:', error);
+    res.status(500).json({ error: 'Failed to check job title' });
+  }
+});
+
+// Get job activity log
+router.get('/:id/activity', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(`
+      SELECT jal.*, u.name as performed_by_name
+      FROM job_activity_log jal
+      LEFT JOIN users u ON jal.performed_by = u.id
+      WHERE jal.job_id = $1
+      ORDER BY jal.created_at DESC
+    `, [id]);
+    
+    res.json({ success: true, activities: result.rows });
+  } catch (error) {
+    console.error('Error fetching job activity:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update job stages (MUST be before /:id route)
+router.patch('/update-stages/:id', authenticateToken, async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    // Accept both 'stages' and 'interview_stages' for compatibility
+    const stages = req.body.stages || req.body.interview_stages;
+
+    console.log('📝 Update stages request:', { jobId, stages, bodyKeys: Object.keys(req.body) });
+
+    if (!stages || !Array.isArray(stages)) {
+      console.log('❌ Invalid stages:', { stages, isArray: Array.isArray(stages) });
+      return res.status(400).json({ error: 'Stages array is required' });
+    }
+
+    // interview_stages is a PostgreSQL ARRAY type, not JSONB
+    // Convert to PostgreSQL array format
+    await pool.query(
+      'UPDATE jobs_enhanced SET interview_stages = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [stages, jobId]  // pg library handles array conversion automatically
+    );
+
+    await logAudit(req.user.id, req.user.name, 'JOB_STAGES_UPDATED', `Updated stages for job ID: ${jobId}`, 'job', jobId, req);
+
+    console.log('✅ Stages updated successfully for job', jobId);
+    res.json({ success: true, message: 'Stages updated successfully' });
+  } catch (error) {
+    console.error('Error updating job stages:', error);
+    res.status(500).json({ error: 'Failed to update job stages' });
+  }
+});
+
 // Get job by ID with attachments
 router.get('/:id', async (req, res) => {
   try {
@@ -594,7 +862,7 @@ router.get('/:id', async (req, res) => {
     let attachments = [];
     try {
       const attachmentsResult = await pool.query(`
-        SELECT attachment_id, original_name, file_path, file_type, attachment_type, uploaded_at
+        SELECT id as attachment_id, file_name as original_name, file_url as file_path, file_type, uploaded_at
         FROM job_attachments 
         WHERE job_id = $1
         ORDER BY uploaded_at DESC;

@@ -89,6 +89,11 @@ const SuperAdminDefaultView: React.FC = () => {
 
     // Jobs
     if (path.includes('/superadmin-dashboard/jobs')) return 'job-openings';
+    
+    // Settings Routes
+    if (path.includes('/superadmin-dashboard/settings/policies')) return 'settings-ai-policies';
+    if (path.includes('/superadmin-dashboard/settings/audit-logs')) return 'settings-audit-logs';
+    
     if (path.includes('/superadmin-dashboard/profile')) return 'profile-settings';
     return 'dashboard';
   };
@@ -360,12 +365,22 @@ const SuperAdminDefaultView: React.FC = () => {
 
     setCheckingEmail(true);
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/auth/check-username`, {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/admin/check-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: email })
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email })
       });
+      
+      if (!response.ok) {
+        console.error('Email check failed:', response.status, response.statusText);
+        setEmailError('');
+        return;
+      }
+      
       const data = await response.json();
+      console.log('Email check response:', data);
 
       if (data.exists) {
         setEmailError('This email is already registered.');
@@ -374,6 +389,7 @@ const SuperAdminDefaultView: React.FC = () => {
       }
     } catch (error) {
       console.error('Error checking email:', error);
+      setEmailError('');
     } finally {
       setCheckingEmail(false);
     }
@@ -844,9 +860,18 @@ const SuperAdminDefaultView: React.FC = () => {
 
     setCreatingUser(true);
     try {
-      const response = await axios.post('http://localhost:8000/api/superadmin/create-user', {
-        ...newUser,
-        customPermissions: Object.entries(selectedPermissions).map(([name, granted]) => ({ name, granted }))
+      const token = localStorage.getItem('superadmin_token') || sessionStorage.getItem('fluidjobs_token');
+      console.log('🔑 Using token:', token ? 'Token found' : 'No token');
+      const response = await axios.post('http://localhost:8000/api/admin/users', {
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone,
+        role: newUser.role,
+        customPermissions: Object.entries(selectedPermissions).map(([name, granted]) => ({ name, granted, has_permission: granted }))
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       setNewUser({ name: '', email: '', phone: '', role: '' });
       setEmailError('');
@@ -860,7 +885,16 @@ const SuperAdminDefaultView: React.FC = () => {
       setShowSuccessModal(true);
     } catch (error: any) {
       console.error('Error creating user:', error);
-      const errorMsg = error.response?.data?.error || 'Error creating user';
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      
+      let errorMsg = 'Error creating user';
+      if (error.response?.status === 401) {
+        errorMsg = 'Authentication failed. Please log out and log back in.';
+      } else if (error.response?.data?.error) {
+        errorMsg = error.response.data.error;
+      }
+      
       setErrorMessage({
         title: 'Error',
         message: errorMsg
@@ -1864,14 +1898,12 @@ const SuperAdminDefaultView: React.FC = () => {
                               {/* Phone Number Input */}
                               <input
                                 type="tel"
-                                value={newUser.phone.replace(/^\+\d+/, '')}
+                                value={newUser.phone}
                                 onChange={(e) => {
-                                  const value = e.target.value.replace(/\D/g, '');
-                                  setNewUser({ ...newUser, phone: selectedCountryCode + value });
+                                  setNewUser({ ...newUser, phone: e.target.value });
                                 }}
                                 className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="9876543210"
-                                maxLength={15}
                               />
                             </div>
                           </div>

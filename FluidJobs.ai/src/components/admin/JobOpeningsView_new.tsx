@@ -687,8 +687,8 @@ const JobOpeningsViewNew: React.FC<JobOpeningsViewNewProps> = ({ hideHeader = fa
                 className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5 cursor-pointer"
                 onClick={() => {
                   if (isInterviewer) {
-                    // Navigate to job dashboard route for Interviewer
-                    navigate(`/admin-dashboard/jobs/job-dashboard/${job.jobId}`);
+                    // Navigate to job dashboard route using relative path
+                    navigate(`jobs/job-dashboard/${job.jobId}`);
                   } else {
                     // Show modal for other roles
                     setDashboardLoading(true);

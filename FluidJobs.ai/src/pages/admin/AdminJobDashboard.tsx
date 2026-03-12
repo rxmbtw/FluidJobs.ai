@@ -7,7 +7,7 @@ const AdminJobDashboard: React.FC = () => {
   const { jobSlug } = useParams<{ jobSlug: string }>();
 
   const handleBack = () => {
-    navigate('/admin-dashboard');
+    navigate('..');
   };
 
   return (

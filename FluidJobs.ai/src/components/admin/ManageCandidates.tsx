@@ -972,8 +972,7 @@ const ManageCandidates: React.FC<ManageCandidatesProps> = ({ isJobSpecific = fal
                 <div
                   key={candidate.id}
                   onClick={() => {
-                    const basePath = isSuperAdmin ? '/superadmin-dashboard' : '/admin-dashboard';
-                    navigate(`${basePath}/candidates/${candidate.id}`);
+                    navigate(`candidates/${candidate.id}`);
                   }}
                   className={`mb-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${selectedCandidate?.id === candidate.id ? 'border-l-4 border-l-blue-500 bg-blue-50' : ''
                     }`}

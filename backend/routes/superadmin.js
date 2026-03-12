@@ -1069,27 +1069,27 @@ router.get('/roles/:role/permissions', async (req, res) => {
             "category": "job_management"
       },
       {
-            "name": "create_jobs",
+            "name": "create_job",
             "description": "Create Jobs",
             "category": "job_management"
       },
       {
-            "name": "edit_jobs",
+            "name": "edit_job",
             "description": "Edit Jobs",
             "category": "job_management"
       },
       {
-            "name": "delete_jobs",
+            "name": "delete_job",
             "description": "Delete Jobs",
             "category": "job_management"
       },
       {
-            "name": "approve_jobs",
+            "name": "approve_job",
             "description": "Approve/Reject Jobs",
             "category": "job_management"
       },
       {
-            "name": "publish_jobs",
+            "name": "publish_job",
             "description": "Publish Jobs",
             "category": "job_management"
       },
@@ -1119,7 +1119,7 @@ router.get('/roles/:role/permissions', async (req, res) => {
             "category": "candidate_management"
       },
       {
-            "name": "manage_candidates",
+            "name": "manage_candidate_stages",
             "description": "Manage Candidate Lifecycle",
             "category": "candidate_management"
       },
@@ -1134,7 +1134,7 @@ router.get('/roles/:role/permissions', async (req, res) => {
             "category": "candidate_management"
       },
       {
-            "name": "restrict_candidates",
+            "name": "restrict_candidate",
             "description": "Restrict/Block Candidates",
             "category": "candidate_management"
       },
@@ -1761,7 +1761,7 @@ router.get('/edit-requests', async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT er.id, er.job_id, er.requested_by, er.changes_json, er.original_values_json, er.status, er.created_at, er.resolved_at,
+      SELECT er.id, er.job_id, er.requested_by, er.changes_json, er.original_values_json, er.status, er.created_at, er.reviewed_at,
              j.title as job_title, j.account_id,
              u.name as requested_by_name, u.email as requested_by_email,
              row_to_json(j) as original_job
@@ -1844,7 +1844,7 @@ router.put('/edit-requests/:id/approve', async (req, res) => {
       editReq.job_id
     ]);
 
-    await client.query('UPDATE job_edit_requests SET status = $1, resolved_at = NOW() WHERE id = $2', ['approved', id]);
+    await client.query('UPDATE job_edit_requests SET status = $1, reviewed_at = NOW() WHERE id = $2', ['approved', id]);
 
     await client.query('COMMIT');
     res.json({ success: true, message: 'Edit request approved successfully' });
@@ -1862,7 +1862,7 @@ router.put('/edit-requests/:id/reject', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
-      'UPDATE job_edit_requests SET status = $1, resolved_at = NOW() WHERE id = $2 AND status = $3 RETURNING id',
+      'UPDATE job_edit_requests SET status = $1, reviewed_at = NOW() WHERE id = $2 AND status = $3 RETURNING id',
       ['rejected', id, 'pending']
     );
 
@@ -1874,6 +1874,166 @@ router.put('/edit-requests/:id/reject', async (req, res) => {
   } catch (error) {
     console.error('Error rejecting edit request:', error);
     res.status(500).json({ error: 'Failed to reject edit request' });
+  }
+});
+
+// ============================================
+// USER PERMISSIONS MANAGEMENT ENDPOINTS
+// ============================================
+
+// Get all permissions (for permission selection UI)
+router.get('/permissions/all', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, name, description, category
+      FROM permissions
+      ORDER BY 
+        CASE category
+          WHEN 'job_management' THEN 1
+          WHEN 'candidate_management' THEN 2
+          WHEN 'pipeline_interviews' THEN 3
+          WHEN 'analytics_reports' THEN 4
+          WHEN 'account_user_management' THEN 5
+          WHEN 'approvals_workflow' THEN 6
+          WHEN 'system_advanced' THEN 7
+          ELSE 8
+        END,
+        name
+    `);
+
+    res.json({ success: true, permissions: result.rows });
+  } catch (error) {
+    console.error('Error fetching all permissions:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch permissions' });
+  }
+});
+
+// Get user's effective permissions (role + custom)
+router.get('/users/:id/permissions', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(`
+      SELECT 
+        permission_id,
+        permission_name,
+        permission_description,
+        has_permission,
+        permission_source
+      FROM user_effective_permissions
+      WHERE user_id = $1
+      ORDER BY permission_name
+    `, [id]);
+
+    res.json({ success: true, permissions: result.rows });
+  } catch (error) {
+    console.error('Error fetching user permissions:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch user permissions' });
+  }
+});
+
+// Get user's custom permission overrides only
+router.get('/users/:id/custom-permissions', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(`
+      SELECT 
+        up.id,
+        up.permission_id,
+        p.name as permission_name,
+        p.description as permission_description,
+        up.granted,
+        up.granted_at,
+        up.reason,
+        u.name as granted_by_name
+      FROM user_permissions up
+      JOIN permissions p ON up.permission_id = p.id
+      LEFT JOIN users u ON up.granted_by = u.id
+      WHERE up.user_id = $1
+      ORDER BY up.granted_at DESC
+    `, [id]);
+
+    res.json({ success: true, customPermissions: result.rows });
+  } catch (error) {
+    console.error('Error fetching custom permissions:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch custom permissions' });
+  }
+});
+
+// Set custom permissions for a user
+router.post('/users/:id/permissions', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { customPermissions, grantedBy, reason } = req.body;
+    // customPermissions format: [{ permission_name: 'create_job', granted: true }, ...]
+
+    await client.query('BEGIN');
+
+    // Delete existing custom permissions for this user
+    await client.query('DELETE FROM user_permissions WHERE user_id = $1', [id]);
+
+    // Insert new custom permissions
+    if (customPermissions && customPermissions.length > 0) {
+      for (const perm of customPermissions) {
+        await client.query(`
+          INSERT INTO user_permissions (user_id, permission_id, granted, granted_by, reason)
+          VALUES (
+            $1,
+            (SELECT id FROM permissions WHERE name = $2),
+            $3,
+            $4,
+            $5
+          )
+        `, [id, perm.permission_name, perm.granted, grantedBy, reason || 'Custom permission override']);
+      }
+    }
+
+    await client.query('COMMIT');
+
+    // Log the action
+    await logAudit(
+      grantedBy,
+      'SuperAdmin',
+      'PERMISSIONS_UPDATED',
+      `Updated custom permissions for user ID: ${id}`,
+      'user',
+      id,
+      req
+    );
+
+    res.json({ success: true, message: 'Custom permissions updated successfully' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error setting custom permissions:', error);
+    res.status(500).json({ success: false, error: 'Failed to set custom permissions' });
+  } finally {
+    client.release();
+  }
+});
+
+// Get role's default permissions (for UI display)
+router.get('/roles/:role/default-permissions', async (req, res) => {
+  try {
+    const { role } = req.params;
+
+    const result = await pool.query(`
+      SELECT 
+        p.id,
+        p.name,
+        p.description,
+        p.category
+      FROM role_permissions rp
+      JOIN permissions p ON rp.permission_id = p.id
+      WHERE rp.role = $1
+      ORDER BY p.name
+    `, [role]);
+
+    res.json({ success: true, permissions: result.rows });
+  } catch (error) {
+    console.error('Error fetching role permissions:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch role permissions' });
   }
 });
 

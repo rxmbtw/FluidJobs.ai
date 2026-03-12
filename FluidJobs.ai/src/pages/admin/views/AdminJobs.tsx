@@ -90,7 +90,7 @@ const AdminJobs: React.FC = () => {
                 urlStatus = 'all-jobs';
         }
 
-        navigate(`/admin-dashboard/jobs/${urlStatus}`);
+        navigate(`jobs/${urlStatus}`);
     };
 
     return (

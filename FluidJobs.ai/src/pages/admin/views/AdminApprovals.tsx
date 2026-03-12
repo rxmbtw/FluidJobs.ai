@@ -23,7 +23,7 @@ const AdminApprovals: React.FC = () => {
     const approvalFilter = searchParams.get('filter') || 'all';
     
     const setApprovalTab = (tab: string) => {
-        navigate(`/admin-dashboard/approvals/${tab}?filter=${approvalFilter}`);
+        navigate(`approvals/${tab}?filter=${approvalFilter}`);
     };
 
     const setApprovalFilter = (filter: string) => {

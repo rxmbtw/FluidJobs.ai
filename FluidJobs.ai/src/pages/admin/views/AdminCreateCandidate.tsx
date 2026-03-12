@@ -25,7 +25,7 @@ const AdminCreateCandidate: React.FC = () => {
                     {/* Send Invite Container */}
                     {canSendInvites && (
                         <div
-                            onClick={() => navigate('/admin-dashboard/create-candidate/send-invitation')}
+                            onClick={() => navigate('send-invitation')}
                             className="bg-white rounded-xl border-2 border-gray-200 p-8 hover:border-blue-300 hover:shadow-lg transition-all duration-200 cursor-pointer group"
                         >
                             <div className="text-center">
@@ -51,7 +51,7 @@ const AdminCreateCandidate: React.FC = () => {
                     {/* Bulk Import Container */}
                     {canBulkImport && (
                         <div
-                            onClick={() => navigate('/admin-dashboard/create-candidate/bulk-import')}
+                            onClick={() => navigate('bulk-import')}
                             className="bg-white rounded-xl border-2 border-gray-200 p-8 hover:border-green-300 hover:shadow-lg transition-all duration-200 cursor-pointer group"
                         >
                             <div className="text-center">

@@ -8,10 +8,7 @@ const { authenticateAdmin } = require('../middleware/adminAuth');
 const { checkPermission, getUserPermissions, getRolePermissions, setUserPermission } = require('../middleware/permissions');
 const { logAudit } = require('../middleware/auditLogger');
 
-// Apply admin authentication to all routes
-router.use(authenticateAdmin);
-
-// Check if email exists in users table
+// Check if email exists in users table - NO AUTH REQUIRED (public endpoint for form validation)
 router.post('/check-email', async (req, res) => {
   try {
     const { email } = req.body;
@@ -32,6 +29,9 @@ router.post('/check-email', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+// Apply admin authentication to all routes AFTER check-email
+router.use(authenticateAdmin);
 
 // Get all users (Admin can see users below their level)
 router.get('/users', checkPermission('view_users'), async (req, res) => {
@@ -105,14 +105,23 @@ router.get('/users/:id/permissions', checkPermission('manage_permissions'), asyn
 });
 
 // Get role default permissions
-router.get('/roles/:role/permissions', checkPermission('manage_permissions'), async (req, res) => {
+router.get('/roles/:role/permissions', async (req, res) => {
   try {
     const { role } = req.params;
     const permissions = await getRolePermissions(role);
 
+    // Transform permissions to match expected format
+    const transformedPermissions = permissions.map(p => ({
+      name: p.name,
+      description: p.description,
+      category: p.category,
+      has_permission: p.is_default || false,
+      source: 'role'
+    }));
+
     res.json({
       role: role,
-      permissions: permissions
+      permissions: transformedPermissions
     });
   } catch (error) {
     console.error('Error fetching role permissions:', error);
@@ -188,8 +197,8 @@ router.post('/users', checkPermission('create_users'), async (req, res) => {
       return res.status(400).json({ error: 'Email already exists' });
     }
 
-    // Get creator's account ID for the invite record & auto-assign logic
-    let accountId = null;
+    // Get creator's account ID for the invite record (but NOT for auto-assignment)
+    let inviteAccountId = null;
     if (createdBy) {
       try {
         const creatorAccounts = await pool.query(
@@ -197,7 +206,7 @@ router.post('/users', checkPermission('create_users'), async (req, res) => {
           [createdBy]
         );
         if (creatorAccounts.rows.length > 0) {
-          accountId = creatorAccounts.rows[0].account_id;
+          inviteAccountId = creatorAccounts.rows[0].account_id;
         }
       } catch (err) {
         console.error('Error fetching creator account for invite:', err);
@@ -233,17 +242,8 @@ router.post('/users', checkPermission('create_users'), async (req, res) => {
       }
     }
 
-    // Auto-assign the new user to the creator's account
-    if (accountId) {
-      try {
-        await pool.query(
-          'INSERT INTO account_users (account_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-          [accountId, userId]
-        );
-      } catch (err) {
-        console.error('Error auto-assigning account:', err);
-      }
-    }
+    // DO NOT auto-assign account - only assign if explicitly provided in request
+    // Removed auto-assignment logic that was assigning creator's account to new user
 
     // Generate and store invite token
     const inviteToken = crypto.randomBytes(32).toString('hex');
@@ -253,7 +253,7 @@ router.post('/users', checkPermission('create_users'), async (req, res) => {
     try {
       await pool.query(
         'INSERT INTO user_invites (email, token, role, invited_by, account_id, expires_at) VALUES ($1, $2, $3, $4, $5, $6)',
-        [email, inviteToken, role, createdBy, accountId, expiresAt]
+        [email, inviteToken, role, createdBy, inviteAccountId, expiresAt]
       );
 
       const inviteLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/accept-invite?token=${inviteToken}`;

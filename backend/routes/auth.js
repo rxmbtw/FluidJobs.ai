@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const rateLimit = require('express-rate-limit');
 const { logAudit } = require('../middleware/auditLogger');
+const { getUserPermissions } = require('../middleware/permissions');
 const router = express.Router();
 
 // Rate limiter for login attempts (increased for development)
@@ -833,6 +834,31 @@ router.get('/debug-token', authenticateToken, async (req, res) => {
       accountAssignments: accountCheck.rows
     });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get logged-in user's permissions
+router.get('/my-permissions', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.adminId || req.user.id;
+    const userRole = req.user.role;
+
+    if (!userId || !userRole) {
+      return res.status(400).json({ error: 'User ID or role not found in token' });
+    }
+
+    // Get user permissions (role defaults + custom overrides)
+    const permissions = await getUserPermissions(userId, userRole);
+    
+    // Extract just the permission names where has_permission is true
+    const permissionNames = permissions
+      .filter(p => p.has_permission)
+      .map(p => p.name);
+
+    res.json({ permissions: permissionNames });
+  } catch (error) {
+    console.error('Error fetching user permissions:', error);
     res.status(500).json({ error: error.message });
   }
 });

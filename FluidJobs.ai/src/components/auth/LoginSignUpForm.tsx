@@ -106,9 +106,25 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
                         // Trigger user updated event to update AuthProvider
                         window.dispatchEvent(new Event('userUpdated'));
 
+                        // Route based on user role
+                        const userRole = data.user?.role;
+                        let dashboardPath = '/admin-dashboard'; // default
+                        
+                        if (userRole === 'Interviewer') {
+                            dashboardPath = '/interviewer-dashboard';
+                        } else if (userRole === 'Recruiter') {
+                            dashboardPath = '/recruiter-dashboard';
+                        } else if (userRole === 'Sales') {
+                            dashboardPath = '/sales-dashboard';
+                        } else if (userRole === 'HR') {
+                            dashboardPath = '/hr-dashboard';
+                        } else if (userRole === 'Admin') {
+                            dashboardPath = '/admin-dashboard';
+                        }
+
                         // Small delay to ensure AuthProvider updates
                         setTimeout(() => {
-                            navigate('/company-dashboard');
+                            navigate(dashboardPath);
                         }, 100);
                         return;
                     } else {
@@ -137,9 +153,25 @@ const LoginSignUpForm: React.FC<LoginSignUpFormProps> = ({ onNavigateToDashboard
                     // Trigger user updated event to update AuthProvider
                     window.dispatchEvent(new Event('userUpdated'));
 
+                    // Route based on user role
+                    const userRole = data.user?.role;
+                    let dashboardPath = '/admin-dashboard'; // default
+                    
+                    if (userRole === 'Interviewer') {
+                        dashboardPath = '/interviewer-dashboard';
+                    } else if (userRole === 'Recruiter') {
+                        dashboardPath = '/recruiter-dashboard';
+                    } else if (userRole === 'Sales') {
+                        dashboardPath = '/sales-dashboard';
+                    } else if (userRole === 'HR') {
+                        dashboardPath = '/hr-dashboard';
+                    } else if (userRole === 'Admin') {
+                        dashboardPath = '/admin-dashboard';
+                    }
+
                     // Small delay to ensure AuthProvider updates
                     setTimeout(() => {
-                        navigate('/company-dashboard');
+                        navigate(dashboardPath);
                     }, 100);
                     return;
                 }

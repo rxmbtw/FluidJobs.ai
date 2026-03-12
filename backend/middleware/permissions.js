@@ -58,12 +58,12 @@ async function checkUserPermission(userId, userRole, permissionName) {
     
     // Check for user-specific override first
     const userOverride = await pool.query(
-      'SELECT is_granted FROM user_permissions WHERE user_id = $1 AND permission_id = $2',
+      'SELECT granted FROM user_permissions WHERE user_id = $1 AND permission_id = $2',
       [userId, permissionId]
     );
     
     if (userOverride.rows.length > 0) {
-      return userOverride.rows[0].is_granted;
+      return userOverride.rows[0].granted;
     }
     
     // Check role default permission
@@ -90,9 +90,9 @@ async function getUserPermissions(userId, userRole) {
         p.name,
         p.description,
         p.category,
-        COALESCE(up.is_granted, rp.is_default, false) as has_permission,
+        COALESCE(up.granted, rp.is_default, false) as has_permission,
         CASE 
-          WHEN up.is_granted IS NOT NULL THEN 'custom'
+          WHEN up.granted IS NOT NULL THEN 'custom'
           WHEN rp.is_default IS NOT NULL THEN 'role_default'
           ELSE 'none'
         END as source
@@ -148,10 +148,10 @@ async function setUserPermission(userId, permissionName, isGranted, grantedBy) {
     
     // Insert or update user permission
     await pool.query(`
-      INSERT INTO user_permissions (user_id, permission_id, is_granted, granted_by)
+      INSERT INTO user_permissions (user_id, permission_id, granted, granted_by)
       VALUES ($1, $2, $3, $4)
       ON CONFLICT (user_id, permission_id) 
-      DO UPDATE SET is_granted = $3, granted_by = $4, granted_at = NOW()
+      DO UPDATE SET granted = $3, granted_by = $4, granted_at = NOW()
     `, [userId, permissionId, isGranted, grantedBy]);
     
     return true;

@@ -400,13 +400,9 @@ const NewDashboardContainer: React.FC<NewDashboardContainerProps> = ({ onBack, i
       urlSlug = jobSlug;
     }
 
-    // Determine the base path based on user role
-    const basePath = originalRole === 'superadmin' 
-      ? '/superadmin-dashboard/jobs/job-dashboard'
-      : '/admin-dashboard/jobs/job-dashboard';
-
-    navigate(`${basePath}/${urlSlug}/${viewId}`);
-  }, [navigate, effectiveJobId, jobInfo.title, jobSlug, propJobId, originalRole]);
+    // Use relative path to maintain role-specific URL
+    navigate(`jobs/job-dashboard/${urlSlug}/${viewId}`);
+  }, [navigate, effectiveJobId, jobInfo.title, jobSlug, propJobId]);
 
   const handleBackFromProfile = useCallback(() => {
     // This flips internal state (selectedCandidateId), so useBlocker WON'T see it.

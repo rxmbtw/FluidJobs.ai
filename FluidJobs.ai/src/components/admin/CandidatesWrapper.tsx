@@ -35,10 +35,9 @@ const CandidatesWrapper: React.FC<{ isSuperAdmin?: boolean }> = ({ isSuperAdmin 
             const { candidateId, candidateName } = event.detail;
             console.log('CandidatesWrapper received event:', { candidateId, candidateName });
 
-            // Navigate to the profile URL
+            // Navigate to the profile URL using relative path
             if (candidateId) {
-                const basePath = isSuperAdmin ? '/superadmin-dashboard' : '/admin-dashboard';
-                navigate(`${basePath}/candidates/${candidateId}`);
+                navigate(`candidates/${candidateId}`);
             }
         };
 
@@ -49,17 +48,15 @@ const CandidatesWrapper: React.FC<{ isSuperAdmin?: boolean }> = ({ isSuperAdmin 
     }, [navigate, isSuperAdmin]);
 
     const handleAddCandidate = () => {
-        navigate('/admin-dashboard/create-candidate');
+        navigate('create-candidate');
     };
 
     const handleViewProfile = (id: string) => {
-        const basePath = isSuperAdmin ? '/superadmin-dashboard' : '/admin-dashboard';
-        navigate(`${basePath}/candidates/${id}`);
+        navigate(`candidates/${id}`);
     };
 
     const handleBack = () => {
-        const basePath = isSuperAdmin ? '/superadmin-dashboard' : '/admin-dashboard';
-        navigate(`${basePath}/candidates`);
+        navigate(`candidates`);
     };
 
     if (candidateId) {
